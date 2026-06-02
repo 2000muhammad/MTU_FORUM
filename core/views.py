@@ -155,7 +155,8 @@ def index(request):
             message = hrm.get("message") or form.texts["not_found"]
             messages.error(request, message)
 
-    return render(request, "index.html", {"form": form})
+    web_platforms = WebPlatform.objects.filter(is_active=True).order_by("sort_order", "name")
+    return render(request, "index.html", {"form": form, "web_platforms": web_platforms})
 
 
 def _merge_query(url, params):
