@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% load ui_i18n %}
+{% block page_title %}{% tr 'requests_dashboard' %}{% endblock %}
+{% block content %}
+{% if show_admin_dashboard %}
+<section class="dashboard-grid">
+  <div class="glass-card metric"><span>{% tr 'new' %}</span><strong>{{ stats.new }}</strong></div>
+  <div class="glass-card metric"><span>{% tr 'done' %}</span><strong>{{ stats.done }}</strong></div>
+  <div class="glass-card metric"><span>{% tr 'blocked' %}</span><strong>{{ stats.blocked }}</strong></div>
+  <a class="glass-card metric metric-link unread-chat-card" href="{% url 'admin_chat_list' %}"><span>{% tr 'unread_chats' %}</span><strong>{{ stats.chats }}</strong></a>
+</section>
+
+<section class="platform-summary">
+  <div class="platform-summary-head">
+    <div>
+      <h2>{% tr 'platform_requests' %}</h2>
+      <p class="text-secondary mb-0">{% tr 'platform_requests_hint' %}</p>
+    </div>
+  </div>
+  <div class="platform-metric-grid">
+    {% for platform in platform_stats %}
+    <article class="glass-card platform-metric">
+      <span>{% tr 'platform' %}</span>
+      <h3>{{ platform.name }}</h3>
+      <div class="platform-stat-grid">
+        <div><small>{% tr 'total_requests' %}</small><strong>{{ platform.total }}</strong></div>
+        <div><small>{% tr 'done_requests' %}</small><strong>{{ platform.done }}</strong></div>
+        <div><small>{% tr 'blocked_unblocked_requests' %}</small><strong>{{ platform.blocked_unblocked }}</strong></div>
+        <div><small>{% tr 'deleted_requests' %}</small><strong>{{ platform.deleted }}</strong></div>
+      </div>
+    </article>
+    {% empty %}
+    <div class="glass-card platform-empty">{% tr 'no_platforms' %}</div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="platform-summary web-platform-section">
+  <div class="platform-summary-head">
+    <div>
+      <h2>{% tr 'web_platforms' %}</h2>
+      <p class="text-secondary mb-0">{% tr 'web_platforms_hint' %}</p>
+    </div>
+  </div>
+  <div class="web-service-grid">
+    {% for platform in web_platforms %}
+    <article class="web-service-card{% if not platform.is_active %} web-platform-disabled{% endif %}{% if platform.is_favorite %} web-service-favorited{% endif %}">
+      {% if platform.url and platform.is_active %}
+      <a class="web-service-link" href="{{ platform.open_url }}" target="_blank" rel="noopener" aria-label="{{ platform.name }}">
+      {% else %}
+      <div class="web-service-link" aria-label="{{ platform.name }}">
+      {% endif %}
+        <div class="web-service-icon">
+          {% if platform.image_url %}
+          <img src="{{ platform.image_url }}" alt="{{ platform.name }}" loading="lazy">
+          {% else %}
+          <span>WEB</span>
+          {% endif %}
+        </div>
+        <div class="web-service-body">
+          <h3>{{ platform.name }}</h3>
+          <div class="web-service-meta" aria-label="{% tr 'web_platform' %}">
+            <span class="web-meta-item web-meta-star">{{ platform.favorite_count }}</span>
+            <span class="web-meta-item web-meta-usage">{{ platform.uses }}</span>
+          </div>
+        </div>
+      {% if platform.url and platform.is_active %}
+      </a>
+      {% else %}
+      </div>
+      {% endif %}
+      <form class="web-service-favorite-form" method="post" action="{% url 'toggle_web_platform_favorite' platform.id %}">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <button class="web-service-favorite" type="submit" aria-pressed="{% if platform.is_favorite %}true{% else %}false{% endif %}" aria-label="{% if platform.is_favorite %}Удалить из избранного{% else %}Добавить в избранное{% endif %}">{% if platform.is_favorite %}&#9733;{% else %}&#9734;{% endif %}</button>
+      </form>
+    </article>
+    {% empty %}
+    <div class="glass-card platform-empty">{% tr 'no_web_platforms' %}</div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

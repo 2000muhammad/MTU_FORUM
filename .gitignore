@@ -1,0 +1,36 @@
+# Python / Django
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3
+db.sqlite3
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Secrets and local config
+.env
+*.env
+!.env.example
+
+# Runtime files
+runtime_logs/
+*.log
+*.err
+*.pid
+
+# User uploads and local media
+media/
+
+# Static build/cache output
+staticfiles/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+

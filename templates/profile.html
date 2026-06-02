@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% load ui_i18n %}
+{% block page_title %}{% tr 'profile' %}{% endblock %}
+{% block content %}
+<div class="profile-layout">
+  <section class="glass-card profile-photo-card">
+    <div class="profile-photo-preview">
+      {% if profile_obj.avatar %}
+        <span class="profile-photo-inner"><img src="{{ profile_obj.avatar.url }}" alt="{% tr 'profile_photo' %}"></span>
+      {% else %}
+        <span class="profile-photo-inner"><span class="profile-avatar-fallback">{{ user.username|first|upper }}</span></span>
+      {% endif %}
+    </div>
+    <div>
+      <h2>{% tr 'profile_photo' %}</h2>
+      <p class="hint">{% tr 'profile_photo_hint' %}</p>
+    </div>
+    <form method="post" enctype="multipart/form-data" class="profile-upload-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="avatar">
+      <label>
+        {% tr 'select_photo' %}
+        {{ avatar_form.avatar }}
+      </label>
+      {% if avatar_form.avatar.errors %}
+        <div class="text-danger small">{{ avatar_form.avatar.errors }}</div>
+      {% endif %}
+      <button class="btn btn-primary" type="submit">{% tr 'save_photo' %}</button>
+    </form>
+  </section>
+
+  <div class="profile-main-stack">
+    <form method="post" class="glass-card profile-card profile-info-card">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="info">
+      <h2>{% tr 'profile_info' %}</h2>
+      <p class="hint">{% tr 'profile_info_hint' %}</p>
+      <div class="profile-info-grid">
+        <label>
+          {% tr 'first_name' %}
+          {{ info_form.first_name }}
+          {{ info_form.first_name.errors }}
+        </label>
+        <label>
+          {% tr 'last_name' %}
+          {{ info_form.last_name }}
+          {{ info_form.last_name.errors }}
+        </label>
+        <label>
+          {% tr 'email' %}
+          {{ info_form.email }}
+          {{ info_form.email.errors }}
+        </label>
+      </div>
+      <div class="profile-employee-grid">
+        <label>
+          {% tr 'employee_pinfl' %}
+          {{ employee_form.employee_pinfl }}
+          {{ employee_form.employee_pinfl.errors }}
+        </label>
+        <label>
+          {% tr 'middle_name' %}
+          {{ employee_form.middle_name }}
+          {{ employee_form.middle_name.errors }}
+        </label>
+        <label>
+          {% tr 'phone' %}
+          {{ employee_form.phone }}
+          {{ employee_form.phone.errors }}
+        </label>
+        <label>
+          {% tr 'birth_date' %}
+          {{ employee_form.birth_date }}
+          {{ employee_form.birth_date.errors }}
+        </label>
+        <label>
+          {% tr 'branch' %}
+          {{ employee_form.branch }}
+          {{ employee_form.branch.errors }}
+        </label>
+        <label>
+          {% tr 'organization' %}
+          {{ employee_form.organization }}
+          {{ employee_form.organization.errors }}
+        </label>
+        <label>
+          {% tr 'department' %}
+          {{ employee_form.department }}
+          {{ employee_form.department.errors }}
+        </label>
+        <label>
+          {% tr 'position' %}
+          {{ employee_form.position }}
+          {{ employee_form.position.errors }}
+        </label>
+      </div>
+      <button class="btn btn-primary" type="submit">{% tr 'save_profile' %}</button>
+    </form>
+
+    <form method="post" class="glass-card profile-card">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="password">
+      <h2>{% tr 'password_change' %}</h2>
+      <div class="profile-password-stack">
+        <label>
+          {{ password_form.old_password.label }}
+          <span class="secret-input-wrap">
+            {{ password_form.old_password }}
+            <button class="secret-toggle-btn" type="button" data-secret-toggle data-show="{% tr 'show' %}" data-hide="{% tr 'hide' %}">{% tr 'show' %}</button>
+          </span>
+          {{ password_form.old_password.errors }}
+        </label>
+        <label>
+          {{ password_form.new_password1.label }}
+          <span class="secret-input-wrap">
+            {{ password_form.new_password1 }}
+            <button class="secret-toggle-btn" type="button" data-secret-toggle data-show="{% tr 'show' %}" data-hide="{% tr 'hide' %}">{% tr 'show' %}</button>
+          </span>
+          {% if password_form.new_password1.help_text %}
+            <span class="helptext">{{ password_form.new_password1.help_text }}</span>
+          {% endif %}
+          {{ password_form.new_password1.errors }}
+        </label>
+        <label>
+          {{ password_form.new_password2.label }}
+          <span class="secret-input-wrap">
+            {{ password_form.new_password2 }}
+            <button class="secret-toggle-btn" type="button" data-secret-toggle data-show="{% tr 'show' %}" data-hide="{% tr 'hide' %}">{% tr 'show' %}</button>
+          </span>
+          {{ password_form.new_password2.errors }}
+        </label>
+      </div>
+      <button class="btn btn-primary" type="submit">{% tr 'update_password' %}</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('[data-secret-toggle]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const wrap = button.closest('.secret-input-wrap');
+    const input = wrap ? wrap.querySelector('input') : null;
+    if (!input) return;
+
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    button.textContent = isHidden ? button.dataset.hide : button.dataset.show;
+  });
+});
+</script>
+{% endblock %}

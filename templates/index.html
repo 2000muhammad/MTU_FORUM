@@ -1,0 +1,261 @@
+{% load static ui_i18n %}
+<!doctype html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ site_settings.site_name|default:'MTU FORUM' }} | Заявка</title>
+  {% if site_settings.site_favicon %}
+  <link rel="icon" href="{{ site_settings.site_favicon.url }}">
+  {% else %}
+  <link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}">
+  {% endif %}
+  <script>
+    (() => {
+      const theme = localStorage.getItem('mtu-theme') || 'dark';
+      const accessibility = localStorage.getItem('mtu-accessibility') === 'on';
+      document.documentElement.dataset.theme = theme;
+      if (accessibility) document.documentElement.classList.add('accessibility-mode');
+    })();
+  </script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260602-public-header-tools">
+  <link rel="stylesheet" href="{% static 'css/accessibility-panel.css' %}?v=20260602-premium">
+  <link rel="stylesheet" href="{% static 'css/accessibility-compact.css' %}?v=20260602-hidden-fix">
+</head>
+<body class="public-index-page">
+  <header class="public-index-header">
+    <a class="public-index-brand" href="{% url 'index' %}">
+      {% if site_settings.site_logo %}
+      <img class="brand-logo" src="{{ site_settings.site_logo.url }}" alt="{{ site_settings.site_name|default:'MTU FORUM' }}">
+      {% else %}
+      <img class="brand-logo" src="{% static 'img/mtu-forum-mark.svg' %}" alt="MTU FORUM">
+      {% endif %}
+      <span>{{ site_settings.site_name|default:'MTU FORUM' }}</span>
+    </a>
+    <div class="public-header-tools">
+      <button class="ui-mode-btn theme-mode-btn" type="button" data-theme-toggle title="{% tr 'theme_toggle' %}" aria-label="{% tr 'theme_toggle' %}">
+        <span class="theme-icon theme-icon-sun" aria-hidden="true">
+          <svg class="mode-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.3"/><path d="M12 2.8v2.1M12 19.1v2.1M4.2 4.2l1.5 1.5M18.3 18.3l1.5 1.5M2.8 12h2.1M19.1 12h2.1M4.2 19.8l1.5-1.5M18.3 5.7l1.5-1.5"/></svg>
+        </span>
+        <span class="theme-icon theme-icon-moon" aria-hidden="true">
+          <svg class="mode-svg" viewBox="0 0 24 24"><path d="M20.2 14.7A8.1 8.1 0 0 1 9.3 3.8a8.8 8.8 0 1 0 10.9 10.9Z"/></svg>
+        </span>
+      </button>
+      <div class="accessibility-menu public-accessibility-menu">
+        <button class="ui-mode-btn access-mode-btn" type="button" data-accessibility-toggle title="{% tr 'accessibility_mode' %}" aria-label="{% tr 'accessibility_mode' %}" aria-expanded="false" aria-controls="publicAccessibilityPanel">
+          <svg class="mode-svg access-eye" aria-hidden="true" viewBox="0 0 24 24"><path d="M2.8 12s3.3-5.2 9.2-5.2 9.2 5.2 9.2 5.2-3.3 5.2-9.2 5.2S2.8 12 2.8 12Z"/><circle cx="12" cy="12" r="2.4"/></svg>
+          <span class="visually-hidden">{% tr 'accessibility_mode' %}</span>
+        </button>
+        <section class="accessibility-panel public-accessibility-panel" id="publicAccessibilityPanel" data-accessibility-panel hidden>
+          <div class="access-panel-head">
+            <div>
+              <strong>{% tr 'accessibility_title' %}</strong>
+              <span>{% tr 'accessibility_subtitle' %}</span>
+            </div>
+            <button class="access-panel-close" type="button" data-access-close aria-label="{% tr 'close' %}">×</button>
+          </div>
+          <div class="access-panel-section">
+            <span class="access-panel-label">{% tr 'accessibility_view' %}</span>
+            <div class="access-view-options" role="group" aria-label="{% tr 'accessibility_view' %}">
+              <button type="button" data-access-view="normal" class="access-view-btn access-view-normal" aria-label="{% tr 'accessibility_normal_mode' %}"><span>A</span><small>{% tr 'accessibility_normal_mode' %}</small></button>
+              <button type="button" data-access-view="whiteblack" class="access-view-btn access-view-whiteblack" aria-label="{% tr 'accessibility_bw_mode' %}"><span>A</span><small>{% tr 'accessibility_bw_mode' %}</small></button>
+              <button type="button" data-access-view="dark" class="access-view-btn access-view-dark" aria-label="{% tr 'accessibility_dark_mode' %}"><span>A</span><small>{% tr 'accessibility_dark_mode' %}</small></button>
+            </div>
+          </div>
+          <div class="access-panel-section">
+            <label class="access-range-label" for="publicAccessFontScale">
+              <span>{% tr 'accessibility_font_size' %}</span>
+              <strong data-font-scale-output data-scale-template="{% tr 'accessibility_font_scale_template' %}">0%</strong>
+            </label>
+            <input id="publicAccessFontScale" class="access-range" type="range" min="0" max="40" step="5" value="0" data-font-scale>
+          </div>
+          <div class="access-panel-section access-toggle-list">
+            <span class="access-panel-label">{% tr 'accessibility_extra' %}</span>
+            <label class="access-switch"><input type="checkbox" data-access-sound-hover><span>{% tr 'accessibility_speak_hover' %}</span></label>
+            <label class="access-switch"><input type="checkbox" data-access-underline><span>{% tr 'accessibility_underline' %}</span></label>
+            <label class="access-switch"><input type="checkbox" data-access-reduce-motion><span>{% tr 'accessibility_reduce_motion' %}</span></label>
+            <label class="access-switch"><input type="checkbox" data-access-large-cursor><span>{% tr 'accessibility_large_cursor' %}</span></label>
+          </div>
+          <div class="access-panel-actions">
+            <button type="button" data-access-reset>{% tr 'accessibility_reset' %}</button>
+          </div>
+        </section>
+      </div>
+      <div class="lang-switch public-lang-switch">
+        <a href="{% lang_url 'ru' %}">RU</a>
+        <a href="{% lang_url 'uz' %}">UZ</a>
+        <a href="{% lang_url 'uz-cyrl' %}">ЎЗ</a>
+        <a href="{% lang_url 'en' %}">EN</a>
+      </div>
+    </div>
+    <div class="public-index-actions">
+      <a class="public-login-link" href="{% url 'login' %}">Вход</a>
+    </div>
+  </header>
+
+  <main class="public-index-shell">
+    <section class="public-index-copy">
+      <div class="eyebrow">Enterprise railway SaaS</div>
+      <h1>Подать заявку на доступ к платформе</h1>
+      <p>Заполните форму. Система проверит ПИНФЛ через HRM, а администратор обработает заявку в панели.</p>
+      <div class="public-index-pills">
+        <span>HRM проверка</span>
+        <span>Защищённые данные</span>
+        <span>Админ обработка</span>
+      </div>
+    </section>
+
+    <section class="glass-card public-request-card">
+      <div class="public-request-head">
+        <div>
+          <h2>Заявка</h2>
+          <p class="hint">Все поля обязательны для корректной проверки.</p>
+        </div>
+      </div>
+
+      {% if messages %}
+      <div class="messages">
+        {% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>{% endfor %}
+      </div>
+      {% endif %}
+
+      <form method="post" class="public-request-form" novalidate>
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        <label>{{ form.platform.label }}{{ form.platform }}{{ form.platform.errors }}</label>
+        <label>{{ form.full_name.label }}{{ form.full_name }}{{ form.full_name.errors }}</label>
+        <label>{{ form.pnfl.label }}{{ form.pnfl }}{{ form.pnfl.errors }}</label>
+        <label>{{ form.passport.label }}{{ form.passport }}{{ form.passport.errors }}</label>
+        <label>{{ form.company.label }}{{ form.company }}{{ form.company.errors }}</label>
+        <label>{{ form.position.label }}{{ form.position }}{{ form.position.errors }}</label>
+        <label>{{ form.phone.label }}{{ form.phone }}{{ form.phone.errors }}</label>
+        <label class="public-request-wide">{{ form.cause.label }}{{ form.cause }}{{ form.cause.errors }}</label>
+        <button class="btn btn-primary public-request-submit" type="submit">Отправить заявку</button>
+      </form>
+    </section>
+  </main>
+  <script>
+    (() => {
+      const root = document.documentElement;
+      const themeButton = document.querySelector('[data-theme-toggle]');
+      const accessButton = document.querySelector('[data-accessibility-toggle]');
+      const accessPanel = document.querySelector('[data-accessibility-panel]');
+      const accessViewButtons = document.querySelectorAll('[data-access-view]');
+      const fontScaleInput = document.querySelector('[data-font-scale]');
+      const fontScaleOutput = document.querySelector('[data-font-scale-output]');
+      const accessSoundHover = document.querySelector('[data-access-sound-hover]');
+      const accessUnderline = document.querySelector('[data-access-underline]');
+      const accessReduceMotion = document.querySelector('[data-access-reduce-motion]');
+      const accessLargeCursor = document.querySelector('[data-access-large-cursor]');
+
+      const syncTheme = () => {
+        const isLight = (root.dataset.theme || 'dark') === 'light';
+        themeButton?.classList.toggle('is-active', isLight);
+        themeButton?.setAttribute('aria-pressed', isLight ? 'true' : 'false');
+      };
+
+      const syncAccess = () => {
+        const view = root.classList.contains('access-invert') || root.classList.contains('accessibility-mode') ? 'dark' : root.classList.contains('access-black-white') ? 'whiteblack' : (localStorage.getItem('mtu-access-view') || 'normal');
+        const enabled = root.classList.contains('accessibility-mode')
+          || root.classList.contains('access-black-white')
+          || root.classList.contains('access-invert')
+          || Number(localStorage.getItem('mtu-font-scale') || 0) > 0
+          || root.classList.contains('access-underline-links')
+          || root.classList.contains('access-reduce-motion')
+          || root.classList.contains('access-large-cursor')
+          || localStorage.getItem('mtu-sound-guide') === 'on';
+        accessButton?.classList.toggle('is-active', enabled);
+        accessButton?.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+        accessButton?.setAttribute('aria-expanded', accessPanel && !accessPanel.hidden ? 'true' : 'false');
+        accessViewButtons.forEach((button) => button.classList.toggle('active', button.dataset.accessView === view));
+        if (fontScaleInput) fontScaleInput.value = localStorage.getItem('mtu-font-scale') || '0';
+        if (fontScaleOutput) {
+          const scale = localStorage.getItem('mtu-font-scale') || '0';
+          fontScaleOutput.textContent = (fontScaleOutput.dataset.scaleTemplate || '{value}%').replace('{value}', `${scale}%`);
+        }
+        if (accessSoundHover) accessSoundHover.checked = localStorage.getItem('mtu-sound-guide') === 'on';
+        if (accessUnderline) accessUnderline.checked = root.classList.contains('access-underline-links');
+        if (accessReduceMotion) accessReduceMotion.checked = root.classList.contains('access-reduce-motion');
+        if (accessLargeCursor) accessLargeCursor.checked = root.classList.contains('access-large-cursor');
+      };
+
+      themeButton?.addEventListener('click', () => {
+        const nextTheme = (root.dataset.theme || 'dark') === 'dark' ? 'light' : 'dark';
+        root.dataset.theme = nextTheme;
+        localStorage.setItem('mtu-theme', nextTheme);
+        syncTheme();
+      });
+
+      accessButton?.addEventListener('click', () => {
+        accessPanel.hidden = !accessPanel.hidden;
+        syncAccess();
+      });
+
+      document.querySelector('[data-access-close]')?.addEventListener('click', () => {
+        accessPanel.hidden = true;
+        syncAccess();
+      });
+
+      accessViewButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+          const view = button.dataset.accessView || 'normal';
+          root.classList.toggle('access-black-white', view === 'whiteblack');
+          root.classList.toggle('access-invert', view === 'dark');
+          root.classList.toggle('accessibility-mode', view === 'dark');
+          localStorage.setItem('mtu-access-view', view);
+          localStorage.setItem('mtu-accessibility', view === 'dark' ? 'on' : 'off');
+          syncAccess();
+        });
+      });
+
+      fontScaleInput?.addEventListener('input', () => {
+        const scale = Math.max(0, Math.min(Number(fontScaleInput.value) || 0, 40));
+        root.style.setProperty('--access-page-zoom', String(1 + scale / 100));
+        localStorage.setItem('mtu-font-scale', String(scale));
+        syncAccess();
+      });
+
+      accessSoundHover?.addEventListener('change', () => {
+        localStorage.setItem('mtu-sound-guide', accessSoundHover.checked ? 'on' : 'off');
+        root.classList.toggle('sound-guide-mode', accessSoundHover.checked);
+        syncAccess();
+      });
+
+      accessUnderline?.addEventListener('change', () => {
+        root.classList.toggle('access-underline-links', accessUnderline.checked);
+        localStorage.setItem('mtu-underline-links', accessUnderline.checked ? 'on' : 'off');
+        syncAccess();
+      });
+
+      accessReduceMotion?.addEventListener('change', () => {
+        root.classList.toggle('access-reduce-motion', accessReduceMotion.checked);
+        localStorage.setItem('mtu-reduce-motion', accessReduceMotion.checked ? 'on' : 'off');
+        syncAccess();
+      });
+
+      accessLargeCursor?.addEventListener('change', () => {
+        root.classList.toggle('access-large-cursor', accessLargeCursor.checked);
+        localStorage.setItem('mtu-large-cursor', accessLargeCursor.checked ? 'on' : 'off');
+        syncAccess();
+      });
+
+      document.querySelector('[data-access-reset]')?.addEventListener('click', () => {
+        root.classList.remove('accessibility-mode', 'access-black-white', 'access-invert', 'sound-guide-mode', 'access-underline-links', 'access-reduce-motion', 'access-large-cursor');
+        root.style.setProperty('--access-page-zoom', '1');
+        localStorage.setItem('mtu-access-view', 'normal');
+        localStorage.setItem('mtu-accessibility', 'off');
+        localStorage.setItem('mtu-font-scale', '0');
+        localStorage.setItem('mtu-sound-guide', 'off');
+        localStorage.setItem('mtu-underline-links', 'off');
+        localStorage.setItem('mtu-reduce-motion', 'off');
+        localStorage.setItem('mtu-large-cursor', 'off');
+        syncAccess();
+      });
+
+      syncTheme();
+      syncAccess();
+    })();
+  </script>
+</body>
+</html>

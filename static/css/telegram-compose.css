@@ -1,0 +1,283 @@
+.telegram-compose .tg-compose-bar {
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+}
+
+.telegram-compose {
+  grid-template-columns: minmax(0, 1fr) 44px !important;
+  gap: 0 !important;
+  background: #17212b !important;
+  padding: 0 8px !important;
+  border-radius: 0 !important;
+}
+
+.telegram-compose .tg-compose-bar {
+  background: #17212b;
+  border-radius: 0;
+  min-height: 48px;
+}
+
+.telegram-compose .tg-compose-icon {
+  width: 44px;
+  color: #8b9aa8;
+}
+
+.telegram-compose .tg-compose-input[contenteditable="true"] {
+  padding-left: 0;
+}
+
+.telegram-compose .tg-compose-input {
+  color: #d7dee6;
+}
+
+.telegram-compose .tg-compose-input[contenteditable="true"]:empty::before {
+  color: #6f8190;
+}
+
+.telegram-compose .tg-voice-button {
+  width: 44px;
+  height: 48px;
+  border-radius: 0;
+  background: #17212b;
+  color: #8b9aa8;
+}
+
+.telegram-compose .tg-voice-button:hover {
+  background: #17212b;
+  color: #c6d0da;
+}
+
+.telegram-compose.is-recording .tg-voice-button {
+  border-radius: 50%;
+  background: #4997d8;
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(73, 151, 216, .26);
+}
+
+.telegram-compose .tg-send-glyph {
+  color: #8b9aa8;
+}
+
+.telegram-compose.is-ready .tg-send-glyph {
+  color: #8b9aa8;
+}
+
+.telegram-compose .tg-compose-icon:hover,
+.telegram-compose .tg-compose-icon[aria-expanded="true"],
+.telegram-compose .tg-attach-button[aria-expanded="true"] {
+  color: #c6d0da;
+}
+
+.telegram-compose .tg-compose-icon svg,
+.telegram-compose .tg-voice-button svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 1.9;
+}
+
+.telegram-compose .tg-compose-popover {
+  left: 8px;
+  right: auto;
+  bottom: 54px;
+  min-width: 216px;
+  border-radius: 12px;
+  background: #212121;
+}
+
+.telegram-compose .tg-compose-popover button {
+  min-height: 32px;
+  padding: 0 12px;
+  gap: 13px;
+}
+
+.telegram-compose .tg-video-note-preview {
+  position: absolute;
+  left: 50%;
+  bottom: 48px;
+  z-index: 4;
+  width: min(76vw, 300px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  transform: translateX(-50%);
+  background: radial-gradient(circle at 45% 42%, rgba(190, 120, 145, .55), rgba(150, 170, 158, .9));
+  box-shadow: 0 18px 46px rgba(0, 0, 0, .42);
+}
+
+.telegram-compose .tg-video-note-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.telegram-compose .tg-video-note-preview[hidden] {
+  display: none !important;
+}
+
+.telegram-compose .tg-recording-panel {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: none;
+  min-height: 48px;
+  margin: 0;
+  padding: 0 10px;
+  border-radius: 0;
+  background: #17212b;
+  color: #fff;
+  font-size: 13px;
+}
+
+.telegram-compose .tg-recording-panel strong {
+  min-width: 54px;
+  font-variant-numeric: tabular-nums;
+}
+
+.telegram-compose .tg-recording-hint {
+  min-width: 0;
+  color: #7f93a6;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.telegram-compose .tg-recording-panel button {
+  color: #7f93a6;
+}
+
+.tg-compose-input[contenteditable="true"] {
+  min-height: 48px;
+  padding: 13.5px 0 13.5px 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tg-compose-input[contenteditable="true"]:empty::before {
+  content: attr(data-placeholder);
+  color: rgba(170, 170, 170, .82);
+  pointer-events: none;
+}
+
+.tg-video-note-glyph {
+  display: none;
+  color: #8774e1;
+}
+
+.telegram-compose.is-video-note-mode:not(.is-ready) .tg-video-note-glyph {
+  display: grid;
+}
+
+.telegram-compose.is-video-note-mode:not(.is-ready) .tg-mic-glyph {
+  display: none;
+}
+
+.tg-compose-popover {
+  padding: 6px 4px;
+}
+
+.tg-compose-popover button {
+  min-height: 32px;
+  font-size: 14px;
+}
+
+.tg-compose-bar {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .08);
+}
+
+html[data-theme="light"] .tg-compose-bar {
+  background: #fff;
+  color: #111;
+}
+
+html[data-theme="light"] .tg-compose-input {
+  color: #111;
+}
+
+html[data-theme="light"] .tg-compose-input[contenteditable="true"]:empty::before {
+  color: #8a8a8a;
+}
+
+html[data-theme="light"] .tg-compose-icon {
+  color: #707579;
+}
+
+html[data-theme="light"] .tg-compose-icon:hover,
+html[data-theme="light"] .tg-compose-icon[aria-expanded="true"],
+html[data-theme="light"] .tg-attach-button[aria-expanded="true"] {
+  color: #3390ec;
+}
+
+html[data-theme="light"] .tg-voice-button {
+  background: #fff;
+  color: #707579;
+}
+
+html[data-theme="light"] .tg-voice-button:hover {
+  background: #fff;
+  color: #3390ec;
+}
+
+html[data-theme="light"] .telegram-compose,
+html[data-theme="light"] .telegram-compose .tg-compose-bar,
+html[data-theme="light"] .telegram-compose .tg-voice-button,
+html[data-theme="light"] .telegram-compose .tg-recording-panel {
+  background: #fff !important;
+}
+
+html[data-theme="light"] .tg-send-glyph,
+html[data-theme="light"] .tg-video-note-glyph {
+  color: #fff;
+}
+
+html[data-theme="light"] .tg-compose-popover,
+html[data-theme="light"] .tg-emoji-popover,
+html[data-theme="light"] .tg-selected-attachment,
+html[data-theme="light"] .tg-recording-panel {
+  background: #fff;
+  color: #111;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
+}
+
+html[data-theme="light"] .tg-compose-popover button {
+  color: #111;
+}
+
+html[data-theme="light"] .tg-compose-popover button:hover,
+html[data-theme="light"] .tg-emoji-grid button:hover {
+  background: rgba(0, 0, 0, .06);
+}
+
+html[data-theme="light"] .tg-menu-icon,
+html[data-theme="light"] .tg-emoji-tabs,
+html[data-theme="light"] .tg-emoji-footer,
+html[data-theme="light"] .tg-emoji-panel strong {
+  color: #707579;
+}
+
+@media (max-width: 760px) {
+  .telegram-compose .tg-compose-bar {
+    grid-template-columns: 42px minmax(0, 1fr) 42px;
+  }
+
+  .telegram-compose {
+    grid-template-columns: minmax(0, 1fr) 42px !important;
+    padding: 0 6px !important;
+  }
+
+  .telegram-compose .tg-video-note-preview {
+    width: min(78vw, 290px);
+  }
+
+  .telegram-compose .tg-recording-hint {
+    font-size: 12px;
+  }
+
+  .telegram-compose .tg-compose-popover {
+    left: 6px;
+    right: auto;
+  }
+}

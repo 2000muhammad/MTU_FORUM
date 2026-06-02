@@ -1,0 +1,114 @@
+﻿{% extends 'base.html' %}
+{% load ui_i18n %}
+{% block page_title %}{% tr 'users' %}{% endblock %}
+{% block content %}
+<section class="glass-card users-create-panel">
+  <div><h2>{% tr 'add_user' %}</h2><p class="text-secondary mb-0">{% tr 'new_password' %}</p></div>
+  <form method="post" enctype="multipart/form-data" class="user-create-form">
+    {% csrf_token %}<input type="hidden" name="action" value="save">
+    {{ user_form.hrm_photo }}
+    <label>{% tr 'pnfl_jshshir' %}{{ user_form.pnfl }}</label>
+    <label>{% tr 'username' %}{{ user_form.username }}</label>
+    <label>{% tr 'first_name' %}{{ user_form.first_name }}</label>
+    <label>{% tr 'last_name' %}{{ user_form.last_name }}</label>
+    <label>{% tr 'middle_name' %}{{ user_form.middle_name }}</label>
+    <label>Email{{ user_form.email }}</label>
+    <label>{% tr 'phone' %}{{ user_form.phone }}</label>
+    <label>{% tr 'birth_date' %}{{ user_form.birth_date }}</label>
+    <label>{% tr 'employee_pinfl' %}{{ user_form.employee_pinfl }}</label>
+    <label>{% tr 'branch' %}{{ user_form.branch }}</label>
+    <label>{% tr 'organization' %}{{ user_form.organization }}</label>
+    <label>{% tr 'department' %}{{ user_form.department }}</label>
+    <label>{% tr 'position' %}{{ user_form.position }}</label>
+    <label>{% tr 'photo_upload' %}{{ user_form.avatar }}</label>
+    {% if user_form.hrm_photo.value %}
+    <div class="hrm-photo-preview">
+      <img src="{{ user_form.hrm_photo.value }}" alt="{% tr 'hrm_photo_loaded' %}">
+      <span>{% tr 'hrm_photo_loaded' %}</span>
+    </div>
+    {% endif %}
+    <label>{% tr 'new_password' %}
+      <span class="secret-input-wrap user-password-wrap">
+        {{ user_form.password }}
+        <button class="secret-toggle-btn" type="button" data-secret-toggle data-show="{% tr 'show' %}" data-hide="{% tr 'hide' %}">{% tr 'show' %}</button>
+      </span>
+    </label>
+    <label class="check-line">{{ user_form.is_staff }} {% tr 'staff' %}</label>
+    <label class="check-line">{{ user_form.is_superuser }} {% tr 'superuser' %}</label>
+    <label class="check-line">{{ user_form.is_active }} {% tr 'active' %}</label>
+    <div class="user-create-actions">
+      <button class="btn btn-outline-info" name="action" value="hrm_lookup" formnovalidate>{% tr 'hrm_lookup' %}</button>
+      <button class="btn btn-primary" name="action" value="save">{% tr 'add' %}</button>
+    </div>
+  </form>
+</section>
+
+<section class="glass-card users-list-panel">
+  <form method="get" class="users-search-form">
+    <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="{% tr 'users_search_placeholder' %}">
+    <button class="btn btn-outline-info">{% tr 'search_users' %}</button>
+    {% if query %}<a class="btn btn-outline-light" href="{% url 'users' %}">{% tr 'reset_filter' %}</a>{% endif %}
+  </form>
+  <div class="table-responsive">
+    <table class="table request-table user-table">
+      <thead><tr><th>{% tr 'photo_upload' %}</th><th>{% tr 'pnfl_jshshir' %}</th><th>{% tr 'username' %}</th><th>{% tr 'first_name' %}</th><th>{% tr 'last_name' %}</th><th>{% tr 'middle_name' %}</th><th>Email</th><th>{% tr 'phone' %}</th><th>{% tr 'birth_date' %}</th><th>{% tr 'employee_pinfl' %}</th><th>{% tr 'branch' %}</th><th>{% tr 'organization' %}</th><th>{% tr 'department' %}</th><th>{% tr 'position' %}</th><th>{% tr 'staff' %}</th><th>{% tr 'superuser' %}</th><th>{% tr 'active' %}</th><th>{% tr 'new_password' %}</th><th></th></tr></thead>
+      <tbody>
+      {% for u in users %}
+      <tr>
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}<input type="hidden" name="id" value="{{ u.id }}">
+          <td class="user-photo-cell">
+            {% if u.profile.avatar %}
+              <img src="{{ u.profile.avatar.url }}" alt="{{ u.username }}">
+            {% elif u.profile.hrm_photo %}
+              <img src="{{ u.profile.hrm_photo }}" alt="{{ u.username }}">
+            {% endif %}
+            <input class="form-control" type="file" name="avatar" accept="image/*">
+          </td>
+          <td><input class="form-control" name="pnfl" value="{{ u.profile.pnfl }}"></td>
+          <td><input class="form-control" name="username" value="{{ u.username }}"></td>
+          <td><input class="form-control" name="first_name" value="{{ u.first_name }}"></td>
+          <td><input class="form-control" name="last_name" value="{{ u.last_name }}"></td>
+          <td><input class="form-control" name="middle_name" value="{{ u.profile.middle_name }}"></td>
+          <td><input class="form-control" name="email" value="{{ u.email }}"></td>
+          <td><input class="form-control" name="phone" value="{{ u.profile.phone }}"></td>
+          <td><input class="form-control" type="date" name="birth_date" value="{{ u.profile.birth_date|date:'Y-m-d' }}"></td>
+          <td><input class="form-control" name="employee_pinfl" value="{{ u.profile.employee_pinfl }}"></td>
+          <td><input class="form-control" name="branch" value="{{ u.profile.branch }}"></td>
+          <td><input class="form-control" name="organization" value="{{ u.profile.organization }}"></td>
+          <td><input class="form-control" name="department" value="{{ u.profile.department }}"></td>
+          <td><input class="form-control" name="position" value="{{ u.profile.position }}"></td>
+          <td><label class="check-line"><input class="form-check-input" type="checkbox" name="is_staff" {% if u.is_staff %}checked{% endif %}></label></td>
+          <td><label class="check-line"><input class="form-check-input" type="checkbox" name="is_superuser" {% if u.is_superuser %}checked{% endif %}></label></td>
+          <td><label class="check-line"><input class="form-check-input" type="checkbox" name="is_active" {% if u.is_active %}checked{% endif %}></label></td>
+          <td>
+            <span class="secret-input-wrap user-password-wrap">
+              <input class="form-control" type="password" name="password" placeholder="{% tr 'leave_blank_password' %}">
+              <button class="secret-toggle-btn" type="button" data-secret-toggle data-show="{% tr 'show' %}" data-hide="{% tr 'hide' %}">{% tr 'show' %}</button>
+            </span>
+          </td>
+          <td class="user-actions"><button class="btn btn-outline-info" name="action" value="save">{% tr 'save' %}</button><button class="btn btn-outline-primary" name="action" value="hrm_sync" formnovalidate>{% tr 'sync_hrm' %}</button><button class="btn btn-outline-danger" name="action" value="delete" formnovalidate onclick="return confirm('{% tr 'delete_user_confirm' %}')">{% tr 'delete' %}</button></td>
+        </form>
+      </tr>
+      {% empty %}<tr><td colspan="19" class="text-center text-secondary py-5">{% tr 'no_records' %}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('[data-secret-toggle]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const wrap = button.closest('.secret-input-wrap');
+    const input = wrap ? wrap.querySelector('input') : null;
+    if (!input) return;
+
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    button.textContent = isHidden ? button.dataset.hide : button.dataset.show;
+  });
+});
+</script>
+{% endblock %}

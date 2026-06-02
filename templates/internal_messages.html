@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+{% load ui_i18n %}
+{% block page_title %}{% tr 'internal_messages' %}{% endblock %}
+{% block content %}
+<section class="internal-messages-shell">
+  <aside class="internal-sidebar glass-card">
+    <div class="internal-sidebar-head">
+      <div>
+        <span class="eyebrow">MTU FORUM</span>
+        <h2>Сообщения</h2>
+      </div>
+      <a class="btn btn-sm btn-outline-light" href="{% url 'admin_chat_list' %}">Telegram</a>
+    </div>
+
+    <details class="internal-compose-box" open>
+      <summary>Новый чат</summary>
+      <form method="post" class="internal-mini-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create_direct">
+        <select class="form-select" name="user_id" required>
+          <option value="">Пользователь</option>
+          {% for item in users %}<option value="{{ item.id }}">{{ item.get_full_name|default:item.username }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-primary btn-sm" type="submit">Открыть</button>
+      </form>
+    </details>
+
+    <details class="internal-compose-box">
+      <summary>Новая группа</summary>
+      <form method="post" class="internal-mini-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create_group">
+        <input class="form-control" name="title" placeholder="Название группы" required>
+        <select class="form-select" name="member_ids" multiple size="5">
+          {% for item in users %}<option value="{{ item.id }}">{{ item.get_full_name|default:item.username }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-primary btn-sm" type="submit">Создать</button>
+      </form>
+    </details>
+
+    <details class="internal-compose-box">
+      <summary>Новый контакт</summary>
+      <form method="post" class="internal-mini-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_contact">
+        <select class="form-select" name="user_id">
+          <option value="">Без пользователя</option>
+          {% for item in users %}<option value="{{ item.id }}">{{ item.get_full_name|default:item.username }}</option>{% endfor %}
+        </select>
+        <input class="form-control" name="display_name" placeholder="Имя контакта">
+        <input class="form-control" name="notes" placeholder="Заметка">
+        <button class="btn btn-primary btn-sm" type="submit">Добавить</button>
+      </form>
+    </details>
+
+    <div class="internal-list">
+      {% for row in chats %}
+      <a class="internal-chat-row {% if active_chat and active_chat.id == row.item.id %}active{% endif %}" href="{% url 'internal_messages_detail' row.item.id %}">
+        <span class="internal-avatar">{{ row.title|slice:":1"|upper }}</span>
+        <span class="internal-row-body">
+          <strong>{{ row.title }}</strong>
+          <small>{% if row.last %}{{ row.last.text|truncatechars:52 }}{% else %}Новый чат{% endif %}</small>
+        </span>
+        {% if row.unread %}<b>{{ row.unread }}</b>{% endif %}
+      </a>
+      {% empty %}
+      <p class="internal-empty">Чатов пока нет.</p>
+      {% endfor %}
+    </div>
+
+    <div class="internal-contacts">
+      <h3>Контакты</h3>
+      {% for contact in contacts %}
+      <div class="internal-contact-row">
+        <span>{{ contact.display_name }}</span>
+        <div>
+          {% if contact.user %}
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_direct">
+            <input type="hidden" name="user_id" value="{{ contact.user.id }}">
+            <button class="internal-icon-btn" type="submit" title="Чат">↗</button>
+          </form>
+          {% endif %}
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete_contact">
+            <input type="hidden" name="contact_id" value="{{ contact.id }}">
+            <button class="internal-icon-btn" type="submit" title="Удалить">×</button>
+          </form>
+        </div>
+      </div>
+      {% empty %}
+      <p class="internal-empty">Контактов пока нет.</p>
+      {% endfor %}
+    </div>
+  </aside>
+
+  <main class="internal-chat-pane glass-card">
+    {% if active_chat %}
+    <div class="internal-chat-head">
+      <div>
+        <h2>{{ active_title }}</h2>
+        <span>{{ active_chat.get_chat_type_display }} · {{ active_chat.participants.count }} участн.</span>
+      </div>
+      <div class="internal-head-actions">
+        {% if active_chat.chat_type == 'group' and can_manage_active_chat %}
+        <details class="internal-edit-popover">
+          <summary>Изменить</summary>
+          <form method="post" class="internal-mini-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="edit_chat">
+            <input class="form-control" name="title" value="{{ active_chat.title }}" placeholder="Название группы">
+            <select class="form-select" name="member_ids" multiple size="6">
+              {% for item in users %}
+              <option value="{{ item.id }}" {% if item.id in active_member_ids %}selected{% endif %}>{{ item.get_full_name|default:item.username }}</option>
+              {% endfor %}
+            </select>
+            <button class="btn btn-primary btn-sm" type="submit">Сохранить</button>
+          </form>
+        </details>
+        {% endif %}
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="delete_chat">
+          <button class="btn btn-sm btn-outline-light" type="submit">{% if can_manage_active_chat %}Удалить{% else %}Выйти{% endif %}</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="internal-thread" id="internalThread">
+      {% for message in active_messages %}
+      <div class="internal-message {% if message.sender_id == user.id %}out{% else %}in{% endif %}">
+        <div class="internal-bubble">
+          <strong>{% if message.sender %}{{ message.sender.get_full_name|default:message.sender.username }}{% else %}Пользователь{% endif %}</strong>
+          {% if message.is_deleted %}
+          <p class="internal-deleted">Сообщение удалено</p>
+          {% else %}
+          <p>{{ message.text|linebreaksbr }}</p>
+          {% endif %}
+          <span>{{ message.created_at|date:'H:i' }}{% if message.edited_at and not message.is_deleted %} · изм.{% endif %}</span>
+          {% if not message.is_deleted and message.sender_id == user.id %}
+          <details class="internal-message-actions">
+            <summary>⋯</summary>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="edit_message">
+              <input type="hidden" name="message_id" value="{{ message.id }}">
+              <textarea class="form-control" name="text" rows="2">{{ message.text }}</textarea>
+              <button class="btn btn-primary btn-sm" type="submit">Сохранить</button>
+            </form>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_message">
+              <input type="hidden" name="message_id" value="{{ message.id }}">
+              <button class="btn btn-sm btn-outline-light" type="submit">Удалить</button>
+            </form>
+          </details>
+          {% endif %}
+        </div>
+      </div>
+      {% empty %}
+      <div class="internal-empty-state">Напишите первое сообщение.</div>
+      {% endfor %}
+    </div>
+
+    <form method="post" class="internal-send-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="send_message">
+      <textarea class="form-control" name="text" rows="1" placeholder="Сообщение" required></textarea>
+      <button class="btn btn-primary" type="submit">Отправить</button>
+    </form>
+    {% else %}
+    <div class="internal-start">
+      <h2>Выберите чат</h2>
+      <p>Создайте личный чат, группу или контакт в левой панели.</p>
+    </div>
+    {% endif %}
+  </main>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+const internalThread = document.getElementById('internalThread');
+if (internalThread) internalThread.scrollTop = internalThread.scrollHeight;
+</script>
+{% endblock %}

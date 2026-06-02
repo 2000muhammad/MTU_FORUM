@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% load ui_i18n %}
+{% block page_title %}{% tr 'site_settings' %}{% endblock %}
+{% block content %}
+<form method="post" enctype="multipart/form-data" class="site-settings-form">
+  {% csrf_token %}
+  <section class="glass-card api-hero">
+    <div>
+      <h2>{% tr 'site_settings' %}</h2>
+      <p class="text-secondary mb-0">{% tr 'site_settings_hint' %}</p>
+    </div>
+    <button class="btn btn-primary">{% tr 'save_site_settings' %}</button>
+  </section>
+
+  <div class="site-settings-grid">
+    <section class="glass-card api-card site-settings-card">
+      <div class="api-card-head"><span>01</span><h2>{% tr 'site_branding' %}</h2></div>
+      <p class="hint">{% tr 'site_branding_hint' %}</p>
+      <label>{% tr 'site_name' %}{{ form.site_name }}</label>
+      <label>Описание сайта{{ form.site_description }}</label>
+      <p class="hint">Короткий текст для описания платформы в браузере, поиске и будущих публичных экранах.</p>
+      <label>Теги сайта{{ form.site_tags }}</label>
+      <p class="hint">Ключевые слова через запятую: например MTU FORUM, Telegram, заявки, HRM.</p>
+
+      <div class="file-setting">
+        <div>
+          <label>{% tr 'site_logo' %}{{ form.site_logo }}</label>
+          <p class="hint">{% tr 'site_logo_hint' %}</p>
+        </div>
+        <div class="setting-preview">
+          {% if site_settings_obj.site_logo %}
+          <img src="{{ site_settings_obj.site_logo.url }}" alt="{% tr 'site_logo' %}">
+          <a href="{{ site_settings_obj.site_logo.url }}" target="_blank" rel="noopener">{% tr 'current_file' %}</a>
+          {% else %}
+          <span>{% tr 'no_file' %}</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="file-setting">
+        <div>
+          <label>{% tr 'site_favicon' %}{{ form.site_favicon }}</label>
+          <p class="hint">{% tr 'site_favicon_hint' %}</p>
+        </div>
+        <div class="setting-preview setting-preview-small">
+          {% if site_settings_obj.site_favicon %}
+          <img src="{{ site_settings_obj.site_favicon.url }}" alt="{% tr 'site_favicon' %}">
+          <a href="{{ site_settings_obj.site_favicon.url }}" target="_blank" rel="noopener">{% tr 'current_file' %}</a>
+          {% else %}
+          <span>{% tr 'no_file' %}</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="file-setting">
+        <div>
+          <label>{% tr 'site_image' %}{{ form.site_image }}</label>
+          <p class="hint">{% tr 'site_image_hint' %}</p>
+        </div>
+        <div class="setting-preview">
+          {% if site_settings_obj.site_image %}
+          <img src="{{ site_settings_obj.site_image.url }}" alt="{% tr 'site_image' %}">
+          <a href="{{ site_settings_obj.site_image.url }}" target="_blank" rel="noopener">{% tr 'current_file' %}</a>
+          {% else %}
+          <span>{% tr 'no_file' %}</span>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+
+    <section class="glass-card api-card site-settings-card">
+      <div class="api-card-head"><span>02</span><h2>{% tr 'notification_sounds' %}</h2></div>
+      <p class="hint">{% tr 'notification_sounds_hint' %}</p>
+      <label class="check-line api-toggle">{{ form.notification_sound_enabled }} {% tr 'notifications_enabled' %}</label>
+
+      <div class="sound-lang-switch" role="tablist" aria-label="{% tr 'sound_language' %}">
+        <button class="active" type="button" data-sound-tab="ru">RU</button>
+        <button type="button" data-sound-tab="uz">UZ</button>
+        <button type="button" data-sound-tab="uz-cyrl">ЎЗ</button>
+        <button type="button" data-sound-tab="en">EN</button>
+      </div>
+
+      <div class="sound-lang-panel active" data-sound-panel="ru">
+        <div class="sound-setting-card">
+          <label>RU · {% tr 'request_sound' %}{{ form.request_notification_sound_ru }}</label>
+          {% if site_settings_obj.request_notification_sound_ru %}<audio controls src="{{ site_settings_obj.request_notification_sound_ru.url }}"></audio>{% else %}<p class="hint">{% tr 'no_file' %}</p>{% endif %}
+        </div>
+        <div class="sound-setting-card">
+          <label>RU · {% tr 'telegram_chat_sound' %}{{ form.telegram_chat_notification_sound_ru }}</label>
+          {% if site_settings_obj.telegram_chat_notification_sound_ru %}<audio controls src="{{ site_settings_obj.telegram_chat_notification_sound_ru.url }}"></audio>{% else %}<p class="hint">{% tr 'no_file' %}</p>{% endif %}
+        </div>
+        <div class="sound-setting-card">
+          <label>RU · {% tr 'internal_chat_sound' %}{{ form.internal_chat_notification_sound_ru }}</label>
+          {% if site_settings_obj.internal_chat_notification_sound_ru %}<audio controls src="{{ site_settings_obj.internal_chat_notification_sound_ru.url }}"></audio>{% else %}<p class="hint">{% tr 'no_file' %}</p>{% endif %}
+        </div>
+      </div>
+
+      <div class="sound-lang-panel" data-sound-panel="uz">
+        <div class="sound-setting-card">
+          <label>UZ · {% tr 'request_sound' %}{{ form.request_notification_sound_uz }}</label>
+          {% if site_settings_obj.request_notification_sound_uz %}<audio controls src="{{ site_settings_obj.request_notification_sound_uz.url }}"></audio>{% else %}<p class="hint">{% tr 'no_file' %}</p>{% endif %}
+        </div>
+        <div class="sound-setting-card">
+          <label>UZ · {% tr 'telegram_chat_sound' %}{{ form.telegram_chat_notification_sound_uz }}</label>
+          {% if site_settings_obj.telegram_chat_notification_sound_uz %}<audio controls src="{{ site_settings_obj.telegram_chat_notification_sound_uz.url }}"></audio>{% else %}<p class="hint">{% tr 'no_file' %}</p>{% endif %}
+        </div>
+        <div class="sound-setting-card">
+          <label>UZ · {% tr 'internal_chat_sound' %}{{ form.internal_chat_notification_sound_uz }}</label>
+          {% if site_settings_obj.internal_chat_notification_sound_uz %}<audio controls src="{{ site_settings_obj.internal_chat_notification_sound_uz.url }}"></audio>{% else %}<p class="hint">{% tr 'no_file' %}</p>{% endif %}
+        </div>
+      </div>
+
+      <div class="sound-lang-panel" data-sound-panel="uz-cyrl">
+        <div class="sound-setting-card">
+          <label>ЎЗ · {% tr 'request_sound' %}{{ form.request_notification_sound_uz_cyrl }}</label>
+          {% if site_settings_obj.request_notification_sound_uz_cyrl %}<audio controls src="{{ site_settings_obj.request_notification_sound_uz_cyrl.url }}"></audio>{% else %}<p class="hint">{% tr 'no_file' %}</p>{% endif %}
+        </div>
+        <div class="sound-setting-card">
+          <label>ЎЗ · {% tr 'telegram_chat_sound' %}{{ form.telegram_chat_notification_sound_uz_cyrl }}</label>
+          {% if site_settings_obj.telegram_chat_notification_sound_uz_cyrl %}<audio controls src="{{ site_settings_obj.telegram_chat_notification_sound_uz_cyrl.url }}"></audio>{% else %}<p class="hint">{% tr 'no_file' %}</p>{% endif %}
+        </div>
+        <div class="sound-setting-card">
+          <label>ЎЗ · {% tr 'internal_chat_sound' %}{{ form.internal_chat_notification_sound_uz_cyrl }}</label>
+          {% if site_settings_obj.internal_chat_notification_sound_uz_cyrl %}<audio controls src="{{ site_settings_obj.internal_chat_notification_sound_uz_cyrl.url }}"></audio>{% else %}<p class="hint">{% tr 'no_file' %}</p>{% endif %}
+        </div>
+      </div>
+
+      <div class="sound-lang-panel" data-sound-panel="en">
+        <div class="sound-setting-card">
+          <label>EN · {% tr 'request_sound' %}{{ form.request_notification_sound_en }}</label>
+          {% if site_settings_obj.request_notification_sound_en %}<audio controls src="{{ site_settings_obj.request_notification_sound_en.url }}"></audio>{% else %}<p class="hint">{% tr 'no_file' %}</p>{% endif %}
+        </div>
+        <div class="sound-setting-card">
+          <label>EN · {% tr 'telegram_chat_sound' %}{{ form.telegram_chat_notification_sound_en }}</label>
+          {% if site_settings_obj.telegram_chat_notification_sound_en %}<audio controls src="{{ site_settings_obj.telegram_chat_notification_sound_en.url }}"></audio>{% else %}<p class="hint">{% tr 'no_file' %}</p>{% endif %}
+        </div>
+        <div class="sound-setting-card">
+          <label>EN · {% tr 'internal_chat_sound' %}{{ form.internal_chat_notification_sound_en }}</label>
+          {% if site_settings_obj.internal_chat_notification_sound_en %}<audio controls src="{{ site_settings_obj.internal_chat_notification_sound_en.url }}"></audio>{% else %}<p class="hint">{% tr 'no_file' %}</p>{% endif %}
+        </div>
+      </div>
+    </section>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('[data-sound-tab]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const lang = button.dataset.soundTab;
+    document.querySelectorAll('[data-sound-tab]').forEach((item) => item.classList.toggle('active', item === button));
+    document.querySelectorAll('[data-sound-panel]').forEach((panel) => panel.classList.toggle('active', panel.dataset.soundPanel === lang));
+  });
+});
+</script>
+{% endblock %}

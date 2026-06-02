@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% load ui_i18n %}
+{% block page_title %}{% tr 'directories_title' %}{% endblock %}
+{% block content %}
+<div class="settings-folder-shell">
+  <nav class="settings-folders glass-card" aria-label="{% tr 'directories' %}">
+    <a class="folder-tab {% if active_section == 'stations' %}active{% endif %}" href="{% url 'settings_section' 'stations' %}">
+      <span class="folder-tab-title"><em>01</em><strong>{% tr 'stations' %}</strong></span><span class="folder-tab-count">{{ stations|length }}</span>
+    </a>
+    <a class="folder-tab {% if active_section == 'positions' %}active{% endif %}" href="{% url 'settings_section' 'positions' %}">
+      <span class="folder-tab-title"><em>02</em><strong>{% tr 'positions' %}</strong></span><span class="folder-tab-count">{{ positions|length }}</span>
+    </a>
+    <a class="folder-tab {% if active_section == 'platforms' %}active{% endif %}" href="{% url 'settings_section' 'platforms' %}">
+      <span class="folder-tab-title"><em>03</em><strong>{% tr 'platforms' %}</strong></span><span class="folder-tab-count">{{ platforms|length }}</span>
+    </a>
+    <a class="folder-tab {% if active_section == 'web-platforms' %}active{% endif %}" href="{% url 'settings_section' 'web-platforms' %}">
+      <span class="folder-tab-title"><em>04</em><strong>{% tr 'web_platforms' %}</strong></span><span class="folder-tab-count">{{ web_platforms|length }}</span>
+    </a>
+    <a class="folder-tab {% if active_section == 'channels' %}active{% endif %}" href="{% url 'settings_section' 'channels' %}">
+      <span class="folder-tab-title"><em>05</em><strong>{% tr 'telegram_channels' %}</strong></span><span class="folder-tab-count">{{ channels|length }}</span>
+    </a>
+  </nav>
+
+  <div class="settings-crud">
+    {% if active_section == 'stations' %}
+    <section class="glass-card crud-panel settings-folder-panel active">
+      <div class="crud-head">
+        <div><h2>{% tr 'stations' %}</h2><span>/api/public/stations/</span></div>
+        <div class="excel-actions">
+          <a class="btn btn-outline-info btn-sm" href="{% url 'dictionary_excel' 'stations' 'export' %}">{% tr 'export' %}</a>
+          <form method="post" enctype="multipart/form-data" action="{% url 'dictionary_excel' 'stations' 'import' %}" class="excel-import-form">
+            {% csrf_token %}<label class="btn btn-outline-light btn-sm" for="stations-import">{% tr 'import' %}</label><input id="stations-import" type="file" name="file" accept=".xlsx" onchange="this.form.submit()">
+          </form>
+          <a class="btn btn-outline-warning btn-sm" href="{% url 'dictionary_excel' 'stations' 'sample' %}">{% tr 'sample' %}</a>
+        </div>
+      </div>
+      <form method="post" class="crud-form add-form">
+        {% csrf_token %}<input type="hidden" name="section" value="station"><input type="hidden" name="action" value="save">
+        <label>{% tr 'name' %}{{ station_form.name }}</label><label>{% tr 'code' %}{{ station_form.code }}</label><label>{% tr 'sort_order' %}{{ station_form.sort_order }}</label>
+        <label class="check-line">{{ station_form.is_active }} {% tr 'active' %}</label><button class="btn btn-primary">{% tr 'add' %}</button>
+      </form>
+      <div class="crud-list">
+        {% for item in stations %}
+        <form method="post" class="crud-row">
+          {% csrf_token %}<input type="hidden" name="section" value="station"><input type="hidden" name="id" value="{{ item.id }}">
+          <input class="form-control" name="name" value="{{ item.name }}" placeholder="{% tr 'name' %}"><input class="form-control" name="code" value="{{ item.code }}" placeholder="{% tr 'code' %}">
+          <input class="form-control small-input" type="number" name="sort_order" value="{{ item.sort_order }}">
+          <label class="check-line"><input class="form-check-input" type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> {% tr 'active' %}</label>
+          <button class="btn btn-outline-info" name="action" value="save">{% tr 'save' %}</button><button class="btn btn-outline-danger" name="action" value="delete" onclick="return confirm('{% tr 'delete_station_confirm' %}')">{% tr 'delete' %}</button>
+        </form>
+        {% empty %}<p class="text-secondary">{% tr 'no_records' %}</p>{% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if active_section == 'positions' %}
+    <section class="glass-card crud-panel settings-folder-panel active">
+      <div class="crud-head">
+        <div><h2>{% tr 'positions' %}</h2><span>/api/public/positions/</span></div>
+        <div class="excel-actions">
+          <a class="btn btn-outline-info btn-sm" href="{% url 'dictionary_excel' 'positions' 'export' %}">{% tr 'export' %}</a>
+          <form method="post" enctype="multipart/form-data" action="{% url 'dictionary_excel' 'positions' 'import' %}" class="excel-import-form">
+            {% csrf_token %}<label class="btn btn-outline-light btn-sm" for="positions-import">{% tr 'import' %}</label><input id="positions-import" type="file" name="file" accept=".xlsx" onchange="this.form.submit()">
+          </form>
+          <a class="btn btn-outline-warning btn-sm" href="{% url 'dictionary_excel' 'positions' 'sample' %}">{% tr 'sample' %}</a>
+        </div>
+      </div>
+      <form method="post" class="crud-form add-form">
+        {% csrf_token %}<input type="hidden" name="section" value="position"><input type="hidden" name="action" value="save">
+        <label>{% tr 'name' %}{{ position_form.name }}</label><label>{% tr 'sort_order' %}{{ position_form.sort_order }}</label>
+        <label class="check-line">{{ position_form.is_active }} {% tr 'active' %}</label><button class="btn btn-primary">{% tr 'add' %}</button>
+      </form>
+      <div class="crud-list">
+        {% for item in positions %}
+        <form method="post" class="crud-row position-row">
+          {% csrf_token %}<input type="hidden" name="section" value="position"><input type="hidden" name="id" value="{{ item.id }}">
+          <input class="form-control" name="name" value="{{ item.name }}" placeholder="{% tr 'name' %}">
+          <input class="form-control small-input" type="number" name="sort_order" value="{{ item.sort_order }}">
+          <label class="check-line"><input class="form-check-input" type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> {% tr 'active' %}</label>
+          <button class="btn btn-outline-info" name="action" value="save">{% tr 'save' %}</button><button class="btn btn-outline-danger" name="action" value="delete" onclick="return confirm('{% tr 'delete_position_confirm' %}')">{% tr 'delete' %}</button>
+        </form>
+        {% empty %}<p class="text-secondary">{% tr 'no_records' %}</p>{% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if active_section == 'platforms' %}
+    <section class="glass-card crud-panel settings-folder-panel active">
+      <div class="crud-head">
+        <div><h2>{% tr 'platforms' %}</h2><span>/api/public/platforms/</span></div>
+        <div class="excel-actions">
+          <a class="btn btn-outline-info btn-sm" href="{% url 'dictionary_excel' 'platforms' 'export' %}">{% tr 'export' %}</a>
+          <form method="post" enctype="multipart/form-data" action="{% url 'dictionary_excel' 'platforms' 'import' %}" class="excel-import-form">
+            {% csrf_token %}<label class="btn btn-outline-light btn-sm" for="platforms-import">{% tr 'import' %}</label><input id="platforms-import" type="file" name="file" accept=".xlsx" onchange="this.form.submit()">
+          </form>
+          <a class="btn btn-outline-warning btn-sm" href="{% url 'dictionary_excel' 'platforms' 'sample' %}">{% tr 'sample' %}</a>
+        </div>
+      </div>
+      <form method="post" class="crud-form add-form">
+        {% csrf_token %}<input type="hidden" name="section" value="platform"><input type="hidden" name="action" value="save">
+        <label>{% tr 'name' %}{{ platform_form.name }}</label><label>{% tr 'code' %}{{ platform_form.code }}</label><label>{% tr 'sort_order' %}{{ platform_form.sort_order }}</label>
+        <label class="check-line">{{ platform_form.is_active }} {% tr 'active' %}</label><button class="btn btn-primary">{% tr 'add' %}</button>
+      </form>
+      <div class="crud-list">
+        {% for item in platforms %}
+        <form method="post" class="crud-row">
+          {% csrf_token %}<input type="hidden" name="section" value="platform"><input type="hidden" name="id" value="{{ item.id }}">
+          <input class="form-control" name="name" value="{{ item.name }}" placeholder="{% tr 'name' %}"><input class="form-control" name="code" value="{{ item.code }}" placeholder="{% tr 'code' %}">
+          <input class="form-control small-input" type="number" name="sort_order" value="{{ item.sort_order }}">
+          <label class="check-line"><input class="form-check-input" type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> {% tr 'active' %}</label>
+          <button class="btn btn-outline-info" name="action" value="save">{% tr 'save' %}</button><button class="btn btn-outline-danger" name="action" value="delete" onclick="return confirm('{% tr 'delete_platform_confirm' %}')">{% tr 'delete' %}</button>
+        </form>
+        {% empty %}<p class="text-secondary">{% tr 'no_records' %}</p>{% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if active_section == 'web-platforms' %}
+    <section class="glass-card crud-panel settings-folder-panel active">
+      <div class="crud-head">
+        <div><h2>{% tr 'web_platforms' %}</h2><span>/api/public/web-platforms/</span></div>
+        <div class="excel-actions">
+          <a class="btn btn-outline-info btn-sm" href="{% url 'dictionary_excel' 'web-platforms' 'export' %}">{% tr 'export' %}</a>
+          <form method="post" enctype="multipart/form-data" action="{% url 'dictionary_excel' 'web-platforms' 'import' %}" class="excel-import-form">
+            {% csrf_token %}<label class="btn btn-outline-light btn-sm" for="web-platforms-import">{% tr 'import' %}</label><input id="web-platforms-import" type="file" name="file" accept=".xlsx" onchange="this.form.submit()">
+          </form>
+          <a class="btn btn-outline-warning btn-sm" href="{% url 'dictionary_excel' 'web-platforms' 'sample' %}">{% tr 'sample' %}</a>
+        </div>
+      </div>
+      <form method="post" class="crud-form web-platform-add-form">
+        {% csrf_token %}<input type="hidden" name="section" value="web_platform"><input type="hidden" name="action" value="save">
+        <label>{% tr 'name' %}{{ web_platform_form.name }}</label><label>{% tr 'url' %}{{ web_platform_form.url }}</label><label>{% tr 'image_or_favicon' %}{{ web_platform_form.image_url }}</label><label>Открытий{{ web_platform_form.usage_count }}</label><label>{% tr 'sort_order' %}{{ web_platform_form.sort_order }}</label>
+        <label class="check-line">{{ web_platform_form.is_active }} {% tr 'active' %}</label><button class="btn btn-primary">{% tr 'add' %}</button>
+      </form>
+      <div class="crud-list">
+        {% for item in web_platforms %}
+        <form method="post" class="crud-row web-platform-row">
+          {% csrf_token %}<input type="hidden" name="section" value="web_platform"><input type="hidden" name="id" value="{{ item.id }}">
+          <input class="form-control" name="name" value="{{ item.name }}" placeholder="{% tr 'name' %}"><input class="form-control" name="url" value="{{ item.url }}" placeholder="{% tr 'url' %}"><input class="form-control" name="image_url" value="{{ item.image_url }}" placeholder="{% tr 'image_or_favicon' %}">
+          <input class="form-control small-input" type="number" name="usage_count" value="{{ item.usage_count }}" placeholder="Открытий">
+          <input class="form-control small-input" type="number" name="sort_order" value="{{ item.sort_order }}">
+          <label class="check-line"><input class="form-check-input" type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> {% tr 'active' %}</label>
+          <button class="btn btn-outline-info" name="action" value="save">{% tr 'save' %}</button><button class="btn btn-outline-danger" name="action" value="delete" onclick="return confirm('{% tr 'delete_web_platform_confirm' %}')">{% tr 'delete' %}</button>
+        </form>
+        {% empty %}<p class="text-secondary">{% tr 'no_records' %}</p>{% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if active_section == 'channels' %}
+    <section class="glass-card crud-panel settings-folder-panel active">
+      <div class="crud-head">
+        <div><h2>{% tr 'telegram_channels' %}</h2><span>{% tr 'subscription_check' %}</span></div>
+        <div class="excel-actions">
+          <a class="btn btn-outline-info btn-sm" href="{% url 'dictionary_excel' 'channels' 'export' %}">{% tr 'export' %}</a>
+          <form method="post" enctype="multipart/form-data" action="{% url 'dictionary_excel' 'channels' 'import' %}" class="excel-import-form">
+            {% csrf_token %}<label class="btn btn-outline-light btn-sm" for="channels-import">{% tr 'import' %}</label><input id="channels-import" type="file" name="file" accept=".xlsx" onchange="this.form.submit()">
+          </form>
+          <a class="btn btn-outline-warning btn-sm" href="{% url 'dictionary_excel' 'channels' 'sample' %}">{% tr 'sample' %}</a>
+        </div>
+      </div>
+      <form method="post" class="crud-form channel-add-form">
+        {% csrf_token %}<input type="hidden" name="section" value="channel"><input type="hidden" name="action" value="save">
+        <label>{% tr 'name' %}{{ channel_form.name }}</label><label>{% tr 'url' %}{{ channel_form.url }}</label><label>{% tr 'chat_id' %}{{ channel_form.telegram_chat_id }}</label><label>{% tr 'sort_order' %}{{ channel_form.sort_order }}</label>
+        <label class="check-line">{{ channel_form.is_required }} {% tr 'required' %}</label><label class="check-line">{{ channel_form.is_active }} {% tr 'active' %}</label><button class="btn btn-primary">{% tr 'add' %}</button>
+      </form>
+      <div class="crud-list">
+        {% for item in channels %}
+        <form method="post" class="crud-row channel-row">
+          {% csrf_token %}<input type="hidden" name="section" value="channel"><input type="hidden" name="id" value="{{ item.id }}">
+          <input class="form-control" name="name" value="{{ item.name }}" placeholder="{% tr 'name' %}"><input class="form-control" name="url" value="{{ item.url }}" placeholder="{% tr 'url' %}"><input class="form-control" name="telegram_chat_id" value="{{ item.telegram_chat_id }}" placeholder="{% tr 'chat_id' %}">
+          <input class="form-control small-input" type="number" name="sort_order" value="{{ item.sort_order }}">
+          <label class="check-line"><input class="form-check-input" type="checkbox" name="is_required" {% if item.is_required %}checked{% endif %}> {% tr 'required' %}</label>
+          <label class="check-line"><input class="form-check-input" type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> {% tr 'active' %}</label>
+          <button class="btn btn-outline-info" name="action" value="save">{% tr 'save' %}</button><button class="btn btn-outline-danger" name="action" value="delete" onclick="return confirm('{% tr 'delete_channel_confirm' %}')">{% tr 'delete' %}</button>
+        </form>
+        {% empty %}<p class="text-secondary">{% tr 'no_channels' %}</p>{% endfor %}
+      </div>
+    </section>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

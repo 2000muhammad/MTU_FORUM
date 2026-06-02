@@ -1,0 +1,318 @@
+{% extends 'base.html' %}
+{% load static ui_i18n %}
+{% block title %}{% tr 'login' %} | {{ site_settings.site_name|default:'MTU FORUM' }}{% endblock %}
+{% block content %}
+{% tr 'face_enter_login' as face_enter_login %}
+{% tr 'face_camera_error' as face_camera_error %}
+{% tr 'face_checking' as face_checking %}
+{% tr 'face_success' as face_success %}
+{% tr 'face_bad_request' as face_bad_request %}
+{% tr 'face_user_not_found' as face_user_not_found %}
+{% tr 'face_not_configured' as face_not_configured %}
+{% tr 'face_read_error' as face_read_error %}
+{% tr 'face_not_matched' as face_not_matched %}
+<section class="login-panel">
+  <div class="login-copy">
+    <div class="brand big">
+      {% if site_settings.site_logo %}
+      <img class="brand-logo brand-logo-lg" src="{{ site_settings.site_logo.url }}" alt="{{ site_settings.site_name|default:'MTU FORUM' }}">
+      {% else %}
+      <img class="brand-logo brand-logo-lg" src="{% static 'img/mtu-forum-mark.svg' %}" alt="MTU FORUM">
+      {% endif %}
+      <span>{{ site_settings.site_name|default:'MTU FORUM' }}</span>
+    </div>
+    <h1>{% tr 'login_title' %}</h1>
+    <p>{% tr 'login_subtitle' %}</p>
+  </div>
+  <form method="post" class="glass-card login-card">
+    {% csrf_token %}
+    <div class="login-card-head">
+      <a class="login-back-link" href="{% url 'index' %}" aria-label="{% tr 'back' %}">
+        <span aria-hidden="true">←</span>
+        <strong>{% tr 'back' %}</strong>
+      </a>
+      <h2>{% tr 'login' %}</h2>
+    </div>
+    {{ form.non_field_errors }}
+    <label>{% tr 'username' %}{{ form.username }}</label>
+    <label>{% tr 'password' %}
+      <span class="login-password-wrap">
+        {{ form.password }}
+        <button class="password-eye-btn" type="button" data-login-password-toggle aria-label="{% tr 'show' %}" title="{% tr 'show' %}">
+          <svg class="eye-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M2.2 12s3.6-6 9.8-6 9.8 6 9.8 6-3.6 6-9.8 6-9.8-6-9.8-6Z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+            <path class="eye-slash" d="M4 4l16 16"></path>
+          </svg>
+        </button>
+      </span>
+    </label>
+    <button class="btn btn-primary w-100 mt-3" type="submit">{% tr 'sign_in' %}</button>
+    <button class="btn login-face-button w-100 mt-2" type="button" data-face-login>
+      <span class="login-face-icon" aria-hidden="true"></span>
+      <span>{% tr 'face_login' %}</span>
+    </button>
+    {# RU: Кнопки запускают внешний вход OneID и E-IMZO через backend routes. #}
+    {# UZ: Tugmalar backend routes orqali OneID va E-IMZO tashqi kirishini boshlaydi. #}
+    {# EN: These buttons start external OneID and E-IMZO login through backend routes. #}
+    <div class="login-sso-actions">
+      {# RU: OneID открывает стандартный login/password способ через method=IDPW. #}
+      {# UZ: OneID method=IDPW orqali oddiy login/parol usulini ochadi. #}
+      {# EN: OneID opens the standard username/password method via method=IDPW. #}
+      <a class="login-sso-button login-oneid-button" href="{% url 'oneid_login' %}">
+        <span class="login-sso-mark" aria-hidden="true">ID</span>
+        <span>{% tr 'oneid_login' %}</span>
+      </a>
+      {# RU: E-IMZO использует отдельный OneID method, который задаётся в настройках API. #}
+      {# UZ: E-IMZO API sozlamalarida berilgan alohida OneID methoddan foydalanadi. #}
+      {# EN: E-IMZO uses a separate OneID method configured in API settings. #}
+      <a class="login-sso-button login-eimzo-button" href="{% url 'eimzo_login' %}">
+        <span class="login-sso-mark" aria-hidden="true">E</span>
+        <span>{% tr 'eimzo_login' %}</span>
+      </a>
+    </div>
+    <div class="login-face-status" data-face-status role="status" aria-live="polite"></div>
+    <div class="login-face-panel" data-face-panel hidden>
+      <div class="login-face-camera">
+        <video data-face-video autoplay muted playsinline></video>
+        <canvas data-face-canvas hidden></canvas>
+      </div>
+      <p>{% tr 'face_login_hint' %}</p>
+      <div class="login-face-actions">
+        <button class="btn btn-primary" type="button" data-face-capture>{% tr 'face_capture' %}</button>
+        <button class="btn btn-outline-light" type="button" data-face-cancel>{% tr 'face_cancel' %}</button>
+      </div>
+    </div>
+    <div class="login-lang-switch" aria-label="Language">
+      <a href="{% lang_url 'ru' %}">RU</a>
+      <a href="{% lang_url 'uz' %}">UZ</a>
+      <a href="{% lang_url 'uz-cyrl' %}">УЗ</a>
+      <a href="{% lang_url 'en' %}">EN</a>
+    </div>
+    <div class="login-quick-actions">
+      <button class="ui-mode-btn theme-mode-btn" type="button" data-theme-toggle title="{% tr 'theme_toggle' %}" aria-label="{% tr 'theme_toggle' %}">
+        <span class="theme-icon theme-icon-sun" aria-hidden="true">
+          <svg class="mode-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.3"/><path d="M12 2.8v2.1M12 19.1v2.1M4.2 4.2l1.5 1.5M18.3 18.3l1.5 1.5M2.8 12h2.1M19.1 12h2.1M4.2 19.8l1.5-1.5M18.3 5.7l1.5-1.5"/></svg>
+        </span>
+        <span class="theme-icon theme-icon-moon" aria-hidden="true">
+          <svg class="mode-svg" viewBox="0 0 24 24"><path d="M20.2 14.7A8.1 8.1 0 0 1 9.3 3.8a8.8 8.8 0 1 0 10.9 10.9Z"/></svg>
+        </span>
+        <span class="visually-hidden" data-theme-label data-day="{% tr 'day_mode' %}" data-night="{% tr 'night_mode' %}">{% tr 'day_mode' %}</span>
+      </button>
+      <div class="accessibility-menu login-accessibility-menu">
+        <button class="ui-mode-btn access-mode-btn" type="button" data-accessibility-toggle title="{% tr 'accessibility_mode' %}" aria-label="{% tr 'accessibility_mode' %}" aria-expanded="false" aria-controls="loginAccessibilityPanel">
+          <svg class="mode-svg access-eye" aria-hidden="true" viewBox="0 0 24 24"><path d="M2.8 12s3.3-5.2 9.2-5.2 9.2 5.2 9.2 5.2-3.3 5.2-9.2 5.2S2.8 12 2.8 12Z"/><circle cx="12" cy="12" r="2.4"/></svg>
+          <span class="visually-hidden">{% tr 'accessibility_mode' %}</span>
+        </button>
+        <section class="accessibility-panel login-accessibility-panel" id="loginAccessibilityPanel" data-accessibility-panel hidden>
+          <div class="access-panel-head">
+            <div>
+              <strong>{% tr 'accessibility_title' %}</strong>
+              <span>{% tr 'accessibility_subtitle' %}</span>
+            </div>
+            <button class="access-panel-close" type="button" data-access-close aria-label="{% tr 'close' %}">×</button>
+          </div>
+          <div class="access-panel-section">
+            <span class="access-panel-label">{% tr 'accessibility_view' %}</span>
+            <div class="access-view-options" role="group" aria-label="{% tr 'accessibility_view' %}">
+              <button type="button" data-access-view="normal" class="access-view-btn access-view-normal" aria-label="{% tr 'accessibility_normal_mode' %}"><span>A</span><small>{% tr 'accessibility_normal_mode' %}</small></button>
+              <button type="button" data-access-view="whiteblack" class="access-view-btn access-view-whiteblack" aria-label="{% tr 'accessibility_bw_mode' %}"><span>A</span><small>{% tr 'accessibility_bw_mode' %}</small></button>
+              <button type="button" data-access-view="dark" class="access-view-btn access-view-dark" aria-label="{% tr 'accessibility_dark_mode' %}"><span>A</span><small>{% tr 'accessibility_dark_mode' %}</small></button>
+            </div>
+          </div>
+          <div class="access-panel-section">
+            <label class="access-range-label" for="loginAccessFontScale">
+              <span>{% tr 'accessibility_font_size' %}</span>
+              <strong data-font-scale-output data-scale-template="{% tr 'accessibility_font_scale_template' %}">0%</strong>
+            </label>
+            <input id="loginAccessFontScale" class="access-range" type="range" min="0" max="40" step="5" value="0" data-font-scale>
+          </div>
+          <div class="access-panel-section access-toggle-list">
+            <span class="access-panel-label">{% tr 'accessibility_extra' %}</span>
+            <label class="access-switch"><input type="checkbox" data-access-sound-hover><span>{% tr 'accessibility_speak_hover' %}</span></label>
+            <label class="access-switch"><input type="checkbox" data-access-underline><span>{% tr 'accessibility_underline' %}</span></label>
+            <label class="access-switch"><input type="checkbox" data-access-reduce-motion><span>{% tr 'accessibility_reduce_motion' %}</span></label>
+            <label class="access-switch"><input type="checkbox" data-access-large-cursor><span>{% tr 'accessibility_large_cursor' %}</span></label>
+          </div>
+          <div class="access-panel-actions">
+            <button type="button" data-access-reset>{% tr 'accessibility_reset' %}</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </form>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const loginPasswordToggle = document.querySelector('[data-login-password-toggle]');
+if (loginPasswordToggle) {
+  loginPasswordToggle.addEventListener('click', () => {
+    const input = loginPasswordToggle.closest('.login-password-wrap').querySelector('input');
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    loginPasswordToggle.classList.toggle('is-visible', isHidden);
+    loginPasswordToggle.setAttribute('aria-label', isHidden ? '{% tr "hide" %}' : '{% tr "show" %}');
+    loginPasswordToggle.setAttribute('title', isHidden ? '{% tr "hide" %}' : '{% tr "show" %}');
+  });
+}
+
+const faceButton = document.querySelector('[data-face-login]');
+const facePanel = document.querySelector('[data-face-panel]');
+const faceVideo = document.querySelector('[data-face-video]');
+const faceCanvas = document.querySelector('[data-face-canvas]');
+const faceCapture = document.querySelector('[data-face-capture]');
+const faceCancel = document.querySelector('[data-face-cancel]');
+const faceStatus = document.querySelector('[data-face-status]');
+const usernameInput = document.querySelector('input[name="username"]');
+let faceStream = null;
+let faceReady = false;
+
+const faceMessages = {
+  enter_login: "{% tr 'face_enter_login' %}",
+  auto_hint: "{% tr 'face_auto_hint' %}",
+  face_api_not_configured: "{% tr 'face_api_not_configured' %}",
+  face_api_error: "{% tr 'face_api_error' %}",
+  camera_error: "{% tr 'face_camera_error' %}",
+  camera_ready: "{% tr 'face_camera_ready' %}",
+  checking: "{% tr 'face_checking' %}",
+  success: "{% tr 'face_success' %}",
+  bad_request: "{% tr 'face_bad_request' %}",
+  user_not_found: "{% tr 'face_user_not_found' %}",
+  face_not_configured: "{% tr 'face_not_configured' %}",
+  face_read_error: "{% tr 'face_read_error' %}",
+  face_not_matched: "{% tr 'face_not_matched' %}",
+};
+
+const setFaceStatus = (message, tone = '') => {
+  if (!faceStatus) return;
+  faceStatus.textContent = message || '';
+  faceStatus.dataset.tone = tone;
+};
+
+const stopFaceCamera = () => {
+  if (faceStream) {
+    faceStream.getTracks().forEach((track) => track.stop());
+    faceStream = null;
+  }
+  if (faceVideo) faceVideo.srcObject = null;
+  faceReady = false;
+};
+
+const waitForFaceVideo = () => new Promise((resolve, reject) => {
+  if (!faceVideo) {
+    reject(new Error('video_missing'));
+    return;
+  }
+  if (faceVideo.readyState >= 2 && faceVideo.videoWidth > 0 && faceVideo.videoHeight > 0) {
+    faceReady = true;
+    resolve();
+    return;
+  }
+
+  const timeout = window.setTimeout(() => {
+    cleanup();
+    reject(new Error('video_not_ready'));
+  }, 5000);
+
+  const cleanup = () => {
+    window.clearTimeout(timeout);
+    faceVideo.removeEventListener('loadedmetadata', onReady);
+    faceVideo.removeEventListener('canplay', onReady);
+    faceVideo.removeEventListener('playing', onReady);
+  };
+
+  const onReady = () => {
+    if (faceVideo.videoWidth > 0 && faceVideo.videoHeight > 0) {
+      cleanup();
+      faceReady = true;
+      resolve();
+    }
+  };
+
+  faceVideo.addEventListener('loadedmetadata', onReady);
+  faceVideo.addEventListener('canplay', onReady);
+  faceVideo.addEventListener('playing', onReady);
+});
+
+faceButton?.addEventListener('click', async () => {
+  try {
+    stopFaceCamera();
+    faceReady = false;
+    faceStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+    faceVideo.srcObject = faceStream;
+    await faceVideo.play();
+    facePanel.hidden = false;
+    setFaceStatus(usernameInput?.value.trim() ? '' : faceMessages.auto_hint, 'warning');
+    waitForFaceVideo()
+      .then(() => setFaceStatus(faceMessages.camera_ready, 'success'))
+      .catch(() => setFaceStatus(faceMessages.camera_error, 'error'));
+  } catch (error) {
+    setFaceStatus(faceMessages.camera_error, 'error');
+  }
+});
+
+faceCancel?.addEventListener('click', () => {
+  stopFaceCamera();
+  if (facePanel) facePanel.hidden = true;
+  setFaceStatus('');
+});
+
+faceCapture?.addEventListener('click', async () => {
+  if (!faceVideo || !faceCanvas) return;
+  faceCapture.disabled = true;
+  try {
+    if (!faceStream) {
+      throw new Error('camera_not_started');
+    }
+    if (!faceReady) {
+      setFaceStatus(faceMessages.checking);
+      await waitForFaceVideo();
+    }
+
+    const side = 280;
+    faceCanvas.width = side;
+    faceCanvas.height = side;
+    const context = faceCanvas.getContext('2d');
+    const videoWidth = faceVideo.videoWidth;
+    const videoHeight = faceVideo.videoHeight;
+    if (!context || !videoWidth || !videoHeight) {
+      throw new Error('empty_video_frame');
+    }
+
+    const cropSide = Math.min(videoWidth, videoHeight);
+    context.drawImage(faceVideo, (videoWidth - cropSide) / 2, (videoHeight - cropSide) / 2, cropSide, cropSide, 0, 0, side, side);
+    const image = faceCanvas.toDataURL('image/jpeg', 0.82);
+    if (!image || image.length < 500) {
+      throw new Error('empty_face_image');
+    }
+
+    setFaceStatus(faceMessages.checking);
+    const response = await fetch("{% url 'face_login' %}", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+      },
+      body: JSON.stringify({ username: usernameInput?.value.trim(), image }),
+    });
+    const data = await response.json().catch(() => ({ ok: false, message: 'bad_request' }));
+    if (data.ok) {
+      setFaceStatus(faceMessages.success, 'success');
+      stopFaceCamera();
+      window.location.href = data.redirect || "{% url 'dashboard' %}";
+      return;
+    }
+    const errorText = faceMessages[data.message] || data.message || faceMessages.face_not_matched;
+    setFaceStatus(data.score ? `${errorText} (${data.score})` : errorText, 'error');
+  } catch (error) {
+    setFaceStatus(error.message === 'camera_not_started' ? faceMessages.camera_error : faceMessages.face_read_error, 'error');
+  } finally {
+    faceCapture.disabled = false;
+  }
+});
+
+window.addEventListener('beforeunload', stopFaceCamera);
+</script>
+{% endblock %}

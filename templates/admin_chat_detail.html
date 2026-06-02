@@ -1,0 +1,435 @@
+﻿{% extends 'base.html' %}
+{% load ui_i18n %}
+{% block page_title %}{% tr 'dialog' %} {{ telegram_id }}{% endblock %}
+{% block content %}
+<section class="telegram-chat-shell">
+  <div class="telegram-chat-header glass-card">
+    <a class="telegram-back" href="{% url 'admin_chat_list' %}">‹</a>
+    <img class="chat-avatar" src="{% url 'telegram_profile_photo' telegram_id %}" alt="Telegram profile">
+    <div class="telegram-peer">
+      <h2>{{ chat_name|default:telegram_id }}</h2>
+      <span>Telegram ID: {{ telegram_id }}{% if chat_thread %} · {{ chat_thread.get_status_display }}{% endif %}</span>
+    </div>
+    {% if chat_thread and chat_thread.status == 'open' %}
+    <form method="post" class="ms-auto">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="close_chat">
+      <button class="btn btn-outline-light btn-sm" type="submit">Закрыть чат</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="telegram-thread glass-card" id="telegramThread">
+    {% for message in chat_messages %}
+    <div class="tg-message-row {% if message.direction == 'out' %}is-out{% else %}is-in{% endif %}">
+      {% if message.direction == 'in' %}<img class="tg-mini-avatar" src="{% url 'telegram_profile_photo' telegram_id %}" alt="Telegram profile">{% endif %}
+      <div class="tg-bubble {% if message.direction == 'out' %}out{% else %}in{% endif %} kind-{{ message.kind }}">
+        {% if message.kind == 'photo' and message.media %}
+          <img class="tg-media-photo" src="{{ message.media.url }}" alt="{{ message.media_name }}">
+        {% elif message.kind == 'video' and message.media %}
+          <video class="tg-media-video" src="{{ message.media.url }}" controls></video>
+        {% elif message.kind == 'video_note' and message.media %}
+          <video class="tg-media-round" src="{{ message.media.url }}" controls></video>
+        {% elif message.kind == 'voice' and message.media %}
+          <audio class="tg-media-voice" src="{{ message.media.url }}" controls></audio>
+        {% elif message.kind == 'document' and message.media %}
+          <a class="tg-document" href="{{ message.media.url }}" download><strong>{{ message.media_name|default:'file' }}</strong><small>{{ message.media.name }}</small></a>
+        {% elif message.kind == 'location' and message.latitude and message.longitude %}
+          <a class="tg-location" href="https://maps.google.com/?q={{ message.latitude }},{{ message.longitude }}" target="_blank" rel="noopener">
+            <span class="tg-location-pin">⌖</span><strong>{% tr 'open_location' %}</strong><small>{{ message.latitude }}, {{ message.longitude }}</small>
+          </a>
+        {% endif %}
+        {% if message.text %}<p>{{ message.text|linebreaksbr }}</p>{% endif %}
+        <span>{{ message.created_at|date:'H:i' }}</span>
+      </div>
+    </div>
+    {% empty %}
+    <div class="tg-empty">{% tr 'no_messages' %}</div>
+    {% endfor %}
+  </div>
+
+  <form method="post" enctype="multipart/form-data" class="telegram-compose glass-card" id="telegramCompose">
+    {% csrf_token %}
+    <input type="hidden" name="message_type" id="messageType" value="text">
+    <input type="file" name="attachment" id="attachmentInput" hidden>
+    <div class="tg-emoji-popover" id="emojiMenu" hidden>
+      <div class="tg-emoji-tabs" aria-hidden="true">
+        <span class="active">●</span><span>☺</span><span>♣</span><span>☕</span><span>⚽</span><span>✈</span><span>◆</span><span>♥</span><span>⚑</span>
+      </div>
+      <div class="tg-emoji-panel">
+        <strong>Недавние</strong>
+        <div class="tg-emoji-grid">
+          <button type="button">😀</button><button type="button">😁</button><button type="button">😂</button><button type="button">😊</button><button type="button">😍</button><button type="button">👍</button><button type="button">🙏</button><button type="button">🔥</button>
+          <button type="button">🎉</button><button type="button">❤️</button><button type="button">✅</button><button type="button">📎</button><button type="button">📍</button><button type="button">🚆</button><button type="button">💬</button><button type="button">⭐</button>
+        </div>
+      </div>
+      <div class="tg-emoji-footer" aria-hidden="true"><span class="active">☺</span><span>◈</span><span>▣</span><span>GIF</span><span>⌫</span></div>
+    </div>
+    <div class="tg-compose-popover" id="attachMenu" hidden>
+      <button type="button" data-kind="media"><span class="tg-menu-icon">▧</span><span>Фото или видео</span></button>
+      <button type="button" data-kind="document"><span class="tg-menu-icon">▱</span><span>Файл</span></button>
+      <button type="button" data-kind="todo"><span class="tg-menu-icon">☑</span><span>Список задач</span></button>
+      <button type="button" data-kind="date"><span class="tg-menu-icon">◷</span><span>Дата</span></button>
+      <button type="button" data-kind="wallet"><span class="tg-menu-icon">◇</span><span>Кошелёк</span></button>
+    </div>
+    <div class="tg-location-panel" id="locationPanel" hidden>
+      <input class="form-control" name="latitude" id="latitudeInput" placeholder="{% tr 'latitude' %}">
+      <input class="form-control" name="longitude" id="longitudeInput" placeholder="{% tr 'longitude' %}">
+      <button class="btn btn-outline-light" type="button" id="geoButton">{% tr 'use_my_location' %}</button>
+    </div>
+    <div class="tg-compose-bar">
+      <button class="tg-compose-icon tg-attach-button" type="button" id="attachButton" aria-expanded="false" aria-controls="attachMenu" aria-label="{% tr 'select_file' %}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.6 12.9l5.9-5.9a3.1 3.1 0 014.4 4.4l-7.2 7.2a5 5 0 01-7-7l7.6-7.6"></path></svg>
+      </button>
+      <input type="hidden" name="text" id="composeText" value="">
+      <div class="tg-compose-input" id="composeEditable" contenteditable="true" role="textbox" aria-label="Сообщение" data-placeholder="Сообщение"></div>
+      <button class="tg-compose-icon tg-emoji-button" type="button" id="emojiButton" aria-expanded="false" aria-controls="emojiMenu" aria-label="Emoji">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M8.5 14.5c1.8 1.6 5.2 1.6 7 0"></path><path d="M8.8 9.2h.1M15.1 9.2h.1"></path></svg>
+      </button>
+    </div>
+    <div class="tg-selected-attachment" id="selectedAttachment" hidden></div>
+    <div class="tg-video-note-preview" id="videoNotePreview" hidden>
+      <video id="videoNotePreviewStream" autoplay muted playsinline></video>
+    </div>
+    <div class="tg-recording-panel" id="recordingPanel" hidden>
+      <span class="tg-recording-dot"></span>
+      <span id="recordingLabel">Запись</span>
+      <strong id="recordingTimer">0:00</strong>
+      <span class="tg-recording-hint" id="recordingHint">Для отмены отпустите курсор вне поля</span>
+      <button type="button" id="cancelRecording">Отмена</button>
+    </div>
+    <button class="tg-voice-button" type="submit" aria-label="{% tr 'send' %}" title="{% tr 'send' %}">
+      <span class="tg-send-glyph"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12L20 4l-4 16-4-6-8-2z"></path></svg></span>
+      <span class="tg-mic-glyph"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="4" width="6" height="11" rx="3"></rect><path d="M5.8 11.5a6.2 6.2 0 0012.4 0M12 18v3M9 21h6"></path></svg></span>
+      <span class="tg-video-note-glyph"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8.5a2.5 2.5 0 012.5-2.5h3A2.5 2.5 0 0115 8.5v7a2.5 2.5 0 01-2.5 2.5h-3A2.5 2.5 0 017 15.5v-7z"></path><path d="M15 10l4-2.5v9L15 14"></path></svg></span>
+    </button>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+const thread = document.getElementById('telegramThread');
+if (thread) thread.scrollTop = thread.scrollHeight;
+const compose = document.getElementById('telegramCompose');
+const typeInput = document.getElementById('messageType');
+const emojiButton = document.getElementById('emojiButton');
+const emojiMenu = document.getElementById('emojiMenu');
+const attachButton = document.getElementById('attachButton');
+const attachMenu = document.getElementById('attachMenu');
+const locationPanel = document.getElementById('locationPanel');
+const attachmentInput = document.getElementById('attachmentInput');
+const selectedAttachment = document.getElementById('selectedAttachment');
+const composeText = document.getElementById('composeText');
+const composeEditable = document.getElementById('composeEditable');
+const voiceButton = document.querySelector('.tg-voice-button');
+const recordingPanel = document.getElementById('recordingPanel');
+const recordingLabel = document.getElementById('recordingLabel');
+const recordingTimer = document.getElementById('recordingTimer');
+const recordingHint = document.getElementById('recordingHint');
+const cancelRecording = document.getElementById('cancelRecording');
+const videoNotePreview = document.getElementById('videoNotePreview');
+const videoNotePreviewStream = document.getElementById('videoNotePreviewStream');
+const acceptByKind = {media: 'image/*,video/*', photo: 'image/*', video: 'video/*', video_note: 'video/*', voice: 'audio/*', document: ''};
+let mediaRecorder = null;
+let mediaChunks = [];
+let recordingStartedAt = 0;
+let recordingTimerId = null;
+let recordMode = 'voice';
+let recordHoldTimer = null;
+let pointerRecordingStarted = false;
+let autoSubmitAfterRecording = false;
+
+function closeAttachMenu() {
+  attachMenu.hidden = true;
+  attachButton.setAttribute('aria-expanded', 'false');
+}
+
+function closeEmojiMenu() {
+  emojiMenu.hidden = true;
+  emojiButton.setAttribute('aria-expanded', 'false');
+}
+
+function updateComposeState() {
+  syncComposeText();
+  const hasText = composeText.value.trim().length > 0;
+  const hasLocation = typeInput.value === 'location' && document.getElementById('latitudeInput').value.trim() && document.getElementById('longitudeInput').value.trim();
+  const hasAttachment = attachmentInput.files.length > 0 || hasLocation;
+  const isReady = hasText || hasAttachment;
+  compose.classList.toggle('is-ready', isReady);
+  if (isReady) {
+    voiceButton.title = '{% tr 'send' %}';
+    voiceButton.setAttribute('aria-label', '{% tr 'send' %}');
+  } else {
+    voiceButton.title = recordMode === 'video_note' ? '{% tr 'video_note' %}' : 'Записать голосовое сообщение';
+    voiceButton.setAttribute('aria-label', voiceButton.title);
+  }
+}
+
+function syncComposeText() {
+  if (!composeEditable) return;
+  composeText.value = composeEditable.innerText.replace(/\n$/, '');
+}
+
+function resizeComposer() {
+  if (!composeEditable) return;
+  composeEditable.style.maxHeight = '160px';
+}
+
+function setAttachmentFile(file, kind) {
+  const transfer = new DataTransfer();
+  transfer.items.add(file);
+  attachmentInput.files = transfer.files;
+  typeInput.value = kind;
+  selectedAttachment.hidden = false;
+  selectedAttachment.textContent = file.name;
+  updateComposeState();
+}
+
+async function submitRecordedFile(file, kind) {
+  syncComposeText();
+  const formData = new FormData();
+  formData.append('csrfmiddlewaretoken', compose.querySelector('[name=csrfmiddlewaretoken]').value);
+  formData.append('message_type', kind);
+  formData.append('text', composeText.value);
+  formData.append('attachment', file, file.name);
+  const response = await fetch(compose.action || window.location.href, {
+    method: 'POST',
+    body: formData,
+    credentials: 'same-origin',
+  });
+  if (!response.ok) {
+    setSelectedNote('Не удалось отправить запись');
+    return;
+  }
+  window.location.reload();
+}
+
+function setSelectedNote(text) {
+  selectedAttachment.hidden = false;
+  selectedAttachment.textContent = text;
+}
+
+function insertTextAtCaret(text) {
+  composeEditable.focus();
+  const selection = window.getSelection();
+  if (!selection.rangeCount) {
+    composeEditable.append(document.createTextNode(text));
+  } else {
+    const range = selection.getRangeAt(0);
+    range.deleteContents();
+    range.insertNode(document.createTextNode(text));
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+  syncComposeText();
+  updateComposeState();
+}
+
+function setRecordMode(mode) {
+  recordMode = mode;
+  compose.classList.toggle('is-video-note-mode', mode === 'video_note');
+  voiceButton.title = mode === 'video_note' ? '{% tr 'video_note' %}' : 'Записать голосовое сообщение';
+  voiceButton.setAttribute('aria-label', voiceButton.title);
+}
+
+function updateRecordingTimer() {
+  const tenths = Math.floor((Date.now() - recordingStartedAt) / 100);
+  const seconds = Math.floor(tenths / 10);
+  recordingTimer.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')},${tenths % 10}`;
+}
+
+async function startRecording(kind) {
+  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+    selectedAttachment.hidden = false;
+    selectedAttachment.textContent = 'Запись недоступна в этом браузере';
+    return;
+  }
+  const constraints = kind === 'video_note' ? {audio: true, video: {width: 360, height: 360}} : {audio: true};
+  const stream = await navigator.mediaDevices.getUserMedia(constraints);
+  if (kind === 'video_note') {
+    videoNotePreviewStream.srcObject = stream;
+    videoNotePreview.hidden = false;
+  } else {
+    videoNotePreviewStream.srcObject = null;
+    videoNotePreview.hidden = true;
+  }
+  mediaChunks = [];
+  const audioTypes = ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus', 'audio/webm'];
+  const videoTypes = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+  const mimeType = (kind === 'video_note' ? videoTypes : audioTypes).find(type => MediaRecorder.isTypeSupported(type));
+  mediaRecorder = new MediaRecorder(stream, mimeType ? {mimeType} : undefined);
+  mediaRecorder.addEventListener('dataavailable', event => {
+    if (event.data.size) mediaChunks.push(event.data);
+  });
+  mediaRecorder.addEventListener('stop', () => {
+    stream.getTracks().forEach(track => track.stop());
+    videoNotePreviewStream.srcObject = null;
+    videoNotePreview.hidden = true;
+    clearInterval(recordingTimerId);
+    recordingPanel.hidden = true;
+    compose.classList.remove('is-recording');
+    const shouldSubmit = autoSubmitAfterRecording;
+    autoSubmitAfterRecording = false;
+    if (!mediaChunks.length) return;
+    const isVideo = kind === 'video_note';
+    const type = mediaRecorder.mimeType || mediaChunks[0].type || (isVideo ? 'video/webm' : 'audio/webm');
+    const extension = type.includes('ogg') ? 'ogg' : (type.includes('mp4') ? 'mp4' : 'webm');
+    const file = new File(mediaChunks, `${kind}_${Date.now()}.${extension}`, {type});
+    if (shouldSubmit) {
+      submitRecordedFile(file, kind).catch(() => setSelectedNote('Не удалось отправить запись'));
+    } else {
+      setAttachmentFile(file, kind);
+    }
+  });
+  typeInput.value = kind;
+  recordingStartedAt = Date.now();
+  recordingLabel.textContent = kind === 'video_note' ? '{% tr 'video_note' %}' : 'Голосовое';
+  recordingHint.textContent = 'Для отмены отпустите курсор вне поля';
+  updateRecordingTimer();
+  recordingPanel.hidden = false;
+  compose.classList.add('is-recording');
+  recordingTimerId = setInterval(updateRecordingTimer, 250);
+  mediaRecorder.start();
+}
+
+function stopRecording(save = true, autoSubmit = false) {
+  if (!mediaRecorder) return;
+  if (!save) mediaChunks = [];
+  autoSubmitAfterRecording = save && autoSubmit;
+  if (!save) {
+    videoNotePreviewStream.srcObject = null;
+    videoNotePreview.hidden = true;
+    recordingPanel.hidden = true;
+    compose.classList.remove('is-recording');
+  }
+  if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  mediaRecorder = null;
+}
+
+attachButton?.addEventListener('click', event => {
+  event.stopPropagation();
+  closeEmojiMenu();
+  attachMenu.hidden = !attachMenu.hidden;
+  attachButton.setAttribute('aria-expanded', String(!attachMenu.hidden));
+});
+
+emojiButton?.addEventListener('click', event => {
+  event.stopPropagation();
+  closeAttachMenu();
+  emojiMenu.hidden = !emojiMenu.hidden;
+  emojiButton.setAttribute('aria-expanded', String(!emojiMenu.hidden));
+});
+
+document.addEventListener('click', event => {
+  if (!attachMenu.hidden && !attachMenu.contains(event.target) && event.target !== attachButton) closeAttachMenu();
+  if (!emojiMenu.hidden && !emojiMenu.contains(event.target) && event.target !== emojiButton) closeEmojiMenu();
+});
+
+emojiMenu?.querySelectorAll('.tg-emoji-grid button').forEach(button => {
+  button.addEventListener('click', () => {
+    insertTextAtCaret(button.textContent);
+  });
+});
+
+attachMenu?.querySelectorAll('button[data-kind]').forEach(button => {
+  button.addEventListener('click', () => {
+    const kind = button.dataset.kind;
+    typeInput.value = kind;
+    locationPanel.hidden = kind !== 'location';
+    attachmentInput.accept = acceptByKind[kind] || '';
+    if (kind === 'todo' || kind === 'date' || kind === 'wallet') {
+      setSelectedNote(`${button.textContent.trim()} — как в Telegram Web, но отправка через Bot API недоступна`);
+    } else if (kind === 'location') {
+      setSelectedNote('{% tr 'location' %}');
+    } else {
+      selectedAttachment.hidden = true;
+      selectedAttachment.textContent = '';
+      attachmentInput.click();
+    }
+    closeAttachMenu();
+    updateComposeState();
+  });
+});
+
+attachmentInput?.addEventListener('change', () => {
+  if (attachmentInput.files.length) {
+    if (typeInput.value === 'media') {
+      typeInput.value = attachmentInput.files[0].type.startsWith('video/') ? 'video' : 'photo';
+    }
+    selectedAttachment.hidden = false;
+    selectedAttachment.textContent = attachmentInput.files[0].name;
+  } else {
+    typeInput.value = 'text';
+    selectedAttachment.hidden = true;
+    selectedAttachment.textContent = '';
+  }
+  updateComposeState();
+});
+
+composeEditable?.addEventListener('input', updateComposeState);
+composeEditable?.addEventListener('input', resizeComposer);
+composeEditable?.addEventListener('keydown', event => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    syncComposeText();
+    if (compose.classList.contains('is-ready')) compose.requestSubmit();
+  }
+});
+
+compose?.addEventListener('submit', event => {
+  if (compose.classList.contains('is-recording')) {
+    event.preventDefault();
+    stopRecording(true, false);
+    return;
+  }
+  if (!compose.classList.contains('is-ready')) {
+    event.preventDefault();
+    setRecordMode(recordMode === 'voice' ? 'video_note' : 'voice');
+  }
+});
+cancelRecording?.addEventListener('click', () => stopRecording(false));
+
+voiceButton?.addEventListener('contextmenu', event => {
+  event.preventDefault();
+  setRecordMode(recordMode === 'voice' ? 'video_note' : 'voice');
+});
+voiceButton?.addEventListener('pointerdown', event => {
+  if (compose.classList.contains('is-ready')) return;
+  pointerRecordingStarted = false;
+  recordHoldTimer = setTimeout(() => {
+    pointerRecordingStarted = true;
+    voiceButton.setPointerCapture?.(event.pointerId);
+    startRecording(recordMode).catch(() => setSelectedNote('Не удалось начать запись'));
+  }, 260);
+});
+voiceButton?.addEventListener('pointerup', () => {
+  clearTimeout(recordHoldTimer);
+  if (pointerRecordingStarted) {
+    stopRecording(true, true);
+    pointerRecordingStarted = false;
+  }
+});
+voiceButton?.addEventListener('pointerleave', () => {
+  clearTimeout(recordHoldTimer);
+  if (pointerRecordingStarted) {
+    stopRecording(false, false);
+    pointerRecordingStarted = false;
+  }
+});
+
+document.getElementById('geoButton')?.addEventListener('click', () => {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(position => {
+    document.getElementById('latitudeInput').value = position.coords.latitude.toFixed(7);
+    document.getElementById('longitudeInput').value = position.coords.longitude.toFixed(7);
+    updateComposeState();
+  });
+});
+document.getElementById('latitudeInput')?.addEventListener('input', updateComposeState);
+document.getElementById('longitudeInput')?.addEventListener('input', updateComposeState);
+setRecordMode('voice');
+updateComposeState();
+resizeComposer();
+</script>
+{% endblock %}

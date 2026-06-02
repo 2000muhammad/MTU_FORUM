@@ -1,0 +1,254 @@
+{% extends 'base.html' %}
+{% load ui_i18n %}
+{% block page_title %}{% tr 'api_settings' %}{% endblock %}
+{% block content %}
+<form method="post" class="api-settings-form">
+  {% csrf_token %}
+  <section class="glass-card api-hero">
+    <div>
+      <h2>{% tr 'api_integrations' %}</h2>
+      <p class="text-secondary mb-0">{% tr 'api_hint' %}</p>
+    </div>
+    <button class="btn btn-primary">{% tr 'save_settings' %}</button>
+  </section>
+
+  <div class="api-grid">
+    <section class="glass-card api-card">
+      <div class="api-card-head"><span>01</span><h2>{% tr 'site' %}</h2></div>
+      <label>{% tr 'site_base_url' %}{{ form.site_base_url }}</label>
+      <div class="endpoint-list">
+        <div><b>Telegram intake</b><code>/api/intake/telegram/</code></div>
+        <div><b>{% tr 'chats' %}</b><code>/api/chat/incoming/</code></div>
+        <div><b>{% tr 'stations' %}</b><code>/api/public/stations/</code></div>
+        <div><b>{% tr 'positions' %}</b><code>/api/public/positions/</code></div>
+        <div><b>{% tr 'platforms' %}</b><code>/api/public/platforms/</code></div>
+        <div><b>{% tr 'web_platforms' %}</b><code>/api/public/web-platforms/</code></div>
+        <div><b>Mobile config</b><code>/api/mobile/config/</code></div>
+      </div>
+    </section>
+
+    <section class="glass-card api-card">
+      <div class="api-card-head"><span>02</span><h2>{% tr 'telegram_bot' %}</h2></div>
+      <label>{% tr 'bot_token' %}
+        <span class="secret-input-wrap">
+          {{ form.telegram_bot_token }}
+          <button class="secret-toggle-btn" type="button" data-secret-toggle data-show="{% tr 'show' %}" data-hide="{% tr 'hide' %}">{% tr 'show' %}</button>
+        </span>
+      </label>
+      <label>{% tr 'telegram_api_key' %}
+        <span class="secret-input-wrap">
+          {{ form.telegram_api_key }}
+          <button class="secret-toggle-btn" type="button" data-secret-toggle data-show="{% tr 'show' %}" data-hide="{% tr 'hide' %}">{% tr 'show' %}</button>
+        </span>
+      </label>
+      <label>{% tr 'webhook_url' %}{{ form.telegram_webhook_url }}</label>
+      <p class="hint">{% tr 'api_key_hint' %}</p>
+    </section>
+
+    <section class="glass-card api-card">
+      <div class="api-card-head"><span>03</span><h2>{% tr 'mobile_app' %}</h2></div>
+      <label>{% tr 'mobile_app_name' %}{{ form.mobile_app_name }}</label>
+      <label>{% tr 'mobile_api_key' %}
+        <span class="secret-input-wrap">
+          {{ form.mobile_api_key }}
+          <button class="secret-toggle-btn" type="button" data-secret-toggle data-show="{% tr 'show' %}" data-hide="{% tr 'hide' %}">{% tr 'show' %}</button>
+        </span>
+      </label>
+      <label>{% tr 'mobile_base_url' %}{{ form.mobile_app_base_url }}</label>
+      <label class="check-line api-toggle">{{ form.mobile_app_enabled }} {% tr 'mobile_enabled' %}</label>
+      <p class="hint">{% tr 'mobile_hint' %}</p>
+    </section>
+
+    <section class="glass-card api-card">
+      <div class="api-card-head"><span>04</span><h2>{% tr 'hrm_api' %}</h2></div>
+      <label>{% tr 'hrm_base_url' %}{{ form.hrm_base_url }}</label>
+      <label>{% tr 'hrm_client_id' %}{{ form.hrm_client_id }}</label>
+      <label>HRM public key{{ form.hrm_public_key }}</label>
+      <label>HRM secret type{{ form.hrm_secret_type }}</label>
+      <label>{% tr 'hrm_secret' %}
+        <span class="secret-input-wrap">
+          {{ form.hrm_secret }}
+          <button class="secret-toggle-btn" type="button" data-secret-toggle data-show="{% tr 'show' %}" data-hide="{% tr 'hide' %}">{% tr 'show' %}</button>
+        </span>
+      </label>
+      <label class="check-line api-toggle">{{ form.hrm_verify_ssl }} Verify SSL</label>
+      <div class="endpoint-list">
+        <div><b>Check worker</b><code>/api/v1/integration/mobile-face/check-worker</code></div>
+        <div><b>Payload</b><code>{"pin":"PINFL"}</code></div>
+      </div>
+      <label>{% tr 'notes' %}{{ form.notes }}</label>
+    </section>
+
+    {# RU: OneID/E-IMZO block: реальные SSO endpoint-ы и credentials от оператора OneID. #}
+    {# UZ: OneID/E-IMZO bloki: operator bergan haqiqiy SSO endpoint va credentials. #}
+    {# EN: OneID/E-IMZO block: real SSO endpoints and credentials issued by the OneID operator. #}
+    <section class="glass-card api-card">
+      <div class="api-card-head"><span>05</span><h2>{% tr 'oneid_eimzo' %}</h2></div>
+      <label class="check-line api-toggle">{{ form.oneid_enabled }} {% tr 'oneid_enabled' %}</label>
+      <label>{% tr 'oneid_client_id' %}{{ form.oneid_client_id }}</label>
+      <label>{% tr 'oneid_client_secret' %}
+        <span class="secret-input-wrap">
+          {{ form.oneid_client_secret }}
+          <button class="secret-toggle-btn" type="button" data-secret-toggle data-show="{% tr 'show' %}" data-hide="{% tr 'hide' %}">{% tr 'show' %}</button>
+        </span>
+      </label>
+      <label>{% tr 'oneid_authorize_url' %}{{ form.oneid_authorize_url }}</label>
+      <label>{% tr 'oneid_token_url' %}{{ form.oneid_token_url }}</label>
+      <label>{% tr 'oneid_userinfo_url' %}{{ form.oneid_userinfo_url }}</label>
+      <label>{% tr 'oneid_scope' %}{{ form.oneid_scope }}</label>
+      <label class="check-line api-toggle">{{ form.oneid_verify_ssl }} Verify SSL</label>
+      <label class="check-line api-toggle">{{ form.oneid_auto_create_user }} {% tr 'oneid_auto_create' %}</label>
+      <label class="check-line api-toggle">{{ form.eimzo_enabled }} {% tr 'eimzo_enabled' %}</label>
+      <label>{% tr 'eimzo_method' %}{{ form.eimzo_oneid_method }}</label>
+      {# RU: Эти значения должны совпадать с официальным OneID flow, иначе token/userinfo не сработают. #}
+      {# UZ: Bu qiymatlar rasmiy OneID flow bilan mos bo'lishi kerak, aks holda token/userinfo ishlamaydi. #}
+      {# EN: These values must match the official OneID flow, otherwise token/userinfo calls fail. #}
+      <div class="endpoint-list">
+        <div><b>Callback</b><code>/login/oneid/callback/</code></div>
+        <div><b>Authorize</b><code>response_type=one_code</code></div>
+        <div><b>Token</b><code>grant_type=one_authorization_code</code></div>
+        <div><b>User info</b><code>grant_type=one_access_token_identify</code></div>
+      </div>
+      <p class="hint">{% tr 'oneid_hint' %}</p>
+    </section>
+  </div>
+</form>
+
+<section class="glass-card external-api-panel">
+  <div class="external-api-head">
+    <div>
+      <h2>{% tr 'external_api_connections' %}</h2>
+      <p class="text-secondary mb-0">{% tr 'external_api_connections_hint' %}</p>
+      <p class="hint mb-0">{% tr 'face_api_external_hint' %}</p>
+    </div>
+  </div>
+
+  <form method="post" class="external-api-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="external_save">
+    <label>{% tr 'api_connection_name' %}{{ external_form.name }}</label>
+    <label>{% tr 'api_purpose' %}
+      <select class="form-select" name="purpose">
+        <option value="generic">{% tr 'api_purpose_generic' %}</option>
+        <option value="face_id">{% tr 'api_purpose_face_id' %}</option>
+        <option value="hrm">{% tr 'api_purpose_hrm' %}</option>
+        <option value="data_sync">{% tr 'api_purpose_data_sync' %}</option>
+        <option value="notification">{% tr 'api_purpose_notification' %}</option>
+      </select>
+    </label>
+    <label>{% tr 'base_url' %}{{ external_form.base_url }}</label>
+    <label>{% tr 'api_method' %}
+      <select class="form-select" name="method">
+        <option value="POST">POST</option>
+        <option value="GET">GET</option>
+      </select>
+    </label>
+    <label>{% tr 'healthcheck_url' %}{{ external_form.healthcheck_url }}</label>
+    <label>{% tr 'auth_header' %}{{ external_form.auth_header }}</label>
+    <label>{% tr 'api_key' %}
+      <span class="secret-input-wrap">
+        {{ external_form.api_key }}
+        <button class="secret-toggle-btn" type="button" data-secret-toggle data-show="{% tr 'show' %}" data-hide="{% tr 'hide' %}">{% tr 'show' %}</button>
+      </span>
+    </label>
+    <label>{% tr 'timeout_seconds' %}{{ external_form.timeout_seconds }}</label>
+    <label>{% tr 'sort_order' %}{{ external_form.sort_order }}</label>
+    <label class="check-line api-toggle">{{ external_form.is_active }} {% tr 'active' %}</label>
+    <label class="external-notes">{% tr 'notes' %}{{ external_form.notes }}</label>
+    <button class="btn btn-primary">{% tr 'add_api_connection' %}</button>
+  </form>
+
+  <div class="external-api-list">
+    {% for api in external_apis %}
+    <form method="post" class="external-api-row">
+      {% csrf_token %}
+      <input type="hidden" name="id" value="{{ api.id }}">
+      <div class="external-row-main">
+        <label>{% tr 'api_connection_name' %}
+          <input class="form-control" name="name" value="{{ api.name }}" placeholder="{% tr 'api_connection_name' %}">
+        </label>
+        <label>{% tr 'api_purpose' %}
+          <select class="form-select" name="purpose">
+            <option value="generic" {% if api.purpose == 'generic' %}selected{% endif %}>{% tr 'api_purpose_generic' %}</option>
+            <option value="face_id" {% if api.purpose == 'face_id' %}selected{% endif %}>{% tr 'api_purpose_face_id' %}</option>
+            <option value="hrm" {% if api.purpose == 'hrm' %}selected{% endif %}>{% tr 'api_purpose_hrm' %}</option>
+            <option value="data_sync" {% if api.purpose == 'data_sync' %}selected{% endif %}>{% tr 'api_purpose_data_sync' %}</option>
+            <option value="notification" {% if api.purpose == 'notification' %}selected{% endif %}>{% tr 'api_purpose_notification' %}</option>
+          </select>
+        </label>
+        <label class="external-url">{% tr 'base_url' %}
+          <input class="form-control" name="base_url" value="{{ api.base_url }}" placeholder="{% tr 'base_url' %}">
+        </label>
+        <label>{% tr 'api_method' %}
+          <select class="form-select" name="method">
+            <option value="POST" {% if api.method == 'POST' %}selected{% endif %}>POST</option>
+            <option value="GET" {% if api.method == 'GET' %}selected{% endif %}>GET</option>
+          </select>
+        </label>
+        <label class="external-url">{% tr 'healthcheck_url' %}
+          <input class="form-control" name="healthcheck_url" value="{{ api.healthcheck_url }}" placeholder="{% tr 'healthcheck_url' %}">
+        </label>
+        <label>{% tr 'auth_header' %}
+          <input class="form-control" name="auth_header" value="{{ api.auth_header }}" placeholder="{% tr 'auth_header' %}">
+        </label>
+        <label>{% tr 'api_key' %}
+          <span class="secret-input-wrap">
+            <input class="form-control" type="password" name="api_key" value="{{ api.api_key }}" placeholder="{% tr 'api_key' %}">
+            <button class="secret-toggle-btn" type="button" data-secret-toggle data-show="{% tr 'show' %}" data-hide="{% tr 'hide' %}">{% tr 'show' %}</button>
+          </span>
+        </label>
+        <label>{% tr 'timeout_seconds' %}
+          <input class="form-control small-input" type="number" min="1" max="120" name="timeout_seconds" value="{{ api.timeout_seconds }}">
+        </label>
+        <label>{% tr 'sort_order' %}
+          <input class="form-control small-input" type="number" min="0" name="sort_order" value="{{ api.sort_order }}">
+        </label>
+        <label class="check-line external-active"><input class="form-check-input" type="checkbox" name="is_active" {% if api.is_active %}checked{% endif %}> {% tr 'active' %}</label>
+        <label class="external-row-notes-wrap">{% tr 'notes' %}
+          <textarea class="form-control external-row-notes" name="notes" rows="2" placeholder="{% tr 'notes' %}">{{ api.notes }}</textarea>
+        </label>
+      </div>
+
+      <div class="external-api-status">
+        <div>
+          <span class="external-api-badge {% if api.last_status_code and api.last_status_code < 400 %}status-ok{% elif api.last_checked_at %}status-bad{% else %}status-neutral{% endif %}">
+            {% if api.last_checked_at %}
+              {% if api.last_status_code %}HTTP {{ api.last_status_code }}{% else %}{% tr 'connection_failed' %}{% endif %}
+            {% else %}
+              {% tr 'not_checked' %}
+            {% endif %}
+          </span>
+          {% if api.purpose == 'face_id' %}<span class="external-api-badge status-face">{% tr 'api_purpose_face_id' %}</span>{% endif %}
+        </div>
+        <small>{% tr 'last_check' %}: {% if api.last_checked_at %}{{ api.last_checked_at|date:"Y-m-d H:i" }}{% else %}{% tr 'not_checked' %}{% endif %}</small>
+        {% if api.last_error %}<small class="external-api-error" title="{{ api.last_error }}">{{ api.last_error|truncatechars:120 }}</small>{% endif %}
+      </div>
+
+      <div class="external-row-actions">
+        <button class="btn btn-outline-info" type="submit" name="action" value="external_save">{% tr 'save' %}</button>
+        <button class="btn btn-outline-primary" type="submit" name="action" value="external_test" formnovalidate>{% tr 'test_connection' %}</button>
+        <button class="btn btn-outline-danger" type="submit" name="action" value="external_delete" formnovalidate onclick="return confirm('{% tr 'delete_api_connection_confirm' %}')">{% tr 'delete' %}</button>
+      </div>
+    </form>
+    {% empty %}
+    <p class="text-secondary mb-0">{% tr 'no_external_apis' %}</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('[data-secret-toggle]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const wrap = button.closest('.secret-input-wrap');
+    const input = wrap ? wrap.querySelector('input') : null;
+    if (!input) return;
+
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    button.textContent = isHidden ? button.dataset.hide : button.dataset.show;
+  });
+});
+</script>
+{% endblock %}

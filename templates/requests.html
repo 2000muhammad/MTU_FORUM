@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% load static ui_i18n %}
+{% block page_title %}{% tr 'requests' %}{% endblock %}
+{% block content %}
+<section class="glass-card control-deck">
+  <div>
+    <h2>{% tr 'telegram_requests' %}</h2>
+    <p class="text-secondary mb-0">{% tr 'auto_refresh' %}</p>
+  </div>
+  <div class="filters">
+    <input id="searchInput" class="form-control" placeholder="{% tr 'search_requests' %}">
+    <select id="statusFilter" class="form-select">
+      <option value="">{% tr 'all_statuses' %}</option>
+      {% for value,label in statuses %}
+      <option value="{{ value }}">{% if value == 'new' %}{% tr 'new' %}{% elif value == 'done' %}{% tr 'done' %}{% elif value == 'blocked' %}{% tr 'blocked' %}{% else %}{{ label }}{% endif %}</option>
+      {% endfor %}
+    </select>
+  </div>
+</section>
+
+<section class="glass-card table-card">
+  <div class="table-responsive">
+    <table class="table align-middle request-table">
+      <thead><tr>
+        <th>{% tr 'id' %}</th><th>{% tr 'date' %}</th><th>{% tr 'platform' %}</th><th>{% tr 'reason' %}</th><th>{% tr 'pnfl' %}</th><th>{% tr 'company' %}</th><th>{% tr 'department' %}</th><th>{% tr 'position' %}</th><th>{% tr 'full_name' %}</th><th>{% tr 'passport' %}</th><th>{% tr 'phone' %}</th><th>{% tr 'telegram_id' %}</th><th>{% tr 'status' %}</th><th></th>
+      </tr></thead>
+      <tbody id="requestRows"></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+window.UI_TEXTS = {
+  show: "{% tr 'show' %}", hide: "{% tr 'hide' %}", editor: "{% tr 'editor' %}",
+  block_unblock: "{% tr 'block_unblock' %}", delete: "{% tr 'delete' %}", no_requests: "{% tr 'no_requests' %}",
+  new: "{% tr 'new' %}", done: "{% tr 'done' %}", blocked: "{% tr 'blocked' %}"
+};
+</script>
+<script src="{% static 'js/dashboard.js' %}?v=20260525-department"></script>
+{% endblock %}

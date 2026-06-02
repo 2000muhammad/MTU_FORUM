@@ -1,0 +1,32 @@
+﻿{% extends 'base.html' %}
+{% load ui_i18n %}
+{% block page_title %}{% tr 'user_chats' %}{% endblock %}
+{% block content %}
+<section class="glass-card editor-form mb-3">
+  <div class="editor-head">
+    <div>
+      <h2>Создать чат Telegram</h2>
+      <p class="hint mb-0">Откройте новую сессию чата с пользователем по Telegram ID.</p>
+    </div>
+  </div>
+  <form method="post" class="log-filters">
+    {% csrf_token %}
+    <input class="form-control" name="telegram_id" placeholder="Telegram ID" required>
+    <input class="form-control" name="full_name" placeholder="Имя пользователя">
+    <input class="form-control" name="title" placeholder="Название чата">
+    <button class="btn btn-primary" type="submit">Создать</button>
+  </form>
+</section>
+<section class="glass-card list-card">
+  {% for chat in chats %}
+  <a class="chat-row" href="{% if chat.thread_id %}{% url 'admin_chat_thread_detail' chat.thread_id %}{% else %}{% url 'admin_chat_detail' chat.telegram_id %}{% endif %}">
+    <div class="chat-main">
+      <img class="chat-avatar" src="{% url 'telegram_profile_photo' chat.telegram_id %}" alt="Telegram profile">
+      <div><strong>{{ chat.full_name|default:chat.telegram_id }}{% if chat.status == 'closed' %} <small>· закрыт</small>{% endif %}</strong><p>{{ chat.last.text|truncatechars:90 }}</p><small>Telegram ID: {{ chat.telegram_id }}</small></div>
+    </div>
+    <div class="chat-meta"><span>{{ chat.last.created_at|date:'d.m.Y H:i' }}</span>{% if chat.unread %}<b>{{ chat.unread }}</b>{% endif %}</div>
+  </a>
+  {% empty %}<p class="text-secondary">{% tr 'no_messages' %}</p>{% endfor %}
+</section>
+<audio id="chatSound" src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=" preload="auto"></audio>
+{% endblock %}

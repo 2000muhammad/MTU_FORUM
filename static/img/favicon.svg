@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="mtu-favicon-bg" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#44d7b6"/>
+      <stop offset="1" stop-color="#4f9dff"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#mtu-favicon-bg)"/>
+  <path d="M14 45V19h9l9 12 9-12h9v26h-9V32l-8 11h-3l-8-11v13h-8Z" fill="#061019"/>
+  <path d="M13 51h38" stroke="#061019" stroke-width="4" stroke-linecap="round"/>
+</svg>

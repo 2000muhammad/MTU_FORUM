@@ -1,0 +1,499 @@
+{% load i18n static ui_i18n %}
+<!doctype html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% if site_settings.site_description %}<meta name="description" content="{{ site_settings.site_description|striptags|truncatechars:160 }}">{% endif %}
+  {% if site_settings.site_tags %}<meta name="keywords" content="{{ site_settings.site_tags }}">{% endif %}
+  <title>{% block title %}{{ site_settings.site_name|default:'MTU FORUM' }}{% endblock %}</title>
+  {% if site_settings.site_favicon %}
+  <link rel="icon" href="{{ site_settings.site_favicon.url }}">
+  {% else %}
+  <link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}">
+  {% endif %}
+  <script>
+    (() => {
+      const accessView = localStorage.getItem('mtu-access-view');
+      const accessibility = localStorage.getItem('mtu-accessibility') === 'on' || accessView === 'dark' || accessView === 'contrast';
+      const theme = localStorage.getItem('mtu-theme') || 'dark';
+      const soundGuide = localStorage.getItem('mtu-sound-guide') === 'on';
+      const fontScale = Number(localStorage.getItem('mtu-font-scale') || 0);
+      document.documentElement.dataset.theme = theme;
+      document.documentElement.style.setProperty('--access-page-zoom', String(1 + Math.max(0, Math.min(fontScale, 40)) / 100));
+      if (accessibility) document.documentElement.classList.add('accessibility-mode');
+      if (accessView === 'whiteblack') document.documentElement.classList.add('access-black-white');
+      if (accessView === 'dark' || accessView === 'contrast') document.documentElement.classList.add('access-invert');
+      if (soundGuide) document.documentElement.classList.add('sound-guide-mode');
+      if (localStorage.getItem('mtu-underline-links') === 'on') document.documentElement.classList.add('access-underline-links');
+      if (localStorage.getItem('mtu-reduce-motion') === 'on') document.documentElement.classList.add('access-reduce-motion');
+      if (localStorage.getItem('mtu-large-cursor') === 'on') document.documentElement.classList.add('access-large-cursor');
+    })();
+  </script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260602-profile-photo-inner-frame">
+  <link rel="stylesheet" href="{% static 'css/accessibility-panel.css' %}?v=20260602-premium">
+  <link rel="stylesheet" href="{% static 'css/accessibility-compact.css' %}?v=20260602-hidden-fix">
+  <link rel="stylesheet" href="{% static 'css/telegram-compose.css' %}?v=20260527-telegram-attach-left">
+  <link rel="stylesheet" href="{% static 'css/internal-messages.css' %}?v=20260527-internal-messages">
+</head>
+<body>
+  {% if user.is_authenticated %}
+  <aside class="sidebar">
+    <a class="brand" href="{% url 'dashboard' %}">
+      {% if site_settings.site_logo %}
+      <img class="brand-logo" src="{{ site_settings.site_logo.url }}" alt="{{ site_settings.site_name|default:'MTU FORUM' }}">
+      {% else %}
+      <img class="brand-logo" src="{% static 'img/mtu-forum-mark.svg' %}" alt="MTU FORUM">
+      {% endif %}
+      <span>{{ site_settings.site_name|default:'MTU FORUM' }}</span>
+    </a>
+    <nav class="nav flex-column gap-1">
+      <a class="nav-link" href="{% url 'dashboard' %}">{% tr 'dashboard' %}</a>
+      <a class="nav-link" href="{% url 'internal_messages' %}">{% tr 'internal_messages' %}</a>
+      {% if ui_user_can_manage %}
+      <a class="nav-link" href="{% url 'requests' %}">{% tr 'requests' %}</a>
+      <a class="nav-link" href="{% url 'admin_chat_list' %}">{% tr 'chats' %}</a>
+      {% endif %}
+      {% if ui_user_can_administer %}
+      <a class="nav-link" href="{% url 'users' %}">{% tr 'users' %}</a>
+      <details class="nav-group">
+        <summary class="nav-link nav-group-summary">
+          <span>{% tr 'settings_menu' %}</span>
+          <span class="nav-group-arrow" aria-hidden="true"></span>
+        </summary>
+        <div class="nav-submenu">
+          <a class="nav-sub-link" href="{% url 'settings' %}">{% tr 'directories' %}</a>
+          <a class="nav-sub-link" href="{% url 'api_settings' %}">{% tr 'api_settings' %}</a>
+          <a class="nav-sub-link" href="{% url 'site_settings' %}">{% tr 'site_settings' %}</a>
+        </div>
+      </details>
+      <a class="nav-link" href="{% url 'site_logs' %}">{% tr 'site_logs' %}</a>
+      {% endif %}
+      <a class="nav-link" href="{% url 'profile' %}">{% tr 'profile' %}</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        {% if user.profile.avatar %}
+          <img src="{{ user.profile.avatar.url }}" alt="{% tr 'profile_photo' %}">
+        {% else %}
+          <span>{{ user.username|first|upper }}</span>
+        {% endif %}
+        <div class="small text-secondary">{{ user.username }}</div>
+      </div>
+      <a class="btn sidebar-logout mt-2" href="{% url 'logout' %}">
+        <span class="sidebar-logout-icon" aria-hidden="true"></span>
+        <span>{% tr 'logout' %}</span>
+      </a>
+    </div>
+  </aside>
+  {% endif %}
+
+  <main class="{% if user.is_authenticated %}app-shell{% else %}auth-shell{% endif %}">
+    {% if user.is_authenticated %}
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">{% tr 'enterprise' %}</div>
+        <h1>{% block page_title %}{{ site_settings.site_name|default:'MTU FORUM' }}{% endblock %}</h1>
+      </div>
+      <div class="topbar-actions">
+        <button class="ui-mode-btn theme-mode-btn" type="button" data-theme-toggle title="{% tr 'theme_toggle' %}" aria-label="{% tr 'theme_toggle' %}">
+          <span class="theme-icon theme-icon-sun" aria-hidden="true">
+            <svg class="mode-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.3"/><path d="M12 2.8v2.1M12 19.1v2.1M4.2 4.2l1.5 1.5M18.3 18.3l1.5 1.5M2.8 12h2.1M19.1 12h2.1M4.2 19.8l1.5-1.5M18.3 5.7l1.5-1.5"/></svg>
+          </span>
+          <span class="theme-icon theme-icon-moon" aria-hidden="true">
+            <svg class="mode-svg" viewBox="0 0 24 24"><path d="M20.2 14.7A8.1 8.1 0 0 1 9.3 3.8a8.8 8.8 0 1 0 10.9 10.9Z"/></svg>
+          </span>
+          <span class="visually-hidden" data-theme-label data-day="{% tr 'day_mode' %}" data-night="{% tr 'night_mode' %}">{% tr 'day_mode' %}</span>
+        </button>
+        <div class="accessibility-menu">
+          <button class="ui-mode-btn access-mode-btn" type="button" data-accessibility-toggle title="{% tr 'accessibility_mode' %}" aria-label="{% tr 'accessibility_mode' %}" aria-expanded="false" aria-controls="accessibilityPanel">
+            <svg class="mode-svg access-eye" aria-hidden="true" viewBox="0 0 24 24"><path d="M2.8 12s3.3-5.2 9.2-5.2 9.2 5.2 9.2 5.2-3.3 5.2-9.2 5.2S2.8 12 2.8 12Z"/><circle cx="12" cy="12" r="2.4"/></svg>
+            <span class="visually-hidden">{% tr 'accessibility_mode' %}</span>
+          </button>
+          <section class="accessibility-panel" id="accessibilityPanel" data-accessibility-panel hidden>
+            <div class="access-panel-head">
+              <div>
+                <strong>{% tr 'accessibility_title' %}</strong>
+                <span>{% tr 'accessibility_subtitle' %}</span>
+              </div>
+              <button class="access-panel-close" type="button" data-access-close aria-label="{% tr 'close' %}">×</button>
+            </div>
+            <div class="access-panel-section">
+              <span class="access-panel-label">{% tr 'accessibility_view' %}</span>
+              <div class="access-view-options" role="group" aria-label="Режим отображения">
+                <button type="button" data-access-view="normal" class="access-view-btn access-view-normal" aria-label="{% tr 'accessibility_normal_mode' %}"><span>A</span><small>{% tr 'accessibility_normal_mode' %}</small></button>
+                <button type="button" data-access-view="whiteblack" class="access-view-btn access-view-whiteblack" aria-label="{% tr 'accessibility_bw_mode' %}"><span>A</span><small>{% tr 'accessibility_bw_mode' %}</small></button>
+                <button type="button" data-access-view="dark" class="access-view-btn access-view-dark" aria-label="{% tr 'accessibility_dark_mode' %}"><span>A</span><small>{% tr 'accessibility_dark_mode' %}</small></button>
+              </div>
+            </div>
+            <div class="access-panel-section">
+              <label class="access-range-label" for="accessFontScale">
+                <span>{% tr 'accessibility_font_size' %}</span>
+                <strong data-font-scale-output data-scale-template="{% tr 'accessibility_font_scale_template' %}">0%</strong>
+              </label>
+              <input id="accessFontScale" class="access-range" type="range" min="0" max="40" step="5" value="0" data-font-scale>
+            </div>
+            <div class="access-panel-section access-toggle-list">
+              <span class="access-panel-label">{% tr 'accessibility_extra' %}</span>
+              <label class="access-switch"><input type="checkbox" data-access-sound-hover><span>{% tr 'accessibility_speak_hover' %}</span></label>
+              <label class="access-switch"><input type="checkbox" data-access-underline><span>{% tr 'accessibility_underline' %}</span></label>
+              <label class="access-switch"><input type="checkbox" data-access-reduce-motion><span>{% tr 'accessibility_reduce_motion' %}</span></label>
+              <label class="access-switch"><input type="checkbox" data-access-large-cursor><span>{% tr 'accessibility_large_cursor' %}</span></label>
+            </div>
+            <div class="access-panel-actions">
+              <button type="button" data-access-reset>{% tr 'accessibility_reset' %}</button>
+            </div>
+          </section>
+        </div>
+        <div class="lang-switch">
+          <a href="{% lang_url 'ru' %}">RU</a>
+          <a href="{% lang_url 'uz' %}">UZ</a>
+          <a href="{% lang_url 'uz-cyrl' %}">ЎЗ</a>
+          <a href="{% lang_url 'en' %}">EN</a>
+        </div>
+      </div>
+    </header>
+    {% endif %}
+    {% if messages %}
+      <div class="messages">
+      {% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>{% endfor %}
+      </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    (() => {
+      const root = document.documentElement;
+      const themeButton = document.querySelector('[data-theme-toggle]');
+      const themeLabel = document.querySelector('[data-theme-label]');
+      const accessButton = document.querySelector('[data-accessibility-toggle]');
+      const accessPanel = document.querySelector('[data-accessibility-panel]');
+      const accessClose = document.querySelector('[data-access-close]');
+      const accessViewButtons = document.querySelectorAll('[data-access-view]');
+      const fontScaleInput = document.querySelector('[data-font-scale]');
+      const fontScaleOutput = document.querySelector('[data-font-scale-output]');
+      const accessSoundHover = document.querySelector('[data-access-sound-hover]');
+      const accessUnderline = document.querySelector('[data-access-underline]');
+      const accessReduceMotion = document.querySelector('[data-access-reduce-motion]');
+      const accessLargeCursor = document.querySelector('[data-access-large-cursor]');
+      const accessReset = document.querySelector('[data-access-reset]');
+      const voiceLangs = { ru: 'ru-RU', uz: 'uz-UZ', 'uz-cyrl': 'uz-UZ', en: 'en-US' };
+      const pageLang = (root.lang || 'ru').toLowerCase();
+      const voiceLang = voiceLangs[pageLang] || voiceLangs[pageLang.split('-')[0]] || 'ru-RU';
+      const clean = (value) => (value || '').replace(/\s+/g, ' ').trim();
+      const isSoundEnabled = () => localStorage.getItem('mtu-sound-guide') === 'on';
+      let hoverSpeechTimer = null;
+      let lastHoverSpeech = '';
+
+      const speak = (text, force = false) => {
+        if ((!force && !isSoundEnabled()) || !text || !('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        const message = new SpeechSynthesisUtterance(text);
+        message.lang = voiceLang;
+        message.rate = 0.92;
+        message.pitch = 1;
+        window.speechSynthesis.speak(message);
+      };
+
+      const readableText = (target) => {
+        const element = target.closest('button,a,input,select,textarea,label,[aria-label],[title],img,.web-service-card,.metric,.chat-row,.folder-tab,.crud-row,h1,h2,h3,h4,h5,h6,p,span,strong,small,b,em,code,td,th,li,dt,dd');
+        if (!element) {
+          const directText = [...(target.childNodes || [])]
+            .filter((node) => node.nodeType === Node.TEXT_NODE)
+            .map((node) => node.textContent)
+            .join(' ');
+          return clean(directText);
+        }
+        if (element.matches('input,select,textarea')) {
+          const label = element.id ? document.querySelector(`label[for="${CSS.escape(element.id)}"]`) : null;
+          return clean(element.getAttribute('aria-label') || label?.innerText || element.closest('label')?.innerText || element.placeholder || element.name);
+        }
+        if (element.matches('img')) {
+          return clean(element.getAttribute('aria-label') || element.alt || element.title);
+        }
+        const directText = [...element.childNodes]
+          .filter((node) => node.nodeType === Node.TEXT_NODE)
+          .map((node) => node.textContent)
+          .join(' ');
+        const fullText = element.matches('button,a,label,.web-service-card,.metric,.chat-row,.folder-tab,.crud-row')
+          ? element.innerText || element.textContent
+          : directText || element.innerText || element.textContent;
+        return clean(element.getAttribute('aria-label') || element.title || fullText);
+      };
+
+      const speakOnHover = (target) => {
+        if (!isSoundEnabled()) return;
+        const text = readableText(target);
+        if (!text || text === lastHoverSpeech) return;
+        window.clearTimeout(hoverSpeechTimer);
+        hoverSpeechTimer = window.setTimeout(() => {
+          lastHoverSpeech = text;
+          speak(text);
+        }, 220);
+      };
+
+      const getAccessView = () => {
+        if (root.classList.contains('access-invert') || root.classList.contains('accessibility-mode')) return 'dark';
+        if (root.classList.contains('access-black-white')) return 'whiteblack';
+        const saved = localStorage.getItem('mtu-access-view');
+        if (saved === 'dark' || saved === 'contrast') return 'dark';
+        if (saved === 'whiteblack') return 'whiteblack';
+        return 'normal';
+      };
+
+      const applyPageZoom = (value) => {
+        const scale = Math.max(0, Math.min(Number(value) || 0, 40));
+        root.style.setProperty('--access-page-zoom', String(1 + scale / 100));
+        localStorage.setItem('mtu-font-scale', String(scale));
+        if (fontScaleInput) fontScaleInput.value = String(scale);
+        if (fontScaleOutput) {
+          const template = fontScaleOutput.dataset.scaleTemplate || '{value}%';
+          fontScaleOutput.textContent = template.replace('{value}', `${scale}%`);
+        }
+      };
+
+      const applyAccessClass = (checkbox, className, storageKey, enabled) => {
+        root.classList.toggle(className, enabled);
+        localStorage.setItem(storageKey, enabled ? 'on' : 'off');
+        if (checkbox) checkbox.checked = enabled;
+      };
+
+      const setAccessView = (view) => {
+        const normalized = view === 'contrast' ? 'dark' : (view || 'normal');
+        const whiteblack = normalized === 'whiteblack';
+        const dark = normalized === 'dark';
+        root.classList.toggle('access-black-white', whiteblack);
+        root.classList.toggle('access-invert', dark);
+        root.classList.toggle('accessibility-mode', dark);
+        if (whiteblack || dark || normalized === 'normal') {
+          root.dataset.theme = 'light';
+          localStorage.setItem('mtu-theme', 'light');
+        }
+        localStorage.setItem('mtu-access-view', normalized);
+        localStorage.setItem('mtu-accessibility', dark ? 'on' : 'off');
+        syncTheme();
+        syncAccess();
+      };
+
+      const hasAccessibilityOptions = () => {
+        return root.classList.contains('accessibility-mode')
+          || root.classList.contains('access-black-white')
+          || root.classList.contains('access-invert')
+          || Number(localStorage.getItem('mtu-font-scale') || 0) > 0
+          || root.classList.contains('access-underline-links')
+          || root.classList.contains('access-reduce-motion')
+          || root.classList.contains('access-large-cursor')
+          || isSoundEnabled();
+      };
+
+      const syncAccessPanel = () => {
+        const view = getAccessView();
+        accessViewButtons.forEach((button) => {
+          const active = button.dataset.accessView === view;
+          button.classList.toggle('active', active);
+          button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        applyPageZoom(localStorage.getItem('mtu-font-scale') || 0);
+        if (accessSoundHover) accessSoundHover.checked = isSoundEnabled();
+        if (accessUnderline) accessUnderline.checked = root.classList.contains('access-underline-links');
+        if (accessReduceMotion) accessReduceMotion.checked = root.classList.contains('access-reduce-motion');
+        if (accessLargeCursor) accessLargeCursor.checked = root.classList.contains('access-large-cursor');
+      };
+
+      const setAccessPanelOpen = (open) => {
+        if (!accessPanel || !accessButton) return;
+        accessPanel.hidden = !open;
+        accessButton.setAttribute('aria-expanded', open ? 'true' : 'false');
+        accessButton.classList.toggle('is-open', open);
+        if (open) syncAccessPanel();
+      };
+
+      const syncTheme = () => {
+        const theme = root.dataset.theme || 'dark';
+        if (themeLabel) themeLabel.textContent = theme === 'light' ? themeLabel.dataset.night : themeLabel.dataset.day;
+        if (themeButton) {
+          themeButton.classList.toggle('is-active', theme === 'light');
+          themeButton.setAttribute('aria-pressed', theme === 'light' ? 'true' : 'false');
+        }
+      };
+
+      const syncAccess = () => {
+        const enabled = hasAccessibilityOptions();
+        if (accessButton) {
+          accessButton.classList.toggle('is-active', enabled);
+          accessButton.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+        }
+        syncAccessPanel();
+      };
+
+      const syncSound = () => {
+        const enabled = isSoundEnabled();
+        root.classList.toggle('sound-guide-mode', enabled);
+      };
+
+      themeButton?.addEventListener('click', () => {
+        const nextTheme = (root.dataset.theme || 'dark') === 'dark' ? 'light' : 'dark';
+        root.classList.remove('access-black-white', 'access-invert', 'accessibility-mode');
+        root.dataset.theme = nextTheme;
+        localStorage.setItem('mtu-theme', nextTheme);
+        localStorage.setItem('mtu-access-view', 'normal');
+        localStorage.setItem('mtu-accessibility', 'off');
+        syncTheme();
+        syncAccess();
+        speak(nextTheme === 'light' ? themeLabel?.dataset.day : themeLabel?.dataset.night);
+      });
+
+      accessButton?.addEventListener('click', () => {
+        setAccessPanelOpen(accessPanel?.hidden !== false);
+      });
+
+      accessClose?.addEventListener('click', () => setAccessPanelOpen(false));
+
+      accessViewButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+          setAccessView(button.dataset.accessView);
+          speak(button.getAttribute('aria-label'));
+        });
+      });
+
+      fontScaleInput?.addEventListener('input', () => {
+        applyPageZoom(fontScaleInput.value);
+        syncAccess();
+      });
+
+      accessSoundHover?.addEventListener('change', () => {
+        localStorage.setItem('mtu-sound-guide', accessSoundHover.checked ? 'on' : 'off');
+        syncSound();
+        syncAccess();
+        speak(accessSoundHover.checked ? 'Озвучка при наведении включена' : 'Озвучка при наведении выключена', true);
+      });
+
+      accessUnderline?.addEventListener('change', () => {
+        applyAccessClass(accessUnderline, 'access-underline-links', 'mtu-underline-links', accessUnderline.checked);
+        syncAccess();
+      });
+
+      accessReduceMotion?.addEventListener('change', () => {
+        applyAccessClass(accessReduceMotion, 'access-reduce-motion', 'mtu-reduce-motion', accessReduceMotion.checked);
+        syncAccess();
+      });
+
+      accessLargeCursor?.addEventListener('change', () => {
+        applyAccessClass(accessLargeCursor, 'access-large-cursor', 'mtu-large-cursor', accessLargeCursor.checked);
+        syncAccess();
+      });
+
+      accessReset?.addEventListener('click', () => {
+        setAccessView('normal');
+        applyPageZoom(0);
+        applyAccessClass(accessUnderline, 'access-underline-links', 'mtu-underline-links', false);
+        applyAccessClass(accessReduceMotion, 'access-reduce-motion', 'mtu-reduce-motion', false);
+        applyAccessClass(accessLargeCursor, 'access-large-cursor', 'mtu-large-cursor', false);
+        localStorage.setItem('mtu-sound-guide', 'off');
+        syncSound();
+        syncAccess();
+        speak('Настройки доступности сброшены', true);
+      });
+
+      document.addEventListener('click', (event) => {
+        if (!accessPanel || accessPanel.hidden) return;
+        if (event.target.closest('.accessibility-menu')) return;
+        setAccessPanelOpen(false);
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') setAccessPanelOpen(false);
+      });
+
+      document.addEventListener('focusin', (event) => {
+        if (!isSoundEnabled()) return;
+        const text = readableText(event.target);
+        if (text) speak(text);
+      });
+
+      document.addEventListener('pointerover', (event) => {
+        speakOnHover(event.target);
+      });
+
+      document.addEventListener('pointerout', () => {
+        window.clearTimeout(hoverSpeechTimer);
+      });
+
+      document.addEventListener('click', (event) => {
+        if (!isSoundEnabled()) return;
+        const interactive = event.target.closest('button,a,[role="button"],input,select,textarea');
+        if (!interactive || interactive === themeButton || interactive === accessButton) return;
+        const text = readableText(interactive);
+        if (text) speak(text);
+      });
+
+      syncTheme();
+      syncAccess();
+      syncSound();
+      window.addEventListener('load', () => {
+        if (isSoundEnabled()) speak(clean(document.querySelector('h1')?.innerText || document.title));
+      });
+
+      const playNotification = async (url) => {
+        try {
+          if (url) {
+            const audio = new Audio(url);
+            audio.volume = 0.9;
+            await audio.play();
+            return;
+          }
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContext) return;
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = 880;
+          gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.22, ctx.currentTime + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.42);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.45);
+        } catch (error) {
+          console.debug('Notification sound is waiting for user interaction.', error);
+        }
+      };
+
+      const notificationState = { initialized: false, requestId: 0, chatId: 0 };
+      const notificationLanguage = pageLang === 'uz-cyrl' ? 'uz-cyrl' : (pageLang.split('-')[0] || 'ru');
+      const notificationSoundUrl = (data, type) => {
+        return data.sounds?.by_language?.[notificationLanguage]?.[type] || data.sounds?.[type] || '';
+      };
+      const pollNotifications = async () => {
+        try {
+          const response = await fetch('/api/notifications/state/', { headers: { Accept: 'application/json' } });
+          if (!response.ok) return;
+          const data = await response.json();
+          if (!data.ok || !data.enabled || !data.can_manage) return;
+
+          const requestId = Number(data.last_request_id || 0);
+          const chatId = Number(data.last_chat_id || 0);
+          if (notificationState.initialized) {
+            if (requestId > notificationState.requestId) playNotification(notificationSoundUrl(data, 'request'));
+            if (chatId > notificationState.chatId) playNotification(notificationSoundUrl(data, 'telegram_chat'));
+          }
+          notificationState.requestId = requestId;
+          notificationState.chatId = chatId;
+          notificationState.initialized = true;
+        } catch (error) {
+          console.debug('Notification polling failed.', error);
+        }
+      };
+
+      {% if user.is_authenticated and ui_user_can_manage %}
+      pollNotifications();
+      setInterval(pollNotifications, 10000);
+      {% endif %}
+    })();
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

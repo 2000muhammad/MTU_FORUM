@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% load ui_i18n %}
+{% block page_title %}{% tr 'excel_sample' %}{% endblock %}
+{% block content %}
+<section class="glass-card sample-page">
+  <div class="sample-head">
+    <div>
+      <h2>{% if section == 'stations' %}{% tr 'stations' %}{% elif section == 'positions' %}{% tr 'positions' %}{% elif section == 'platforms' %}{% tr 'platforms' %}{% elif section == 'web-platforms' %}{% tr 'web_platforms' %}{% else %}{% tr 'telegram_channels' %}{% endif %}</h2>
+      <p class="text-secondary mb-0">{% tr 'sample_hint' %}</p>
+    </div>
+    <div class="sample-actions">
+      <a class="btn btn-outline-light" href="{% url 'settings' %}">{% tr 'back' %}</a>
+      <a class="btn btn-primary" href="{% url 'dictionary_excel' section 'sample' %}?download=1">{% tr 'download_excel' %}</a>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table request-table sample-table">
+      <thead>
+        <tr>{% for header in headers %}<th>{{ header }}</th>{% endfor %}</tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>{% for value in row %}<td>{{ value|default:'-' }}</td>{% endfor %}</tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
