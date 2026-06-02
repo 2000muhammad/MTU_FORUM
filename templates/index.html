@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ site_settings.site_name|default:'MTU FORUM' }} | Заявка</title>
+  <title>{{ site_settings.site_name|default:'MTU FORUM' }} | {% tr 'public_request_page_title' %}</title>
   {% if site_settings.site_favicon %}
   <link rel="icon" href="{{ site_settings.site_favicon.url }}">
   {% else %}
@@ -90,21 +90,21 @@
       </div>
     </div>
     <div class="public-index-actions">
-      <a class="public-login-link" href="{% url 'login' %}">Вход</a>
+      <a class="public-login-link" href="{% url 'login' %}">{% tr 'login' %}</a>
     </div>
   </header>
 
   <main class="public-index-shell">
     <section class="public-index-copy">
-      <div class="eyebrow">Enterprise railway SaaS</div>
-      <h1>Подать заявку на доступ к платформе</h1>
+      <div class="eyebrow">{% tr 'public_request_eyebrow' %}</div>
+      <h1>{% tr 'public_request_title' %}</h1>
     </section>
 
     <section class="glass-card public-request-card">
       <div class="public-request-head">
         <div>
-          <h2>Заявка</h2>
-          <p class="hint">Все поля обязательны для корректной проверки.</p>
+          <h2>{% tr 'public_request_card_title' %}</h2>
+          <p class="hint">{% tr 'public_request_hint' %}</p>
         </div>
       </div>
 
@@ -125,7 +125,7 @@
         <label>{{ form.position.label }}{{ form.position }}{{ form.position.errors }}</label>
         <label>{{ form.phone.label }}{{ form.phone }}{{ form.phone.errors }}</label>
         <label class="public-request-wide">{{ form.cause.label }}{{ form.cause }}{{ form.cause.errors }}</label>
-        <button class="btn btn-primary public-request-submit" type="submit">Отправить заявку</button>
+        <button class="btn btn-primary public-request-submit" type="submit">{% tr 'public_request_submit' %}</button>
       </form>
     </section>
   </main>

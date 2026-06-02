@@ -9,6 +9,105 @@ from django.contrib.auth.models import User
 from .models import ApiConfiguration, BotSubscriptionChannel, ExternalApiConnection, IntakeRequest, Platform, Position, SiteSettings, Station, UserProfile, WebPlatform
 
 
+PUBLIC_INTAKE_TEXTS = {
+    "ru": {
+        "platform": "Платформа",
+        "full_name": "Ф.И.О",
+        "full_name_placeholder": "Фамилия Имя Отчество",
+        "pnfl": "ПИНФЛ",
+        "pnfl_placeholder": "14 цифр",
+        "passport": "Паспорт",
+        "company": "Предприятие",
+        "position": "Должность",
+        "phone": "Телефон",
+        "cause": "Причина",
+        "cause_placeholder": "Кратко опишите причину обращения",
+        "select_platform": "Выберите платформу",
+        "select_company": "Выберите предприятие",
+        "select_position": "Выберите должность",
+        "full_name_error": "Введите Ф.И.О полностью.",
+        "pnfl_error": "ПИНФЛ должен состоять из 14 цифр.",
+        "passport_error": "Паспорт должен быть в формате AB1234567.",
+        "phone_error": "Телефон должен быть в формате +998-XX-XXX-XX-XX.",
+        "success": "Ваша заявка принята. Администратор обработает ее в ближайшее время.",
+        "not_found": "Сервисе проблема с ПНФЛ (Не нашел сотрудника). Попробуйте позже. Или обратитесь в отдел кадров (Приказ, Перевод, и т.д.).",
+    },
+    "uz": {
+        "platform": "Platforma",
+        "full_name": "F.I.Sh",
+        "full_name_placeholder": "Familiya Ism Otasining ismi",
+        "pnfl": "PNFL",
+        "pnfl_placeholder": "14 ta raqam",
+        "passport": "Pasport",
+        "company": "Korxona",
+        "position": "Lavozim",
+        "phone": "Telefon",
+        "cause": "Sabab",
+        "cause_placeholder": "Murojaat sababini qisqacha yozing",
+        "select_platform": "Platformani tanlang",
+        "select_company": "Korxonani tanlang",
+        "select_position": "Lavozimni tanlang",
+        "full_name_error": "F.I.Shni to'liq kiriting.",
+        "pnfl_error": "PNFL 14 ta raqamdan iborat bo'lishi kerak.",
+        "passport_error": "Pasport AB1234567 formatida bo'lishi kerak.",
+        "phone_error": "Telefon +998-XX-XXX-XX-XX formatida bo'lishi kerak.",
+        "success": "Arizangiz qabul qilindi. Administrator uni yaqin vaqt ichida ko'rib chiqadi.",
+        "not_found": "Servisda PNFL bilan muammo bor (xodim topilmadi). Keyinroq urinib ko'ring. Yoki kadrlar bo'limiga murojaat qiling (buyruq, o'tkazish va h.k.).",
+    },
+    "uz-cyrl": {
+        "platform": "Платформа",
+        "full_name": "Ф.И.Ш",
+        "full_name_placeholder": "Фамилия Исм Отасининг исми",
+        "pnfl": "ПНФЛ",
+        "pnfl_placeholder": "14 та рақам",
+        "passport": "Паспорт",
+        "company": "Корхона",
+        "position": "Лавозим",
+        "phone": "Телефон",
+        "cause": "Сабаб",
+        "cause_placeholder": "Мурожаат сабабини қисқача ёзинг",
+        "select_platform": "Платформани танланг",
+        "select_company": "Корхонани танланг",
+        "select_position": "Лавозимни танланг",
+        "full_name_error": "Ф.И.Шни тўлиқ киритинг.",
+        "pnfl_error": "ПНФЛ 14 та рақамдан иборат бўлиши керак.",
+        "passport_error": "Паспорт AB1234567 форматида бўлиши керак.",
+        "phone_error": "Телефон +998-XX-XXX-XX-XX форматида бўлиши керак.",
+        "success": "Аризангиз қабул қилинди. Администратор уни яқин вақт ичида кўриб чиқади.",
+        "not_found": "Сервисда ПНФЛ билан муаммо бор (ходим топилмади). Кейинроқ уриниб кўринг. Ёки кадрлар бўлимига мурожаат қилинг (буйруқ, ўтказиш ва ҳ.к.).",
+    },
+    "en": {
+        "platform": "Platform",
+        "full_name": "Full name",
+        "full_name_placeholder": "Surname Name Patronymic",
+        "pnfl": "PINFL",
+        "pnfl_placeholder": "14 digits",
+        "passport": "Passport",
+        "company": "Company",
+        "position": "Position",
+        "phone": "Phone",
+        "cause": "Reason",
+        "cause_placeholder": "Briefly describe the reason for your request",
+        "select_platform": "Select platform",
+        "select_company": "Select company",
+        "select_position": "Select position",
+        "full_name_error": "Enter your full name.",
+        "pnfl_error": "PINFL must contain 14 digits.",
+        "passport_error": "Passport must be in AB1234567 format.",
+        "phone_error": "Phone must be in +998-XX-XXX-XX-XX format.",
+        "success": "Your request has been accepted. An administrator will process it soon.",
+        "not_found": "There is a service problem with PINFL (employee not found). Try again later or contact HR (order, transfer, etc.).",
+    },
+}
+
+
+def public_intake_texts(lang_code):
+    lang = (lang_code or "ru").lower()
+    if lang in PUBLIC_INTAKE_TEXTS:
+        return PUBLIC_INTAKE_TEXTS[lang]
+    return PUBLIC_INTAKE_TEXTS.get(lang.split("-")[0], PUBLIC_INTAKE_TEXTS["ru"])
+
+
 
 
 
@@ -113,37 +212,50 @@ class IntakeRequestForm(forms.ModelForm):
 
 
 class SiteIntakeForm(forms.Form):
-    platform = forms.ChoiceField(label="Платформа", widget=forms.Select(attrs={"class": "form-select"}))
-    full_name = forms.CharField(label="Ф.И.О", max_length=180, widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Фамилия Имя Отчество"}))
-    pnfl = forms.CharField(label="ПИНФЛ", max_length=14, widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "14 цифр", "inputmode": "numeric"}))
-    passport = forms.CharField(label="Паспорт", max_length=9, widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "AB1234567"}))
-    company = forms.ChoiceField(label="Предприятие", widget=forms.Select(attrs={"class": "form-select"}))
-    position = forms.ChoiceField(label="Должность", widget=forms.Select(attrs={"class": "form-select"}))
-    phone = forms.CharField(label="Телефон", max_length=32, widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "+998-XX-XXX-XX-XX"}))
-    cause = forms.CharField(label="Причина", max_length=255, widget=forms.Textarea(attrs={"class": "form-control", "rows": 3, "placeholder": "Кратко опишите причину обращения"}))
+    platform = forms.ChoiceField(widget=forms.Select(attrs={"class": "form-select"}))
+    full_name = forms.CharField(max_length=180, widget=forms.TextInput(attrs={"class": "form-control"}))
+    pnfl = forms.CharField(max_length=14, widget=forms.TextInput(attrs={"class": "form-control", "inputmode": "numeric"}))
+    passport = forms.CharField(max_length=9, widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "AB1234567"}))
+    company = forms.ChoiceField(widget=forms.Select(attrs={"class": "form-select"}))
+    position = forms.ChoiceField(widget=forms.Select(attrs={"class": "form-select"}))
+    phone = forms.CharField(max_length=32, widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "+998-XX-XXX-XX-XX"}))
+    cause = forms.CharField(max_length=255, widget=forms.Textarea(attrs={"class": "form-control", "rows": 3}))
 
     def __init__(self, *args, **kwargs):
+        self.lang_code = kwargs.pop("lang_code", "ru")
+        self.texts = public_intake_texts(self.lang_code)
         super().__init__(*args, **kwargs)
-        self.fields["platform"].choices = [("", "Выберите платформу")] + [(item.name, item.name) for item in Platform.objects.filter(is_active=True)]
-        self.fields["company"].choices = [("", "Выберите предприятие")] + [(item.name, item.name) for item in Station.objects.filter(is_active=True)]
-        self.fields["position"].choices = [("", "Выберите должность")] + [(item.name, item.name) for item in Position.objects.filter(is_active=True)]
+        self.fields["platform"].label = self.texts["platform"]
+        self.fields["full_name"].label = self.texts["full_name"]
+        self.fields["pnfl"].label = self.texts["pnfl"]
+        self.fields["passport"].label = self.texts["passport"]
+        self.fields["company"].label = self.texts["company"]
+        self.fields["position"].label = self.texts["position"]
+        self.fields["phone"].label = self.texts["phone"]
+        self.fields["cause"].label = self.texts["cause"]
+        self.fields["full_name"].widget.attrs["placeholder"] = self.texts["full_name_placeholder"]
+        self.fields["pnfl"].widget.attrs["placeholder"] = self.texts["pnfl_placeholder"]
+        self.fields["cause"].widget.attrs["placeholder"] = self.texts["cause_placeholder"]
+        self.fields["platform"].choices = [("", self.texts["select_platform"])] + [(item.name, item.name) for item in Platform.objects.filter(is_active=True)]
+        self.fields["company"].choices = [("", self.texts["select_company"])] + [(item.name, item.name) for item in Station.objects.filter(is_active=True)]
+        self.fields["position"].choices = [("", self.texts["select_position"])] + [(item.name, item.name) for item in Position.objects.filter(is_active=True)]
 
     def clean_full_name(self):
         value = re.sub(r"\s+", " ", self.cleaned_data["full_name"]).strip()
         if len(value) < 5:
-            raise forms.ValidationError("Введите Ф.И.О полностью.")
+            raise forms.ValidationError(self.texts["full_name_error"])
         return value
 
     def clean_pnfl(self):
         value = re.sub(r"\D", "", self.cleaned_data["pnfl"])
         if len(value) != 14:
-            raise forms.ValidationError("ПИНФЛ должен состоять из 14 цифр.")
+            raise forms.ValidationError(self.texts["pnfl_error"])
         return value
 
     def clean_passport(self):
         value = re.sub(r"\s+", "", self.cleaned_data["passport"]).upper()
         if not re.fullmatch(r"[A-Z]{2}\d{7}", value):
-            raise forms.ValidationError("Паспорт должен быть в формате AB1234567.")
+            raise forms.ValidationError(self.texts["passport_error"])
         return value
 
     def clean_phone(self):
@@ -151,7 +263,7 @@ class SiteIntakeForm(forms.Form):
         if len(digits) == 9:
             digits = f"998{digits}"
         if len(digits) != 12 or not digits.startswith("998"):
-            raise forms.ValidationError("Телефон должен быть в формате +998-XX-XXX-XX-XX.")
+            raise forms.ValidationError(self.texts["phone_error"])
         return f"+998-{digits[3:5]}-{digits[5:8]}-{digits[8:10]}-{digits[10:12]}"
 
 

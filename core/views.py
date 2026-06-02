@@ -86,6 +86,11 @@ def _get_plain_request_password(request, item):
     return ""
 
 
+def _url_language(request):
+    code = (request.path.strip("/").split("/") or ["ru"])[0] or "ru"
+    return code if code in {"ru", "uz", "uz-cyrl", "en"} else getattr(request, "LANGUAGE_CODE", "ru")
+
+
 
 
 
@@ -103,7 +108,8 @@ class LoginView(DjangoLoginView):
 # UZ: Quyidagi OneID/E-IMZO bloki davlat SSO orqali tashqi kirishni boshqaradi.
 # EN: The OneID/E-IMZO block below handles external login through the government SSO.
 def index(request):
-    form = SiteIntakeForm(request.POST or None)
+    lang_code = _url_language(request)
+    form = SiteIntakeForm(request.POST or None, lang_code=lang_code)
 
     if request.method == "POST":
         if form.is_valid():
@@ -133,7 +139,7 @@ def index(request):
                     passport=data["passport"],
                     phone=hrm.get("phone") or data["phone"],
                     telegram_id=0,
-                    lang=getattr(request, "LANGUAGE_CODE", "ru"),
+                    lang=lang_code,
                     hrm_payload={"found": True, "message": hrm.get("message", ""), "raw": hrm.get("raw", {})},
                 )
                 write_site_log(
@@ -143,10 +149,10 @@ def index(request):
                     message=f"Created site intake request #{item.id}",
                     meta={"request_id": item.id, "pnfl": data["pnfl"], "platform": data["platform"]},
                 )
-                messages.success(request, "Ваша заявка принята. Администратор обработает ее в ближайшее время.")
+                messages.success(request, form.texts["success"])
                 return redirect("index")
 
-            message = hrm.get("message") or "Сервисе проблема с ПНФЛ (Не нашел сотрудника). Попробуйте позже. Или обратитесь в отдел кадров (Приказ, Перевод, и т.д.)."
+            message = hrm.get("message") or form.texts["not_found"]
             messages.error(request, message)
 
     return render(request, "index.html", {"form": form})
