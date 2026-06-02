@@ -102,6 +102,11 @@ class LoginView(DjangoLoginView):
 
     redirect_authenticated_user = True
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["web_platforms"] = WebPlatform.objects.filter(is_active=True).order_by("sort_order", "name")
+        return context
+
 
 
 # RU: Блок OneID/E-IMZO ниже отвечает за внешний вход через государственный SSO.

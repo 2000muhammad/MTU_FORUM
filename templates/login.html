@@ -142,6 +142,45 @@
     </div>
   </form>
 </section>
+{% if web_platforms %}
+<section class="public-web-platforms login-web-platforms" aria-label="{% tr 'web_platforms' %}">
+  <div class="public-web-platforms-head">
+    <span>{% tr 'web_platforms' %}</span>
+  </div>
+  <div class="public-web-marquee">
+    <div class="public-web-track">
+      {% for platform in web_platforms %}
+      <a class="public-web-item" href="{{ platform.url|default:'#' }}" {% if platform.url %}target="_blank" rel="noopener"{% endif %}>
+        <span class="public-web-icon">
+          {% if platform.image_url %}
+          <img src="{{ platform.image_url }}" alt="">
+          {% elif platform.url %}
+          <img src="https://www.google.com/s2/favicons?domain_url={{ platform.url|urlencode }}&sz=64" alt="">
+          {% else %}
+          <span>{{ platform.name|first }}</span>
+          {% endif %}
+        </span>
+        <span class="public-web-name">{{ platform.name }}</span>
+      </a>
+      {% endfor %}
+      {% for platform in web_platforms %}
+      <a class="public-web-item" href="{{ platform.url|default:'#' }}" {% if platform.url %}target="_blank" rel="noopener"{% endif %} aria-hidden="true" tabindex="-1">
+        <span class="public-web-icon">
+          {% if platform.image_url %}
+          <img src="{{ platform.image_url }}" alt="">
+          {% elif platform.url %}
+          <img src="https://www.google.com/s2/favicons?domain_url={{ platform.url|urlencode }}&sz=64" alt="">
+          {% else %}
+          <span>{{ platform.name|first }}</span>
+          {% endif %}
+        </span>
+        <span class="public-web-name">{{ platform.name }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
