@@ -25,6 +25,9 @@ urlpatterns += i18n_patterns(
     path("", views.index, name="index"),
     path("dashboard/", views.dashboard, name="dashboard"),
     path("requests/", views.requests_view, name="requests"),
+    path("programmers/", views.programmers_view, name="programmers"),
+    path("tasks/", views.developer_tasks_view, name="developer_tasks"),
+    path("tasks/create/", views.developer_task_create, name="developer_task_create"),
 
     path("login/", views.LoginView.as_view(), name="login"),
     # RU: OneID/E-IMZO routes: старт входа и callback после ответа SSO.

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Программисты | MTU FORUM{% endblock %}
+{% block page_title %}Программисты{% endblock %}
+
+{% block content %}
+<section class="glass-card task-hero">
+  <div>
+    <p class="eyebrow">Команда разработки</p>
+    <h2>Программисты</h2>
+    <p>Сводка по исполнителям, активным заданиям и задачам соисполнителей.</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'developer_task_create' %}">Создать Задание</a>
+</section>
+
+<section class="programmer-grid">
+  {% for programmer in programmers %}
+  <article class="glass-card programmer-card">
+    <div class="programmer-head">
+      {% if programmer.profile.avatar %}
+      <img src="{{ programmer.profile.avatar.url }}" alt="{{ programmer.username }}">
+      {% else %}
+      <span>{{ programmer.username|first|upper }}</span>
+      {% endif %}
+      <div>
+        <h3>{{ programmer.get_full_name|default:programmer.username }}</h3>
+        <p>{{ programmer.email|default:"Email не указан" }}</p>
+      </div>
+    </div>
+    <div class="programmer-stats">
+      <span><strong>{{ programmer.assigned_tasks_count }}</strong>Все</span>
+      <span><strong>{{ programmer.active_tasks_count }}</strong>В работе</span>
+      <span><strong>{{ programmer.done_tasks_count }}</strong>Готово</span>
+      <span><strong>{{ programmer.coexecutor_tasks_count }}</strong>Соисп.</span>
+    </div>
+  </article>
+  {% empty %}
+  <div class="glass-card empty-state">Пользователи не найдены.</div>
+  {% endfor %}
+</section>
+{% endblock %}

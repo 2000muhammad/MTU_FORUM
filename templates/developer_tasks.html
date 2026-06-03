@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Задание | MTU FORUM{% endblock %}
+{% block page_title %}Задание{% endblock %}
+
+{% block content %}
+<section class="glass-card task-hero">
+  <div>
+    <p class="eyebrow">Task control center</p>
+    <h2>Задание</h2>
+    <p>Создание, контроль статусов и быстрые счетчики по всем рабочим задачам.</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'developer_task_create' %}">Создать Задание</a>
+</section>
+
+<section class="task-counter-grid">
+  {% for item in counters_main %}
+  <a class="glass-card task-counter {% if active_filter == item.key %}active{% endif %}" href="?status={{ item.key }}{% if query %}&q={{ query|urlencode }}{% endif %}">
+    <span>{{ item.label }}</span>
+    <strong>{{ item.count }}</strong>
+  </a>
+  {% endfor %}
+</section>
+
+<section class="glass-card task-other-panel">
+  <div>
+    <p class="eyebrow">Другие</p>
+    <h2>Дополнительные статусы</h2>
+  </div>
+  <div class="task-other-grid">
+    {% for item in counters_other %}
+    <a class="task-other-link {% if active_filter == item.key %}active{% endif %}" href="?status={{ item.key }}{% if query %}&q={{ query|urlencode }}{% endif %}">
+      <span>{{ item.label }}</span>
+      <strong>{{ item.count }}</strong>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="glass-card task-toolbar">
+  <form method="get">
+    <input type="hidden" name="status" value="{{ active_filter }}">
+    <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="Поиск по названию, описанию, исполнителю">
+    <button class="btn btn-outline" type="submit">Поиск</button>
+  </form>
+</section>
+
+<section class="glass-card task-list-card">
+  <div class="task-list-head">
+    <span>Название</span>
+    <span>Статус</span>
+    <span>Исполнитель</span>
+    <span>Срок</span>
+    <span>Просмотр</span>
+  </div>
+  {% for task in page_obj %}
+  <article class="task-row">
+    <div>
+      <strong>{{ task.title }}</strong>
+      <p>{{ task.description|default:"Без описания"|truncatechars:120 }}</p>
+    </div>
+    <span class="status-pill status-{{ task.status }}">{{ task.get_status_display }}</span>
+    <span>{{ task.assignee.get_full_name|default:task.assignee.username|default:"Не назначен" }}</span>
+    <span>{{ task.due_date|date:"d.m.Y"|default:"Без срока" }}</span>
+    <span>{% if task.is_viewed %}Просмотрено{% else %}Новое{% endif %}</span>
+  </article>
+  {% empty %}
+  <div class="empty-state">Заданий пока нет.</div>
+  {% endfor %}
+</section>
+
+{% if page_obj.has_other_pages %}
+<nav class="pagination-line">
+  {% if page_obj.has_previous %}<a class="btn btn-outline" href="?page={{ page_obj.previous_page_number }}&status={{ active_filter }}{% if query %}&q={{ query|urlencode }}{% endif %}">Назад</a>{% endif %}
+  <span>{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}<a class="btn btn-outline" href="?page={{ page_obj.next_page_number }}&status={{ active_filter }}{% if query %}&q={{ query|urlencode }}{% endif %}">Вперед</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

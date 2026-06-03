@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Создать Задание | MTU FORUM{% endblock %}
+{% block page_title %}Создать Задание{% endblock %}
+
+{% block content %}
+<section class="glass-card task-hero">
+  <div>
+    <p class="eyebrow">Task creation</p>
+    <h2>Новое задание</h2>
+    <p>Заполните данные, назначьте исполнителя и статус выполнения.</p>
+  </div>
+  <a class="btn btn-outline" href="{% url 'developer_tasks' %}">Назад</a>
+</section>
+
+<form class="glass-card task-form" method="post">
+  {% csrf_token %}
+  <label>{{ form.title.label }}{{ form.title }}</label>
+  <label>{{ form.status.label }}{{ form.status }}</label>
+  <label>{{ form.assignee.label }}{{ form.assignee }}</label>
+  <label>{{ form.coexecutors.label }}{{ form.coexecutors }}</label>
+  <label>{{ form.due_date.label }}{{ form.due_date }}</label>
+  <label>{{ form.priority.label }}{{ form.priority }}</label>
+  <label class="task-checkbox">{{ form.is_viewed }} <span>{{ form.is_viewed.label }}</span></label>
+  <label class="task-form-wide">{{ form.description.label }}{{ form.description }}</label>
+  {% if form.errors %}
+  <div class="alert alert-danger task-form-wide">{{ form.errors }}</div>
+  {% endif %}
+  <div class="task-form-actions task-form-wide">
+    <button class="btn btn-primary" type="submit">Сохранить</button>
+    <a class="btn btn-outline" href="{% url 'developer_tasks' %}">Отмена</a>
+  </div>
+</form>
+{% endblock %}

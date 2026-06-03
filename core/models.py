@@ -602,3 +602,35 @@ class ExternalApiConnection(models.Model):
     def test_url(self):
         return self.healthcheck_url or self.base_url
 
+
+class DeveloperTask(models.Model):
+    class Status(models.TextChoices):
+        NEW = "new", "Новые"
+        IN_PROGRESS = "in_progress", "Выполняются"
+        DONE = "done", "Выполненные"
+        FAILED = "failed", "Не выполненные"
+        DONE_LATE = "done_late", "Выполнено с просрочкой"
+        APPROVAL = "approval", "На утверждении"
+        REVISION = "revision", "Отправленные на доработку"
+        RESUMED = "resumed", "Возобновленные"
+        FAMILIARIZED = "familiarized", "Ознакомленные"
+
+    title = models.CharField(max_length=220)
+    description = models.TextField(blank=True)
+    status = models.CharField(max_length=32, choices=Status.choices, default=Status.NEW)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="created_developer_tasks")
+    assignee = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="assigned_developer_tasks")
+    coexecutors = models.ManyToManyField(User, blank=True, related_name="coexecuted_developer_tasks")
+    due_date = models.DateField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    is_viewed = models.BooleanField(default=False)
+    priority = models.PositiveSmallIntegerField(default=2)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.title
+

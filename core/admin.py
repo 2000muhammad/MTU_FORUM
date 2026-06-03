@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, ExternalApiConnection, IntakeRequest, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Platform, Position, SiteLog, SiteSettings, Station, UserProfile, WebPlatform, WebPlatformFavorite
+from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, DeveloperTask, ExternalApiConnection, IntakeRequest, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Platform, Position, SiteLog, SiteSettings, Station, UserProfile, WebPlatform, WebPlatformFavorite
 
 
 @admin.register(IntakeRequest)
@@ -25,6 +25,7 @@ admin.site.register(BotSubscriptionChannel)
 
 admin.site.register(ApiConfiguration)
 admin.site.register(ExternalApiConnection)
+admin.site.register(DeveloperTask)
 admin.site.register(SiteSettings)
 admin.site.register(SiteLog)
 admin.site.register(UserProfile)

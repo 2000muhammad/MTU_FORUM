@@ -43,10 +43,10 @@ from django.conf import settings
 
 from PIL import Image, ImageOps
 
-from .forms import ApiConfigurationForm, BotSubscriptionChannelForm, EmployeeProfileForm, ExternalApiConnectionForm, IntakeRequestForm, LoginForm, PlatformForm, PositionForm, SiteIntakeForm, SiteSettingsForm, StationForm, StyledPasswordChangeForm, UserForm, UserInfoForm, UserProfileForm, WebPlatformForm
+from .forms import ApiConfigurationForm, BotSubscriptionChannelForm, DeveloperTaskForm, EmployeeProfileForm, ExternalApiConnectionForm, IntakeRequestForm, LoginForm, PlatformForm, PositionForm, SiteIntakeForm, SiteSettingsForm, StationForm, StyledPasswordChangeForm, UserForm, UserInfoForm, UserProfileForm, WebPlatformForm
 from .excel_utils import build_xlsx, parse_xlsx, truthy
 from .hrm_client import HRMClient, NOT_FOUND_MESSAGE
-from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, ExternalApiConnection, IntakeRequest, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Platform, Position, SiteLog, SiteSettings, Station, UserProfile, WebPlatform, WebPlatformFavorite
+from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, DeveloperTask, ExternalApiConnection, IntakeRequest, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Platform, Position, SiteLog, SiteSettings, Station, UserProfile, WebPlatform, WebPlatformFavorite
 from .site_logs import write_site_log
 from .telegram import get_telegram_profile_photo, send_telegram_media, send_telegram_message
 from .utils import generate_login, generate_password, mask_value, user_can_administer, user_can_manage
@@ -1560,9 +1560,123 @@ def profile(request):
         "employee_form": employee_form,
         "profile_obj": profile_obj,
     })
+  
+  
+def _developer_task_counts(queryset):
+    return {
+        "all": queryset.count(),
+        "new": queryset.filter(status=DeveloperTask.Status.NEW).count(),
+        "done": queryset.filter(status=DeveloperTask.Status.DONE).count(),
+        "failed": queryset.filter(status=DeveloperTask.Status.FAILED).count(),
+        "in_progress": queryset.filter(status=DeveloperTask.Status.IN_PROGRESS).count(),
+        "done_late": queryset.filter(status=DeveloperTask.Status.DONE_LATE).count(),
+        "approval": queryset.filter(status=DeveloperTask.Status.APPROVAL).count(),
+        "unviewed": queryset.filter(is_viewed=False).count(),
+        "coexecutor": queryset.filter(coexecutors__isnull=False).distinct().count(),
+        "revision": queryset.filter(status=DeveloperTask.Status.REVISION).count(),
+        "resumed": queryset.filter(status=DeveloperTask.Status.RESUMED).count(),
+        "familiarized": queryset.filter(status=DeveloperTask.Status.FAMILIARIZED).count(),
+    }
 
 
+def _developer_task_filter(queryset, key):
+    status_map = {
+        "new": DeveloperTask.Status.NEW,
+        "done": DeveloperTask.Status.DONE,
+        "failed": DeveloperTask.Status.FAILED,
+        "in_progress": DeveloperTask.Status.IN_PROGRESS,
+        "done_late": DeveloperTask.Status.DONE_LATE,
+        "approval": DeveloperTask.Status.APPROVAL,
+        "revision": DeveloperTask.Status.REVISION,
+        "resumed": DeveloperTask.Status.RESUMED,
+        "familiarized": DeveloperTask.Status.FAMILIARIZED,
+    }
+    if key in status_map:
+        return queryset.filter(status=status_map[key])
+    if key == "unviewed":
+        return queryset.filter(is_viewed=False)
+    if key == "coexecutor":
+        return queryset.filter(coexecutors__isnull=False).distinct()
+    return queryset
 
+
+@login_required
+@user_passes_test(user_can_manage)
+def programmers_view(request):
+    done_statuses = [DeveloperTask.Status.DONE, DeveloperTask.Status.DONE_LATE]
+    active_statuses = [DeveloperTask.Status.NEW, DeveloperTask.Status.IN_PROGRESS, DeveloperTask.Status.APPROVAL]
+    programmers = User.objects.filter(is_active=True).annotate(
+        assigned_tasks_count=Count("assigned_developer_tasks", distinct=True),
+        active_tasks_count=Count("assigned_developer_tasks", filter=Q(assigned_developer_tasks__status__in=active_statuses), distinct=True),
+        done_tasks_count=Count("assigned_developer_tasks", filter=Q(assigned_developer_tasks__status__in=done_statuses), distinct=True),
+        coexecutor_tasks_count=Count("coexecuted_developer_tasks", distinct=True),
+    ).order_by("-assigned_tasks_count", "first_name", "last_name", "username")
+    return render(request, "programmers.html", {"programmers": programmers})
+
+
+@login_required
+@user_passes_test(user_can_manage)
+def developer_tasks_view(request):
+    active_filter = request.GET.get("status", "all")
+    query = request.GET.get("q", "").strip()
+    base_queryset = DeveloperTask.objects.select_related("assignee", "created_by").prefetch_related("coexecutors")
+    counts = _developer_task_counts(DeveloperTask.objects.all())
+    tasks = _developer_task_filter(base_queryset, active_filter)
+
+    if query:
+        tasks = tasks.filter(
+            Q(title__icontains=query) |
+            Q(description__icontains=query) |
+            Q(assignee__username__icontains=query) |
+            Q(assignee__first_name__icontains=query) |
+            Q(assignee__last_name__icontains=query) |
+            Q(created_by__username__icontains=query)
+        )
+
+    counters_main = [
+        ("all", "Все"),
+        ("new", "Новые задания"),
+        ("done", "Выполненные"),
+        ("failed", "Не выполненные"),
+        ("in_progress", "Выполняются"),
+        ("done_late", "Выполнено с просрочкой"),
+        ("approval", "На утверждении"),
+        ("unviewed", "Непросмотренные"),
+        ("coexecutor", "Соисполнитель"),
+    ]
+    counters_other = [
+        ("revision", "Отправленные на доработку"),
+        ("resumed", "Возобновленные"),
+        ("familiarized", "Ознакомленные"),
+    ]
+    counters_main = [{"key": key, "label": label, "count": counts.get(key, 0)} for key, label in counters_main]
+    counters_other = [{"key": key, "label": label, "count": counts.get(key, 0)} for key, label in counters_other]
+    paginator = Paginator(tasks, 20)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    return render(request, "developer_tasks.html", {
+        "page_obj": page_obj,
+        "counts": counts,
+        "counters_main": counters_main,
+        "counters_other": counters_other,
+        "active_filter": active_filter,
+        "query": query,
+    })
+
+
+@login_required
+@user_passes_test(user_can_manage)
+def developer_task_create(request):
+    form = DeveloperTaskForm(request.POST or None)
+    if form.is_valid():
+        task = form.save(commit=False)
+        task.created_by = request.user
+        if task.status in {DeveloperTask.Status.DONE, DeveloperTask.Status.DONE_LATE} and not task.completed_at:
+            task.completed_at = timezone.now()
+        task.save()
+        form.save_m2m()
+        messages.success(request, "Задание создано.")
+        return redirect("developer_tasks")
+    return render(request, "developer_task_form.html", {"form": form})
 
 
 USER_PROFILE_POST_FIELDS = [
