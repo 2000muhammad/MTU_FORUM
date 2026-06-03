@@ -11,6 +11,72 @@
 {% tr 'face_not_configured' as face_not_configured %}
 {% tr 'face_read_error' as face_read_error %}
 {% tr 'face_not_matched' as face_not_matched %}
+<header class="public-index-header login-public-header">
+  <a class="public-index-brand" href="{% url 'index' %}">
+    {% if site_settings.site_logo %}
+    <img class="brand-logo" src="{{ site_settings.site_logo.url }}" alt="{{ site_settings.site_name|default:'MTU FORUM' }}">
+    {% else %}
+    <img class="brand-logo" src="{% static 'img/mtu-forum-mark.svg' %}" alt="MTU FORUM">
+    {% endif %}
+    <span>{{ site_settings.site_name|default:'MTU FORUM' }}</span>
+  </a>
+  <div class="public-header-tools login-header-tools">
+    <button class="ui-mode-btn theme-mode-btn" type="button" data-theme-toggle title="{% tr 'theme_toggle' %}" aria-label="{% tr 'theme_toggle' %}">
+      <span class="theme-icon theme-icon-sun" aria-hidden="true">
+        <svg class="mode-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.3"/><path d="M12 2.8v2.1M12 19.1v2.1M4.2 4.2l1.5 1.5M18.3 18.3l1.5 1.5M2.8 12h2.1M19.1 12h2.1M4.2 19.8l1.5-1.5M18.3 5.7l1.5-1.5"/></svg>
+      </span>
+      <span class="theme-icon theme-icon-moon" aria-hidden="true">
+        <svg class="mode-svg" viewBox="0 0 24 24"><path d="M20.2 14.7A8.1 8.1 0 0 1 9.3 3.8a8.8 8.8 0 1 0 10.9 10.9Z"/></svg>
+      </span>
+    </button>
+    <div class="accessibility-menu public-accessibility-menu">
+      <button class="ui-mode-btn access-mode-btn" type="button" data-accessibility-toggle title="{% tr 'accessibility_mode' %}" aria-label="{% tr 'accessibility_mode' %}" aria-expanded="false" aria-controls="loginHeaderAccessibilityPanel">
+        <svg class="mode-svg access-eye" aria-hidden="true" viewBox="0 0 24 24"><path d="M2.8 12s3.3-5.2 9.2-5.2 9.2 5.2 9.2 5.2-3.3 5.2-9.2 5.2S2.8 12 2.8 12Z"/><circle cx="12" cy="12" r="2.4"/></svg>
+        <span class="visually-hidden">{% tr 'accessibility_mode' %}</span>
+      </button>
+      <section class="accessibility-panel public-accessibility-panel" id="loginHeaderAccessibilityPanel" data-accessibility-panel hidden>
+        <div class="access-panel-head">
+          <div>
+            <strong>{% tr 'accessibility_title' %}</strong>
+            <span>{% tr 'accessibility_subtitle' %}</span>
+          </div>
+          <button class="access-panel-close" type="button" data-access-close aria-label="{% tr 'close' %}">×</button>
+        </div>
+        <div class="access-panel-section">
+          <span class="access-panel-label">{% tr 'accessibility_view' %}</span>
+          <div class="access-view-options" role="group" aria-label="{% tr 'accessibility_view' %}">
+            <button type="button" data-access-view="normal" class="access-view-btn access-view-normal" aria-label="{% tr 'accessibility_normal_mode' %}"><span>A</span><small>{% tr 'accessibility_normal_mode' %}</small></button>
+            <button type="button" data-access-view="whiteblack" class="access-view-btn access-view-whiteblack" aria-label="{% tr 'accessibility_bw_mode' %}"><span>A</span><small>{% tr 'accessibility_bw_mode' %}</small></button>
+            <button type="button" data-access-view="dark" class="access-view-btn access-view-dark" aria-label="{% tr 'accessibility_dark_mode' %}"><span>A</span><small>{% tr 'accessibility_dark_mode' %}</small></button>
+          </div>
+        </div>
+        <div class="access-panel-section">
+          <label class="access-range-label" for="loginHeaderAccessFontScale">
+            <span>{% tr 'accessibility_font_size' %}</span>
+            <strong data-font-scale-output data-scale-template="{% tr 'accessibility_font_scale_template' %}">0%</strong>
+          </label>
+          <input id="loginHeaderAccessFontScale" class="access-range" type="range" min="0" max="40" step="5" value="0" data-font-scale>
+        </div>
+        <div class="access-panel-section access-toggle-list">
+          <span class="access-panel-label">{% tr 'accessibility_extra' %}</span>
+          <label class="access-switch"><input type="checkbox" data-access-sound-hover><span>{% tr 'accessibility_speak_hover' %}</span></label>
+          <label class="access-switch"><input type="checkbox" data-access-underline><span>{% tr 'accessibility_underline' %}</span></label>
+          <label class="access-switch"><input type="checkbox" data-access-reduce-motion><span>{% tr 'accessibility_reduce_motion' %}</span></label>
+          <label class="access-switch"><input type="checkbox" data-access-large-cursor><span>{% tr 'accessibility_large_cursor' %}</span></label>
+        </div>
+        <div class="access-panel-actions">
+          <button type="button" data-access-reset>{% tr 'accessibility_reset' %}</button>
+        </div>
+      </section>
+    </div>
+    <div class="lang-switch public-lang-switch">
+      <a href="{% lang_url 'ru' %}">RU</a>
+      <a href="{% lang_url 'uz' %}">UZ</a>
+      <a href="{% lang_url 'uz-cyrl' %}">ЎЗ</a>
+      <a href="{% lang_url 'en' %}">EN</a>
+    </div>
+  </div>
+</header>
 <section class="login-panel">
   <div class="login-copy">
     <div class="brand big">
