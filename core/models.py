@@ -58,6 +58,37 @@ class Position(models.Model):
 
 
 
+class SiteRole(models.Model):
+    name = models.CharField(max_length=120, unique=True)
+    code = models.SlugField(max_length=80, unique=True)
+    description = models.TextField(blank=True)
+    is_builtin = models.BooleanField(default=False)
+    is_staff_role = models.BooleanField(default=False)
+    is_admin_role = models.BooleanField(default=False)
+    can_dashboard = models.BooleanField(default=True)
+    can_messages = models.BooleanField(default=True)
+    can_requests = models.BooleanField(default=False)
+    can_chats = models.BooleanField(default=False)
+    can_programmers = models.BooleanField(default=False)
+    can_tasks = models.BooleanField(default=False)
+    can_users = models.BooleanField(default=False)
+    can_directories = models.BooleanField(default=False)
+    can_api_settings = models.BooleanField(default=False)
+    can_site_settings = models.BooleanField(default=False)
+    can_logs = models.BooleanField(default=False)
+    can_profile = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+
+    def __str__(self):
+        return self.name
+
+
 class Platform(models.Model):
 
     name = models.CharField(max_length=180, unique=True)
@@ -429,6 +460,7 @@ class SiteLog(models.Model):
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, related_name="profile", on_delete=models.CASCADE)
+    roles = models.ManyToManyField(SiteRole, blank=True, related_name="users")
     avatar = models.ImageField(upload_to="profile_avatars/%Y/%m/", blank=True)
     pnfl = models.CharField(max_length=32, blank=True, db_index=True)
     middle_name = models.CharField(max_length=120, blank=True)

@@ -6,7 +6,7 @@ from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 
 from django.contrib.auth.models import User
 
-from .models import ApiConfiguration, BotSubscriptionChannel, DeveloperTask, ExternalApiConnection, IntakeRequest, Platform, Position, SiteSettings, Station, UserProfile, WebPlatform
+from .models import ApiConfiguration, BotSubscriptionChannel, DeveloperTask, ExternalApiConnection, IntakeRequest, Platform, Position, SiteRole, SiteSettings, Station, UserProfile, WebPlatform
 
 
 PUBLIC_INTAKE_TEXTS = {
@@ -355,6 +355,33 @@ class PlatformForm(AdminStyledModelForm):
 
 
 
+class SiteRoleForm(AdminStyledModelForm):
+    class Meta:
+        model = SiteRole
+        fields = [
+            "name",
+            "code",
+            "description",
+            "is_staff_role",
+            "is_admin_role",
+            "can_dashboard",
+            "can_messages",
+            "can_requests",
+            "can_chats",
+            "can_programmers",
+            "can_tasks",
+            "can_users",
+            "can_directories",
+            "can_api_settings",
+            "can_site_settings",
+            "can_logs",
+            "can_profile",
+            "is_active",
+            "sort_order",
+        ]
+        widgets = {"description": forms.Textarea(attrs={"rows": 2})}
+
+
 class WebPlatformForm(AdminStyledModelForm):
 
     class Meta:
@@ -545,6 +572,11 @@ class SiteSettingsForm(AdminStyledModelForm):
 
 class UserForm(AdminStyledModelForm):
 
+    roles = forms.ModelMultipleChoiceField(
+        queryset=SiteRole.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+    )
     password = forms.CharField(required=False, widget=forms.PasswordInput(render_value=False))
     pnfl = forms.CharField(required=False, max_length=32)
     middle_name = forms.CharField(required=False, max_length=120)
@@ -560,10 +592,12 @@ class UserForm(AdminStyledModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["roles"].queryset = SiteRole.objects.filter(is_active=True).order_by("sort_order", "name")
         user = self.instance if getattr(self.instance, "pk", None) else None
         if user:
             profile = getattr(user, "profile", None)
             if profile:
+                self.fields["roles"].initial = profile.roles.all()
                 for field in USER_PROFILE_FORM_FIELDS:
                     if field == "avatar":
                         continue
@@ -578,9 +612,10 @@ class UserForm(AdminStyledModelForm):
         fields = [
             "username",
             "first_name",
-            "last_name",
-            "email",
-            "is_staff",
+              "last_name",
+              "email",
+              "roles",
+              "is_staff",
             "is_superuser",
             "is_active",
             "password",

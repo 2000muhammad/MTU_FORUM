@@ -43,10 +43,10 @@ from django.conf import settings
 
 from PIL import Image, ImageOps
 
-from .forms import ApiConfigurationForm, BotSubscriptionChannelForm, DeveloperTaskForm, EmployeeProfileForm, ExternalApiConnectionForm, IntakeRequestForm, LoginForm, PlatformForm, PositionForm, SiteIntakeForm, SiteSettingsForm, StationForm, StyledPasswordChangeForm, UserForm, UserInfoForm, UserProfileForm, WebPlatformForm
+from .forms import ApiConfigurationForm, BotSubscriptionChannelForm, DeveloperTaskForm, EmployeeProfileForm, ExternalApiConnectionForm, IntakeRequestForm, LoginForm, PlatformForm, PositionForm, SiteIntakeForm, SiteRoleForm, SiteSettingsForm, StationForm, StyledPasswordChangeForm, UserForm, UserInfoForm, UserProfileForm, WebPlatformForm
 from .excel_utils import build_xlsx, parse_xlsx, truthy
 from .hrm_client import HRMClient, NOT_FOUND_MESSAGE
-from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, DeveloperTask, ExternalApiConnection, IntakeRequest, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Platform, Position, SiteLog, SiteSettings, Station, UserProfile, WebPlatform, WebPlatformFavorite
+from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, DeveloperTask, ExternalApiConnection, IntakeRequest, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Platform, Position, SiteLog, SiteRole, SiteSettings, Station, UserProfile, WebPlatform, WebPlatformFavorite
 from .site_logs import write_site_log
 from .telegram import get_telegram_profile_photo, send_telegram_media, send_telegram_message
 from .utils import generate_login, generate_password, mask_value, user_can_administer, user_can_manage
@@ -1814,6 +1814,12 @@ def _save_user_profile_from_form(user, form):
     else:
         _try_fill_profile_photo_from_hrm(profile)
     profile.save()
+    if "roles" in form.cleaned_data:
+        roles = form.cleaned_data.get("roles")
+        profile.roles.set(roles)
+        user.is_staff = bool(roles.filter(is_active=True, is_staff_role=True).exists())
+        user.is_superuser = bool(roles.filter(is_active=True, is_admin_role=True).exists())
+        user.save(update_fields=["is_staff", "is_superuser"])
     return profile
 
 
@@ -1971,7 +1977,12 @@ def users_view(request):
     users = list(_users_queryset(query))
     for user in users:
         _ensure_user_profile(user)
-    return render(request, "users.html", {"users": users, "user_form": user_form, "query": query})
+    return render(request, "users.html", {
+        "users": users,
+        "user_form": user_form,
+        "query": query,
+        "roles": SiteRole.objects.filter(is_active=True).order_by("sort_order", "name"),
+    })
 
 
 @login_required
@@ -2035,7 +2046,7 @@ def site_logs_view(request):
 @login_required
 @user_passes_test(user_can_administer)
 def settings_view(request, section="stations"):
-    sections = {"stations", "positions", "platforms", "web-platforms", "channels"}
+    sections = {"stations", "positions", "platforms", "web-platforms", "channels", "roles"}
     if section not in sections:
         return redirect("settings_section", section="stations")
 
@@ -2045,6 +2056,7 @@ def settings_view(request, section="stations"):
         "platform": (Platform, PlatformForm, "Платформа", "platforms"),
         "web_platform": (WebPlatform, WebPlatformForm, "WEB платформа", "web-platforms"),
         "channel": (BotSubscriptionChannel, BotSubscriptionChannelForm, "Telegram канал", "channels"),
+        "role": (SiteRole, SiteRoleForm, "Роль", "roles"),
     }
 
     if request.method == "POST":
@@ -2060,6 +2072,9 @@ def settings_view(request, section="stations"):
         instance = get_object_or_404(model, pk=request.POST.get("id")) if request.POST.get("id") else None
 
         if action == "delete" and instance:
+            if isinstance(instance, SiteRole) and instance.is_builtin:
+                messages.error(request, "Встроенную роль нельзя удалить.")
+                return redirect("settings_section", section=redirect_section)
             instance.delete()
             messages.success(request, f"{label.capitalize()} удалена.")
             return redirect("settings_section", section=redirect_section)
@@ -2078,6 +2093,7 @@ def settings_view(request, section="stations"):
         "platforms": Platform.objects.all(),
         "web_platforms": WebPlatform.objects.all(),
         "channels": BotSubscriptionChannel.objects.all(),
+        "roles": SiteRole.objects.all(),
         "active_section": section,
         "station_form": StationForm(),
 
@@ -2087,9 +2103,10 @@ def settings_view(request, section="stations"):
 
         "web_platform_form": WebPlatformForm(),
 
-        "channel_form": BotSubscriptionChannelForm(),
-
-    })
+          "channel_form": BotSubscriptionChannelForm(),
+          "role_form": SiteRoleForm(),
+  
+      })
 
 
 def _int_or_zero(value):

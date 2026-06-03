@@ -19,6 +19,9 @@
     <a class="folder-tab {% if active_section == 'channels' %}active{% endif %}" href="{% url 'settings_section' 'channels' %}">
       <span class="folder-tab-title"><em>05</em><strong>{% tr 'telegram_channels' %}</strong></span><span class="folder-tab-count">{{ channels|length }}</span>
     </a>
+    <a class="folder-tab {% if active_section == 'roles' %}active{% endif %}" href="{% url 'settings_section' 'roles' %}">
+      <span class="folder-tab-title"><em>06</em><strong>Создание ролей</strong></span><span class="folder-tab-count">{{ roles|length }}</span>
+    </a>
   </nav>
 
   <div class="settings-crud">
@@ -175,6 +178,69 @@
           <button class="btn btn-outline-info" name="action" value="save">{% tr 'save' %}</button><button class="btn btn-outline-danger" name="action" value="delete" onclick="return confirm('{% tr 'delete_channel_confirm' %}')">{% tr 'delete' %}</button>
         </form>
         {% empty %}<p class="text-secondary">{% tr 'no_channels' %}</p>{% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if active_section == 'roles' %}
+    <section class="glass-card crud-panel settings-folder-panel active">
+      <div class="crud-head">
+        <div><h2>Создание ролей</h2><span>Выберите доступы к страницам сайта.</span></div>
+      </div>
+      <form method="post" class="crud-form role-add-form">
+        {% csrf_token %}<input type="hidden" name="section" value="role"><input type="hidden" name="action" value="save">
+        <label>Название{{ role_form.name }}</label>
+        <label>Код{{ role_form.code }}</label>
+        <label>Сортировка{{ role_form.sort_order }}</label>
+        <label class="role-description">Описание{{ role_form.description }}</label>
+        <div class="role-access-grid">
+          <label>{{ role_form.is_staff_role }} Сотрудник</label>
+          <label>{{ role_form.is_admin_role }} Суперадмин</label>
+          <label>{{ role_form.can_dashboard }} Dashboard</label>
+          <label>{{ role_form.can_messages }} Сообщения</label>
+          <label>{{ role_form.can_requests }} Заявки</label>
+          <label>{{ role_form.can_chats }} Чаты</label>
+          <label>{{ role_form.can_programmers }} Программисты</label>
+          <label>{{ role_form.can_tasks }} Задание</label>
+          <label>{{ role_form.can_users }} Пользователи</label>
+          <label>{{ role_form.can_directories }} Справочники</label>
+          <label>{{ role_form.can_api_settings }} API настройки</label>
+          <label>{{ role_form.can_site_settings }} Настройки сайта</label>
+          <label>{{ role_form.can_logs }} Логи сайта</label>
+          <label>{{ role_form.can_profile }} Профиль</label>
+          <label>{{ role_form.is_active }} Активно</label>
+        </div>
+        <button class="btn btn-primary">Добавить</button>
+      </form>
+      <div class="crud-list">
+        {% for item in roles %}
+        <form method="post" class="crud-row role-row">
+          {% csrf_token %}<input type="hidden" name="section" value="role"><input type="hidden" name="id" value="{{ item.id }}">
+          <input class="form-control" name="name" value="{{ item.name }}" placeholder="Название">
+          <input class="form-control" name="code" value="{{ item.code }}" placeholder="Код" {% if item.is_builtin %}readonly{% endif %}>
+          <input class="form-control small-input" type="number" name="sort_order" value="{{ item.sort_order }}">
+          <textarea class="form-control" name="description" rows="2" placeholder="Описание">{{ item.description }}</textarea>
+          <div class="role-access-grid role-access-grid-row">
+            <label><input class="form-check-input" type="checkbox" name="is_staff_role" {% if item.is_staff_role %}checked{% endif %}> Сотрудник</label>
+            <label><input class="form-check-input" type="checkbox" name="is_admin_role" {% if item.is_admin_role %}checked{% endif %}> Суперадмин</label>
+            <label><input class="form-check-input" type="checkbox" name="can_dashboard" {% if item.can_dashboard %}checked{% endif %}> Dashboard</label>
+            <label><input class="form-check-input" type="checkbox" name="can_messages" {% if item.can_messages %}checked{% endif %}> Сообщения</label>
+            <label><input class="form-check-input" type="checkbox" name="can_requests" {% if item.can_requests %}checked{% endif %}> Заявки</label>
+            <label><input class="form-check-input" type="checkbox" name="can_chats" {% if item.can_chats %}checked{% endif %}> Чаты</label>
+            <label><input class="form-check-input" type="checkbox" name="can_programmers" {% if item.can_programmers %}checked{% endif %}> Программисты</label>
+            <label><input class="form-check-input" type="checkbox" name="can_tasks" {% if item.can_tasks %}checked{% endif %}> Задание</label>
+            <label><input class="form-check-input" type="checkbox" name="can_users" {% if item.can_users %}checked{% endif %}> Пользователи</label>
+            <label><input class="form-check-input" type="checkbox" name="can_directories" {% if item.can_directories %}checked{% endif %}> Справочники</label>
+            <label><input class="form-check-input" type="checkbox" name="can_api_settings" {% if item.can_api_settings %}checked{% endif %}> API</label>
+            <label><input class="form-check-input" type="checkbox" name="can_site_settings" {% if item.can_site_settings %}checked{% endif %}> Настройки сайта</label>
+            <label><input class="form-check-input" type="checkbox" name="can_logs" {% if item.can_logs %}checked{% endif %}> Логи</label>
+            <label><input class="form-check-input" type="checkbox" name="can_profile" {% if item.can_profile %}checked{% endif %}> Профиль</label>
+            <label><input class="form-check-input" type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> Активно</label>
+          </div>
+          <button class="btn btn-outline-info" name="action" value="save">Сохранить</button>
+          <button class="btn btn-outline-danger" name="action" value="delete" {% if item.is_builtin %}disabled{% endif %} onclick="return confirm('Удалить роль?')">Удалить</button>
+        </form>
+        {% empty %}<p class="text-secondary">{% tr 'no_records' %}</p>{% endfor %}
       </div>
     </section>
     {% endif %}

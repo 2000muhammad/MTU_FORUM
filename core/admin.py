@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, DeveloperTask, ExternalApiConnection, IntakeRequest, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Platform, Position, SiteLog, SiteSettings, Station, UserProfile, WebPlatform, WebPlatformFavorite
+from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, DeveloperTask, ExternalApiConnection, IntakeRequest, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Platform, Position, SiteLog, SiteRole, SiteSettings, Station, UserProfile, WebPlatform, WebPlatformFavorite
 
 
 @admin.register(IntakeRequest)
@@ -12,6 +12,7 @@ class IntakeRequestAdmin(admin.ModelAdmin):
 
 admin.site.register(Station)
 admin.site.register(Position)
+admin.site.register(SiteRole)
 admin.site.register(Platform)
 admin.site.register(WebPlatform)
 admin.site.register(WebPlatformFavorite)

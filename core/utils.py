@@ -29,11 +29,47 @@ def generate_password(length=12):
 
 
 def user_is_admin(user):
-    return bool(user and user.is_authenticated and (user.is_superuser or user.groups.filter(name="admin").exists()))
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser or user.groups.filter(name="admin").exists():
+        return True
+    profile = getattr(user, "profile", None)
+    if not profile:
+        return False
+    return bool(profile.roles.filter(is_active=True).filter(
+        is_admin_role=True
+    ).exists() or profile.roles.filter(is_active=True).filter(
+        can_users=True
+    ).exists() or profile.roles.filter(is_active=True).filter(
+        can_directories=True
+    ).exists() or profile.roles.filter(is_active=True).filter(
+        can_api_settings=True
+    ).exists() or profile.roles.filter(is_active=True).filter(
+        can_site_settings=True
+    ).exists() or profile.roles.filter(is_active=True).filter(
+        can_logs=True
+    ).exists())
 
 
 def user_is_staff_role(user):
-    return bool(user and user.is_authenticated and (user.is_staff or user.groups.filter(name="staff").exists()))
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_staff or user.groups.filter(name="staff").exists():
+        return True
+    profile = getattr(user, "profile", None)
+    if not profile:
+        return False
+    return bool(profile.roles.filter(is_active=True).filter(
+        is_staff_role=True
+    ).exists() or profile.roles.filter(is_active=True).filter(
+        can_requests=True
+    ).exists() or profile.roles.filter(is_active=True).filter(
+        can_chats=True
+    ).exists() or profile.roles.filter(is_active=True).filter(
+        can_programmers=True
+    ).exists() or profile.roles.filter(is_active=True).filter(
+        can_tasks=True
+    ).exists())
 
 
 def user_can_manage(user):

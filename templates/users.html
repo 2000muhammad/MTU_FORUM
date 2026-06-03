@@ -33,8 +33,12 @@
         <button class="secret-toggle-btn" type="button" data-secret-toggle data-show="{% tr 'show' %}" data-hide="{% tr 'hide' %}">{% tr 'show' %}</button>
       </span>
     </label>
-    <label class="check-line">{{ user_form.is_staff }} {% tr 'staff' %}</label>
-    <label class="check-line">{{ user_form.is_superuser }} {% tr 'superuser' %}</label>
+    <div class="role-picker role-picker-create">
+      <button class="role-picker-toggle" type="button" data-role-toggle>Роли</button>
+      <div class="role-picker-panel">
+        {{ user_form.roles }}
+      </div>
+    </div>
     <label class="check-line">{{ user_form.is_active }} {% tr 'active' %}</label>
     <div class="user-create-actions">
       <button class="btn btn-outline-info" name="action" value="hrm_lookup" formnovalidate>{% tr 'hrm_lookup' %}</button>
@@ -51,7 +55,7 @@
   </form>
   <div class="table-responsive">
     <table class="table request-table user-table">
-      <thead><tr><th>{% tr 'photo_upload' %}</th><th>{% tr 'pnfl_jshshir' %}</th><th>{% tr 'username' %}</th><th>{% tr 'first_name' %}</th><th>{% tr 'last_name' %}</th><th>{% tr 'middle_name' %}</th><th>Email</th><th>{% tr 'phone' %}</th><th>{% tr 'birth_date' %}</th><th>{% tr 'employee_pinfl' %}</th><th>{% tr 'branch' %}</th><th>{% tr 'organization' %}</th><th>{% tr 'department' %}</th><th>{% tr 'position' %}</th><th>{% tr 'staff' %}</th><th>{% tr 'superuser' %}</th><th>{% tr 'active' %}</th><th>{% tr 'new_password' %}</th><th></th></tr></thead>
+      <thead><tr><th>{% tr 'photo_upload' %}</th><th>{% tr 'pnfl_jshshir' %}</th><th>{% tr 'username' %}</th><th>{% tr 'first_name' %}</th><th>{% tr 'last_name' %}</th><th>{% tr 'middle_name' %}</th><th>Email</th><th>{% tr 'phone' %}</th><th>{% tr 'birth_date' %}</th><th>{% tr 'employee_pinfl' %}</th><th>{% tr 'branch' %}</th><th>{% tr 'organization' %}</th><th>{% tr 'department' %}</th><th>{% tr 'position' %}</th><th>Роли</th><th>{% tr 'active' %}</th><th>{% tr 'new_password' %}</th><th></th></tr></thead>
       <tbody>
       {% for u in users %}
       <tr>
@@ -78,8 +82,19 @@
           <td><input class="form-control" name="organization" value="{{ u.profile.organization }}"></td>
           <td><input class="form-control" name="department" value="{{ u.profile.department }}"></td>
           <td><input class="form-control" name="position" value="{{ u.profile.position }}"></td>
-          <td><label class="check-line"><input class="form-check-input" type="checkbox" name="is_staff" {% if u.is_staff %}checked{% endif %}></label></td>
-          <td><label class="check-line"><input class="form-check-input" type="checkbox" name="is_superuser" {% if u.is_superuser %}checked{% endif %}></label></td>
+          <td>
+            <div class="role-picker role-picker-table">
+              <button class="role-picker-toggle" type="button" data-role-toggle>Роли</button>
+              <div class="role-picker-panel">
+                {% for role in roles %}
+                <label class="role-check">
+                  <input class="form-check-input" type="checkbox" name="roles" value="{{ role.id }}" {% if role in u.profile.roles.all %}checked{% endif %}>
+                  <span>{{ role.name }}</span>
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+          </td>
           <td><label class="check-line"><input class="form-check-input" type="checkbox" name="is_active" {% if u.is_active %}checked{% endif %}></label></td>
           <td>
             <span class="secret-input-wrap user-password-wrap">
@@ -90,7 +105,7 @@
           <td class="user-actions"><button class="btn btn-outline-info" name="action" value="save">{% tr 'save' %}</button><button class="btn btn-outline-primary" name="action" value="hrm_sync" formnovalidate>{% tr 'sync_hrm' %}</button><button class="btn btn-outline-danger" name="action" value="delete" formnovalidate onclick="return confirm('{% tr 'delete_user_confirm' %}')">{% tr 'delete' %}</button></td>
         </form>
       </tr>
-      {% empty %}<tr><td colspan="19" class="text-center text-secondary py-5">{% tr 'no_records' %}</td></tr>{% endfor %}
+      {% empty %}<tr><td colspan="18" class="text-center text-secondary py-5">{% tr 'no_records' %}</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>
@@ -109,6 +124,23 @@ document.querySelectorAll('[data-secret-toggle]').forEach((button) => {
     input.type = isHidden ? 'text' : 'password';
     button.textContent = isHidden ? button.dataset.hide : button.dataset.show;
   });
+});
+
+document.querySelectorAll('[data-role-toggle]').forEach((button) => {
+  button.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const picker = button.closest('.role-picker');
+    document.querySelectorAll('.role-picker.is-open').forEach((item) => {
+      if (item !== picker) item.classList.remove('is-open');
+    });
+    picker?.classList.toggle('is-open');
+  });
+});
+document.addEventListener('click', () => {
+  document.querySelectorAll('.role-picker.is-open').forEach((item) => item.classList.remove('is-open'));
+});
+document.querySelectorAll('.role-picker-panel').forEach((panel) => {
+  panel.addEventListener('click', (event) => event.stopPropagation());
 });
 </script>
 {% endblock %}
