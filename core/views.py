@@ -1,11 +1,13 @@
 import base64
 import binascii
 import json
+import os
 import secrets
+import tempfile
 
 from collections import defaultdict
 from decimal import Decimal, InvalidOperation
-from io import BytesIO
+from io import BytesIO, StringIO
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import requests
@@ -22,9 +24,11 @@ from django.contrib.auth.models import User
 from django.contrib.auth.views import LoginView as DjangoLoginView
 from django.core.exceptions import RequestDataTooBig
 from django.core.files.base import ContentFile
+from django.core.management import call_command
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count, F, Max, Q
+from django.db.models.deletion import ProtectedError
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -43,13 +47,31 @@ from django.conf import settings
 
 from PIL import Image, ImageOps
 
-from .forms import ApiConfigurationForm, BotSubscriptionChannelForm, DeveloperTaskForm, EmployeeProfileForm, ExternalApiConnectionForm, IntakeRequestForm, LoginForm, PlatformForm, PositionForm, SiteIntakeForm, SiteRoleForm, SiteSettingsForm, StationForm, StyledPasswordChangeForm, UserForm, UserInfoForm, UserProfileForm, WebPlatformForm
+from .forms import ApiConfigurationForm, BotSubscriptionChannelForm, BranchForm, DeveloperTaskForm, EmployeeProfileForm, ExternalApiConnectionForm, IntakeRequestForm, LoginForm, ManagerAccountForm, OrganizationForm, PlatformForm, PositionForm, SiteIntakeForm, SiteRoleForm, SiteSettingsForm, StationForm, StyledPasswordChangeForm, UserForm, UserInfoForm, UserProfileForm, WebPlatformForm
 from .excel_utils import build_xlsx, parse_xlsx, truthy
 from .hrm_client import HRMClient, NOT_FOUND_MESSAGE
-from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, DeveloperTask, ExternalApiConnection, IntakeRequest, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Platform, Position, SiteLog, SiteRole, SiteSettings, Station, UserProfile, WebPlatform, WebPlatformFavorite
+from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, Platform, Position, SiteLog, SiteRole, SiteSettings, Station, UserProfile, WebPlatform, WebPlatformFavorite
 from .site_logs import write_site_log
 from .telegram import get_telegram_profile_photo, send_telegram_media, send_telegram_message
-from .utils import generate_login, generate_password, mask_value, user_can_administer, user_can_manage
+from .utils import (
+    generate_login,
+    generate_password,
+    mask_value,
+    user_can_api_settings,
+    user_can_administer,
+    user_can_chats,
+    user_can_logs,
+    user_can_manage,
+    user_can_manage_manager_accounts,
+    user_can_manage_organizations,
+    user_can_manage_people,
+    user_can_messages,
+    user_can_programmers,
+    user_can_requests,
+    user_can_site_settings,
+    user_can_tasks,
+    user_is_branch_manager,
+)
 
 
 def _is_django_password_hash(value):
@@ -825,10 +847,11 @@ def logout_view(request):
 
 def dashboard(request):
 
-    can_manage = user_can_manage(request.user)
+    can_requests = user_can_requests(request.user)
+    can_chats = user_can_chats(request.user)
     deleted_by_platform = defaultdict(int)
     platform_stats = []
-    if can_manage:
+    if can_requests:
         for meta in SiteLog.objects.filter(action="request_delete").values_list("meta", flat=True):
             if isinstance(meta, dict):
                 deleted_by_platform[meta.get("platform") or ""] += 1
@@ -857,13 +880,13 @@ def dashboard(request):
 
     stats = {
 
-        "new": IntakeRequest.objects.filter(status=IntakeRequest.Status.NEW).count() if can_manage else 0,
+        "new": IntakeRequest.objects.filter(status=IntakeRequest.Status.NEW).count() if can_requests else 0,
 
-        "done": IntakeRequest.objects.filter(status=IntakeRequest.Status.DONE).count() if can_manage else 0,
+        "done": IntakeRequest.objects.filter(status=IntakeRequest.Status.DONE).count() if can_requests else 0,
 
-        "blocked": IntakeRequest.objects.filter(status=IntakeRequest.Status.BLOCKED).count() if can_manage else 0,
+        "blocked": IntakeRequest.objects.filter(status=IntakeRequest.Status.BLOCKED).count() if can_requests else 0,
 
-        "chats": AdminChatMessage.objects.filter(direction=AdminChatMessage.Direction.IN, is_read=False).count() if can_manage else 0,
+        "chats": AdminChatMessage.objects.filter(direction=AdminChatMessage.Direction.IN, is_read=False).count() if can_chats else 0,
 
     }
 
@@ -883,7 +906,14 @@ def dashboard(request):
         for item in WebPlatform.objects.annotate(favorite_count=Count("favorites"))
     ]
 
-    return render(request, "dashboard.html", {"stats": stats, "platform_stats": platform_stats, "web_platforms": web_platforms, "show_admin_dashboard": can_manage})
+    return render(request, "dashboard.html", {
+        "stats": stats,
+        "platform_stats": platform_stats,
+        "web_platforms": web_platforms,
+        "show_admin_dashboard": can_requests or can_chats,
+        "dashboard_can_requests": can_requests,
+        "dashboard_can_chats": can_chats,
+    })
 
 
 @login_required
@@ -911,7 +941,7 @@ def open_web_platform(request, pk):
 
 @login_required
 
-@user_passes_test(user_can_manage)
+@user_passes_test(user_can_requests)
 
 def requests_view(request):
 
@@ -923,7 +953,7 @@ def requests_view(request):
 
 @login_required
 
-@user_passes_test(user_can_manage)
+@user_passes_test(user_can_requests)
 
 @require_GET
 
@@ -1003,7 +1033,7 @@ def dashboard_requests_api(request):
 
 @login_required
 
-@user_passes_test(user_can_manage)
+@user_passes_test(user_can_requests)
 
 def request_edit(request, pk):
 
@@ -1109,7 +1139,7 @@ def request_edit(request, pk):
 
 @login_required
 
-@user_passes_test(user_can_manage)
+@user_passes_test(user_can_chats)
 
 def admin_chat_list(request):
     if request.method == "POST":
@@ -1168,7 +1198,7 @@ def _telegram_avatar_svg(telegram_id, label=""):
 
 
 @login_required
-@user_passes_test(user_can_manage)
+@user_passes_test(user_can_chats)
 def telegram_profile_photo(request, telegram_id):
     photo = get_telegram_profile_photo(telegram_id)
     if photo:
@@ -1265,7 +1295,7 @@ def _admin_chat_screen(request, telegram_id, thread=None):
 
 
 @login_required
-@user_passes_test(user_can_manage)
+@user_passes_test(user_can_chats)
 def admin_chat_thread_detail(request, thread_id):
     thread = get_object_or_404(AdminChatThread, pk=thread_id)
     return _admin_chat_screen(request, thread.telegram_id, thread)
@@ -1276,7 +1306,7 @@ def admin_chat_thread_detail(request, thread_id):
 
 @login_required
 
-@user_passes_test(user_can_manage)
+@user_passes_test(user_can_chats)
 
 def admin_chat_detail(request, telegram_id):
     return _admin_chat_screen(request, telegram_id)
@@ -1316,6 +1346,7 @@ def _find_direct_chat(user, target):
 
 
 @login_required
+@user_passes_test(user_can_messages)
 def internal_messages_view(request, chat_id=None):
     active_chat = None
     active_membership = None
@@ -1601,7 +1632,7 @@ def _developer_task_filter(queryset, key):
 
 
 @login_required
-@user_passes_test(user_can_manage)
+@user_passes_test(user_can_programmers)
 def programmers_view(request):
     done_statuses = [DeveloperTask.Status.DONE, DeveloperTask.Status.DONE_LATE]
     active_statuses = [DeveloperTask.Status.NEW, DeveloperTask.Status.IN_PROGRESS, DeveloperTask.Status.APPROVAL]
@@ -1614,13 +1645,28 @@ def programmers_view(request):
     return render(request, "programmers.html", {"programmers": programmers})
 
 
+def _developer_task_scope(user):
+    queryset = DeveloperTask.objects.select_related("assignee", "created_by").prefetch_related("coexecutors")
+    if user_can_tasks(user):
+        return queryset
+    return queryset.filter(Q(assignee=user) | Q(coexecutors=user) | Q(created_by=user)).distinct()
+
+
+def _developer_task_user_can_touch(user, task):
+    return (
+        user_can_tasks(user)
+        or task.created_by_id == user.id
+        or task.assignee_id == user.id
+        or task.coexecutors.filter(pk=user.pk).exists()
+    )
+
+
 @login_required
-@user_passes_test(user_can_manage)
 def developer_tasks_view(request):
     active_filter = request.GET.get("status", "all")
     query = request.GET.get("q", "").strip()
-    base_queryset = DeveloperTask.objects.select_related("assignee", "created_by").prefetch_related("coexecutors")
-    counts = _developer_task_counts(DeveloperTask.objects.all())
+    base_queryset = _developer_task_scope(request.user)
+    counts = _developer_task_counts(base_queryset)
     tasks = _developer_task_filter(base_queryset, active_filter)
 
     if query:
@@ -1634,25 +1680,27 @@ def developer_tasks_view(request):
         )
 
     counters_main = [
-        ("all", "Все"),
-        ("new", "Новые задания"),
-        ("done", "Выполненные"),
-        ("failed", "Не выполненные"),
-        ("in_progress", "Выполняются"),
-        ("done_late", "Выполнено с просрочкой"),
-        ("approval", "На утверждении"),
-        ("unviewed", "Непросмотренные"),
-        ("coexecutor", "Соисполнитель"),
+        ("all", "task_counter_all"),
+        ("new", "task_counter_new"),
+        ("done", "task_counter_done"),
+        ("failed", "task_counter_failed"),
+        ("in_progress", "task_counter_in_progress"),
+        ("done_late", "task_counter_done_late"),
+        ("approval", "task_counter_approval"),
+        ("unviewed", "task_counter_unviewed"),
+        ("coexecutor", "task_counter_coexecutor"),
     ]
     counters_other = [
-        ("revision", "Отправленные на доработку"),
-        ("resumed", "Возобновленные"),
-        ("familiarized", "Ознакомленные"),
+        ("revision", "task_counter_revision"),
+        ("resumed", "task_counter_resumed"),
+        ("familiarized", "task_counter_familiarized"),
     ]
-    counters_main = [{"key": key, "label": label, "count": counts.get(key, 0)} for key, label in counters_main]
-    counters_other = [{"key": key, "label": label, "count": counts.get(key, 0)} for key, label in counters_other]
+    counters_main = [{"key": key, "label_key": label_key, "count": counts.get(key, 0)} for key, label_key in counters_main]
+    counters_other = [{"key": key, "label_key": label_key, "count": counts.get(key, 0)} for key, label_key in counters_other]
     paginator = Paginator(tasks, 20)
     page_obj = paginator.get_page(request.GET.get("page"))
+    for task in page_obj.object_list:
+        task.status_label_key = f"task_status_{task.status}"
     return render(request, "developer_tasks.html", {
         "page_obj": page_obj,
         "counts": counts,
@@ -1660,11 +1708,12 @@ def developer_tasks_view(request):
         "counters_other": counters_other,
         "active_filter": active_filter,
         "query": query,
+        "can_manage_tasks": user_can_tasks(request.user),
     })
 
 
 @login_required
-@user_passes_test(user_can_manage)
+@user_passes_test(user_can_tasks)
 def developer_task_create(request):
     form = DeveloperTaskForm(request.POST or None)
     if form.is_valid():
@@ -1676,7 +1725,72 @@ def developer_task_create(request):
         form.save_m2m()
         messages.success(request, "Задание создано.")
         return redirect("developer_tasks")
-    return render(request, "developer_task_form.html", {"form": form})
+    return render(request, "developer_task_form.html", {"form": form, "task": None})
+
+
+@login_required
+def developer_task_edit(request, pk):
+    task = get_object_or_404(_developer_task_scope(request.user), pk=pk)
+    if not _developer_task_user_can_touch(request.user, task):
+        messages.error(request, "У вас нет доступа к этому заданию.")
+        return redirect("developer_tasks")
+
+    form = DeveloperTaskForm(request.POST or None, instance=task)
+    if not user_can_tasks(request.user):
+        for field in ("assignee", "coexecutors", "priority"):
+            form.fields.pop(field, None)
+    if form.is_valid():
+        task = form.save(commit=False)
+        if task.status in {DeveloperTask.Status.DONE, DeveloperTask.Status.DONE_LATE} and not task.completed_at:
+            task.completed_at = timezone.now()
+        if task.status not in {DeveloperTask.Status.DONE, DeveloperTask.Status.DONE_LATE}:
+            task.completed_at = None
+        task.save()
+        form.save_m2m()
+        messages.success(request, "Задание сохранено.")
+        return redirect("developer_tasks")
+    return render(request, "developer_task_form.html", {"form": form, "task": task})
+
+
+@login_required
+def developer_task_action(request, pk):
+    if request.method != "POST":
+        return redirect("developer_tasks")
+    task = get_object_or_404(_developer_task_scope(request.user), pk=pk)
+    if not _developer_task_user_can_touch(request.user, task):
+        messages.error(request, "У вас нет доступа к этому заданию.")
+        return redirect("developer_tasks")
+
+    action = request.POST.get("action")
+    if action == "view":
+        task.is_viewed = True
+        task.save(update_fields=["is_viewed", "updated_at"])
+        messages.success(request, "Задание отмечено как просмотренное.")
+    elif action == "take":
+        if not task.assignee_id:
+            task.assignee = request.user
+        task.status = DeveloperTask.Status.IN_PROGRESS
+        task.is_viewed = True
+        task.save(update_fields=["assignee", "status", "is_viewed", "updated_at"])
+        messages.success(request, "Задание взято в работу.")
+    elif action == "complete":
+        task.status = DeveloperTask.Status.APPROVAL
+        task.is_viewed = True
+        task.save(update_fields=["status", "is_viewed", "updated_at"])
+        messages.success(request, "Задание отправлено на утверждение.")
+    elif action == "approve" and user_can_tasks(request.user):
+        task.status = DeveloperTask.Status.DONE_LATE if task.due_date and task.due_date < timezone.localdate() else DeveloperTask.Status.DONE
+        task.completed_at = timezone.now()
+        task.save(update_fields=["status", "completed_at", "updated_at"])
+        messages.success(request, "Задание утверждено.")
+    elif action == "revision" and user_can_tasks(request.user):
+        task.status = DeveloperTask.Status.REVISION
+        task.completed_at = None
+        task.save(update_fields=["status", "completed_at", "updated_at"])
+        messages.success(request, "Задание отправлено на доработку.")
+    else:
+        messages.error(request, "Действие недоступно.")
+    return redirect("developer_tasks")
 
 
 USER_PROFILE_POST_FIELDS = [
@@ -1904,16 +2018,36 @@ def _users_queryset(query=""):
     return users
 
 
+def _actor_branch_name(user):
+    profile = getattr(user, "profile", None)
+    return getattr(profile, "branch", "") if profile else ""
+
+
+def _scope_users_for_actor(users, actor):
+    if user_is_branch_manager(actor):
+        branch_name = _actor_branch_name(actor)
+        return users.filter(profile__branch=branch_name) if branch_name else users.none()
+    return users
+
+
+def _scope_organizations_for_actor(organizations, actor):
+    if user_is_branch_manager(actor):
+        branch_name = _actor_branch_name(actor)
+        return organizations.filter(branch__name=branch_name) if branch_name else organizations.none()
+    return organizations
+
+
 @login_required
-@user_passes_test(user_can_administer)
+@user_passes_test(user_can_manage_people)
 def users_view(request):
-    user_form = UserForm()
+    user_form = UserForm(actor=request.user)
     query = request.GET.get("q", "").strip()
 
     if request.method == "POST":
-        action = request.POST.get("action")
+        action = request.POST.get("action") or "save"
         user_id = request.POST.get("id")
-        instance = get_object_or_404(User, pk=user_id) if user_id else None
+        instance_qs = _scope_users_for_actor(User.objects.all(), request.user)
+        instance = get_object_or_404(instance_qs, pk=user_id) if user_id else None
 
         if action == "delete" and instance:
             if instance == request.user:
@@ -1924,24 +2058,30 @@ def users_view(request):
                 messages.success(request, f"Пользователь {username} удален.")
             return redirect("users")
 
+        if action == "reset_password" and instance:
+            instance.set_password("1234567")
+            instance.save(update_fields=["password"])
+            messages.success(request, f"Пароль пользователя {instance.username} сброшен на 1234567.")
+            return redirect("users")
+
         if action == "hrm_lookup":
             pnfl = (request.POST.get("pnfl") or request.POST.get("employee_pinfl") or "").strip()
             if not pnfl:
                 messages.error(request, "Введите ПНФЛ/ЖШИР для поиска в HRM.")
-                user_form = UserForm(initial=request.POST)
+                user_form = UserForm(initial=request.POST, actor=request.user)
             else:
                 try:
                     hrm = HRMClient().find_employee(pnfl, request.POST.get("phone", ""))
                 except Exception as exc:
                     messages.error(request, f"HRM API недоступен: {exc}")
-                    user_form = UserForm(initial=request.POST)
+                    user_form = UserForm(initial=request.POST, actor=request.user)
                 else:
                     if hrm.get("found"):
                         messages.success(request, "Данные сотрудника получены из HRM.")
-                        user_form = UserForm(initial=_hrm_form_initial(hrm, request.POST))
+                        user_form = UserForm(initial=_hrm_form_initial(hrm, request.POST), actor=request.user)
                     else:
                         messages.error(request, hrm.get("message") or NOT_FOUND_MESSAGE)
-                        user_form = UserForm(initial=request.POST)
+                        user_form = UserForm(initial=request.POST, actor=request.user)
         elif action == "hrm_sync" and instance:
             pnfl = (request.POST.get("pnfl") or request.POST.get("employee_pinfl") or getattr(_ensure_user_profile(instance), "pnfl", "")).strip()
             if not pnfl:
@@ -1959,34 +2099,222 @@ def users_view(request):
                         messages.error(request, hrm.get("message") or NOT_FOUND_MESSAGE)
             return redirect("users")
         else:
-            form = UserForm(request.POST, request.FILES, instance=instance)
+            post_data = request.POST.copy()
+            birth_date = (post_data.get("birth_date") or "").strip()
+            if birth_date and not parse_date(birth_date):
+                for separator in (".", "/", "-"):
+                    parts = birth_date.split(separator)
+                    if len(parts) == 3 and len(parts[0]) <= 2 and len(parts[1]) <= 2 and len(parts[2]) == 4:
+                        post_data["birth_date"] = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                        break
+            form = UserForm(post_data, request.FILES, instance=instance, actor=request.user)
             if form.is_valid():
                 user = form.save(commit=False)
                 password = form.cleaned_data.get("password")
                 if password:
                     user.set_password(password)
                 elif instance is None:
-                    user.set_unusable_password()
+                    user.set_password("1234567")
                 user.save()
                 _save_user_profile_from_form(user, form)
                 messages.success(request, "Пользователь сохранен.")
                 return redirect("users")
-            user_form = form if instance is None else UserForm()
+            user_form = form if instance is None else UserForm(actor=request.user)
             messages.error(request, "Проверьте поля пользователя.")
 
-    users = list(_users_queryset(query))
+    users = list(_scope_users_for_actor(_users_queryset(query), request.user))
     for user in users:
-        _ensure_user_profile(user)
+        profile = _ensure_user_profile(user)
+        selected_role = profile.roles.filter(is_active=True).order_by("sort_order", "name").first()
+        user.selected_role_id = selected_role.pk if selected_role else None
     return render(request, "users.html", {
         "users": users,
         "user_form": user_form,
         "query": query,
-        "roles": SiteRole.objects.filter(is_active=True).order_by("sort_order", "name"),
+        "roles": user_form.fields["roles"].queryset,
+        "branches": Branch.objects.filter(
+            is_active=True,
+            **({"name": _actor_branch_name(request.user)} if user_is_branch_manager(request.user) else {}),
+        ).order_by("sort_order", "name"),
+        "organizations": _scope_organizations_for_actor(
+            Organization.objects.filter(is_active=True, branch__is_active=True).select_related("branch"),
+            request.user,
+        ),
+    })
+
+
+def _manager_role(manager_type):
+    restricted_permissions = {
+        "can_chats": False,
+        "can_programmers": False,
+        "can_tasks": False,
+        "can_directories": False,
+        "can_api_settings": False,
+        "can_site_settings": False,
+        "can_logs": False,
+    }
+    if manager_type == ManagerAccountForm.MANAGER_BRANCH:
+        defaults = {
+            "name": "Менеджер филиала",
+            "description": "Доступ менеджера филиала к заявкам и рабочей панели.",
+            "is_staff_role": True,
+            "can_dashboard": True,
+            "can_messages": True,
+            "can_requests": True,
+            "can_users": True,
+            "can_profile": True,
+            "is_active": True,
+            "sort_order": 30,
+            **restricted_permissions,
+        }
+        role, _ = SiteRole.objects.get_or_create(code="branch_manager", defaults=defaults)
+    else:
+        defaults = {
+            "name": "Менеджер организации",
+            "description": "Доступ менеджера организации к заявкам и рабочей панели.",
+            "is_staff_role": True,
+            "can_dashboard": True,
+            "can_messages": True,
+            "can_requests": True,
+            "can_users": False,
+            "can_profile": True,
+            "is_active": True,
+            "sort_order": 31,
+            **restricted_permissions,
+        }
+        role, _ = SiteRole.objects.get_or_create(code="organization_manager", defaults=defaults)
+    dirty_fields = []
+    for field, value in defaults.items():
+        if getattr(role, field) != value:
+            setattr(role, field, value)
+            dirty_fields.append(field)
+    if dirty_fields:
+        role.save(update_fields=dirty_fields + ["updated_at"])
+    return role
+
+
+def _manager_users_queryset(query=""):
+    manager_codes = ["branch_manager", "organization_manager"]
+    users = User.objects.select_related("profile").filter(
+        profile__roles__code__in=manager_codes
+    ).distinct().order_by("profile__branch", "profile__organization", "username")
+    if query:
+        users = users.filter(
+            Q(username__icontains=query)
+            | Q(first_name__icontains=query)
+            | Q(last_name__icontains=query)
+            | Q(email__icontains=query)
+            | Q(profile__phone__icontains=query)
+            | Q(profile__branch__icontains=query)
+            | Q(profile__organization__icontains=query)
+        )
+    return users
+
+
+@login_required
+@user_passes_test(user_can_manage_manager_accounts)
+def manager_accounts_view(request):
+    _manager_role(ManagerAccountForm.MANAGER_BRANCH)
+    _manager_role(ManagerAccountForm.MANAGER_ORGANIZATION)
+    default_manager_type = (
+        ManagerAccountForm.MANAGER_ORGANIZATION
+        if user_is_branch_manager(request.user)
+        else ManagerAccountForm.MANAGER_BRANCH
+    )
+    form = ManagerAccountForm(
+        initial={"manager_type": default_manager_type, "is_active": True},
+        actor=request.user,
+    )
+    query = request.GET.get("q", "").strip()
+
+    if request.method == "POST":
+        action = request.POST.get("action") or "save"
+        user_id = request.POST.get("id")
+        instance_qs = _scope_users_for_actor(_manager_users_queryset(), request.user)
+        if user_is_branch_manager(request.user):
+            instance_qs = instance_qs.filter(profile__roles__code="organization_manager")
+        instance = get_object_or_404(instance_qs, pk=user_id) if user_id else None
+
+        if action == "delete" and instance:
+            if instance == request.user:
+                messages.error(request, "Нельзя удалить текущего пользователя.")
+            else:
+                username = instance.username
+                instance.delete()
+                messages.success(request, f"Менеджер {username} удалён.")
+            return redirect("manager_accounts")
+
+        if action == "reset_password" and instance:
+            instance.set_password("1234567")
+            instance.save(update_fields=["password"])
+            messages.success(request, f"Пароль менеджера {instance.username} сброшен на 1234567.")
+            return redirect("manager_accounts")
+
+        form = ManagerAccountForm(request.POST, instance=instance, actor=request.user)
+        if form.is_valid():
+            user = form.save(commit=False)
+            password = form.cleaned_data.get("password")
+            if password:
+                user.set_password(password)
+            elif instance is None:
+                user.set_password("1234567")
+            role = _manager_role(form.cleaned_data["manager_type"])
+            user.is_staff = True
+            user.is_superuser = role.is_admin_role
+            user.save()
+            profile = _ensure_user_profile(user)
+            branch = form.cleaned_data["branch"]
+            organization = form.cleaned_data.get("organization")
+            profile.phone = form.cleaned_data.get("phone") or ""
+            profile.branch = branch.name
+            profile.organization = organization.name if organization else ""
+            profile.position = role.name
+            profile.save()
+            profile.roles.set([role])
+            messages.success(request, "Аккаунт менеджера создан.")
+            return redirect("manager_accounts")
+        messages.error(request, "Проверьте данные менеджера.")
+
+    manager_users_qs = _scope_users_for_actor(_manager_users_queryset(query), request.user)
+    if user_is_branch_manager(request.user):
+        manager_users_qs = manager_users_qs.filter(profile__roles__code="organization_manager")
+    manager_users = list(manager_users_qs)
+    for user in manager_users:
+        profile = _ensure_user_profile(user)
+        manager_role = profile.roles.filter(code__in=["branch_manager", "organization_manager"]).first()
+        user.manager_role_name = manager_role.name if manager_role else ""
+        user.manager_type = (
+            ManagerAccountForm.MANAGER_ORGANIZATION
+            if manager_role and manager_role.code == "organization_manager"
+            else ManagerAccountForm.MANAGER_BRANCH
+        )
+        branch = Branch.objects.filter(name=profile.branch).first()
+        organization = Organization.objects.filter(name=profile.organization, branch=branch).first() if branch else None
+        if not organization and profile.organization:
+            organization = Organization.objects.filter(name=profile.organization).first()
+        user.manager_branch_id = branch.pk if branch else ""
+        user.manager_organization_id = organization.pk if organization else ""
+
+    branch_manager_users = [
+        user for user in manager_users if user.manager_type == ManagerAccountForm.MANAGER_BRANCH
+    ]
+    organization_manager_users = [
+        user for user in manager_users if user.manager_type == ManagerAccountForm.MANAGER_ORGANIZATION
+    ]
+
+    return render(request, "manager_accounts.html", {
+        "form": form,
+        "query": query,
+        "manager_users": manager_users,
+        "branch_manager_users": branch_manager_users,
+        "organization_manager_users": organization_manager_users,
+        "branches": form.fields["branch"].queryset,
+        "organizations": form.fields["organization"].queryset,
     })
 
 
 @login_required
-@user_passes_test(user_can_administer)
+@user_passes_test(user_can_site_settings)
 def site_settings_view(request):
     settings_obj = SiteSettings.load()
     if request.method == "POST":
@@ -2003,7 +2331,58 @@ def site_settings_view(request):
 
 
 @login_required
-@user_passes_test(user_can_administer)
+@user_passes_test(user_can_site_settings)
+def database_export_view(request):
+    output = StringIO()
+    call_command(
+        "dumpdata",
+        stdout=output,
+        indent=2,
+        natural_foreign=True,
+        natural_primary=True,
+    )
+    filename = timezone.localtime().strftime("mtu-forum-db-%Y%m%d-%H%M%S.json")
+    response = HttpResponse(output.getvalue(), content_type="application/json; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    write_site_log(request, source="admin", action="database_export", message="Database export downloaded")
+    return response
+
+
+@login_required
+@user_passes_test(user_can_site_settings)
+@require_POST
+def database_import_view(request):
+    upload = request.FILES.get("database_file")
+    if not upload:
+        messages.error(request, "Выберите JSON-файл базы данных.")
+        return redirect("site_settings")
+
+    if not upload.name.lower().endswith(".json"):
+        messages.error(request, "Импорт поддерживает только JSON-файл.")
+        return redirect("site_settings")
+
+    temp_path = ""
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as temp_file:
+            for chunk in upload.chunks():
+                temp_file.write(chunk)
+            temp_path = temp_file.name
+
+        call_command("loaddata", temp_path)
+        write_site_log(request, source="admin", action="database_import", message=f"Database imported from {upload.name}")
+        messages.success(request, "База данных импортирована.")
+    except Exception as exc:
+        write_site_log(request, source="admin", action="database_import_failed", message=str(exc), level=SiteLog.Level.ERROR)
+        messages.error(request, f"Не удалось импортировать БД: {exc}")
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+
+    return redirect("site_settings")
+
+
+@login_required
+@user_passes_test(user_can_logs)
 def site_logs_view(request):
     if request.method == "POST" and request.POST.get("action") == "clear":
         deleted_count = SiteLog.objects.count()
@@ -2044,9 +2423,11 @@ def site_logs_view(request):
 
 
 @login_required
-@user_passes_test(user_can_administer)
+@user_passes_test(user_can_manage_organizations)
 def settings_view(request, section="stations"):
-    sections = {"stations", "positions", "platforms", "web-platforms", "channels", "roles"}
+    sections = {"stations", "positions", "platforms", "web-platforms", "channels", "branches", "organizations", "roles"}
+    if user_is_branch_manager(request.user) and section != "organizations":
+        return redirect("settings_section", section="organizations")
     if section not in sections:
         return redirect("settings_section", section="stations")
 
@@ -2057,6 +2438,8 @@ def settings_view(request, section="stations"):
         "web_platform": (WebPlatform, WebPlatformForm, "WEB платформа", "web-platforms"),
         "channel": (BotSubscriptionChannel, BotSubscriptionChannelForm, "Telegram канал", "channels"),
         "role": (SiteRole, SiteRoleForm, "Роль", "roles"),
+        "branch": (Branch, BranchForm, "Филиал", "branches"),
+        "organization": (Organization, OrganizationForm, "Организация", "organizations"),
     }
 
     if request.method == "POST":
@@ -2069,16 +2452,33 @@ def settings_view(request, section="stations"):
         if not model:
             messages.error(request, "Неизвестный справочник.")
             return redirect("settings_section", section="stations")
-        instance = get_object_or_404(model, pk=request.POST.get("id")) if request.POST.get("id") else None
+        if user_is_branch_manager(request.user) and form_section != "organization":
+            messages.error(request, "У вас есть доступ только к организациям своего филиала.")
+            return redirect("settings_section", section="organizations")
+        instance_qs = model.objects.all()
+        if user_is_branch_manager(request.user) and form_section == "organization":
+            instance_qs = _scope_organizations_for_actor(instance_qs, request.user)
+        instance = get_object_or_404(instance_qs, pk=request.POST.get("id")) if request.POST.get("id") else None
 
         if action == "delete" and instance:
             if isinstance(instance, SiteRole) and instance.is_builtin:
                 messages.error(request, "Встроенную роль нельзя удалить.")
                 return redirect("settings_section", section=redirect_section)
-            instance.delete()
+            try:
+                instance.delete()
+            except ProtectedError:
+                messages.error(request, "Сначала удалите или перенесите связанные организации.")
+                return redirect("settings_section", section=redirect_section)
             messages.success(request, f"{label.capitalize()} удалена.")
             return redirect("settings_section", section=redirect_section)
-        form = form_class(request.POST, instance=instance)
+        post_data = request.POST.copy()
+        if user_is_branch_manager(request.user) and form_section == "organization":
+            branch = Branch.objects.filter(name=_actor_branch_name(request.user), is_active=True).first()
+            if not branch:
+                messages.error(request, "Филиал менеджера не найден.")
+                return redirect("settings_section", section="organizations")
+            post_data["branch"] = str(branch.pk)
+        form = form_class(post_data, instance=instance)
 
         if form.is_valid():
             form.save()
@@ -2087,12 +2487,45 @@ def settings_view(request, section="stations"):
         messages.error(request, "Проверьте поля формы.")
 
 
+    branch_query = request.GET.get("branch_q", "").strip()
+    organization_query = request.GET.get("organization_q", "").strip()
+    organization_branch = request.GET.get("organization_branch", "").strip()
+
+    branches = Branch.objects.all()
+    if user_is_branch_manager(request.user):
+        branches = branches.filter(name=_actor_branch_name(request.user))
+    branch_rows = branches
+    if branch_query:
+        branch_rows = branch_rows.filter(Q(name__icontains=branch_query) | Q(code__icontains=branch_query))
+
+    organizations = _scope_organizations_for_actor(
+        Organization.objects.select_related("branch").all(),
+        request.user,
+    )
+    organization_rows = organizations
+    if organization_query:
+        organization_rows = organization_rows.filter(
+            Q(name__icontains=organization_query)
+            | Q(code__icontains=organization_query)
+            | Q(branch__name__icontains=organization_query)
+            | Q(branch__code__icontains=organization_query)
+        )
+    if organization_branch:
+        organization_rows = organization_rows.filter(branch_id=organization_branch)
+
     return render(request, "settings.html", {
         "stations": Station.objects.all(),
         "positions": Position.objects.all(),
         "platforms": Platform.objects.all(),
         "web_platforms": WebPlatform.objects.all(),
         "channels": BotSubscriptionChannel.objects.all(),
+        "branches": branches,
+        "branch_rows": branch_rows,
+        "organizations": organizations,
+        "organization_rows": organization_rows,
+        "branch_query": branch_query,
+        "organization_query": organization_query,
+        "organization_branch": organization_branch,
         "roles": SiteRole.objects.all(),
         "active_section": section,
         "station_form": StationForm(),
@@ -2104,6 +2537,8 @@ def settings_view(request, section="stations"):
         "web_platform_form": WebPlatformForm(),
 
           "channel_form": BotSubscriptionChannelForm(),
+          "branch_form": BranchForm(),
+          "organization_form": OrganizationForm(),
           "role_form": SiteRoleForm(),
   
       })
@@ -2141,7 +2576,7 @@ def _xlsx_response(section, mode, headers, rows):
 
 
 @login_required
-@user_passes_test(user_can_administer)
+@user_passes_test(user_can_manage_organizations)
 def dictionary_excel_view(request, section, mode):
     configs = {
         "stations": {
@@ -2164,13 +2599,32 @@ def dictionary_excel_view(request, section, mode):
             "headers": ["id", "name", "url", "telegram_chat_id", "is_required", "is_active", "sort_order"],
             "sample": [["", "MTU FORUM News", "https://t.me/mtu_forum_news", "@mtu_forum_news", "1", "1", "1"]],
         },
+        "branches": {
+            "headers": ["id", "name", "code", "is_active", "sort_order"],
+            "sample": [["", "Toshkent filiali", "TOS", "1", "10"]],
+        },
+        "organizations": {
+            "headers": ["id", "branch", "name", "code", "is_active", "sort_order"],
+            "sample": [["", "Toshkent filiali", "Axborot texnologiyalari markazi", "ATM", "1", "10"]],
+        },
     }
     if section not in configs or mode not in {"export", "sample", "import"}:
         messages.error(request, "Неизвестный Excel запрос.")
         return redirect("settings")
+    if user_is_branch_manager(request.user) and section != "organizations":
+        messages.error(request, "У вас есть доступ только к организациям своего филиала.")
+        return redirect("settings_section", section="organizations")
 
     config = configs[section]
     headers = config["headers"]
+    language = request.path.strip("/").split("/", 1)[0]
+    localized_titles = {
+        "ru": {"branches": "Филиалы", "organizations": "Организации"},
+        "uz": {"branches": "Filiallar", "organizations": "Tashkilotlar"},
+        "uz-cyrl": {"branches": "Филиаллар", "organizations": "Ташкилотлар"},
+        "en": {"branches": "Branches", "organizations": "Organizations"},
+    }
+    localized_title = localized_titles.get(language, localized_titles["ru"]).get(section)
     if mode == "sample":
         if request.GET.get("download") != "1":
             titles = {
@@ -2182,7 +2636,7 @@ def dictionary_excel_view(request, section, mode):
             }
             return render(request, "excel_sample.html", {
                 "section": section,
-                "title": titles[section],
+                "title": localized_title or titles.get(section, section.replace("-", " ").title()),
                 "headers": headers,
                 "rows": config["sample"],
             })
@@ -2197,8 +2651,16 @@ def dictionary_excel_view(request, section, mode):
             rows = [[item.id, item.name, item.code, int(item.is_active), item.sort_order] for item in Platform.objects.all()]
         elif section == "web-platforms":
             rows = [[item.id, item.name, item.url, item.image_url, item.usage_count, int(item.is_active), item.sort_order] for item in WebPlatform.objects.all()]
-        else:
+        elif section == "channels":
             rows = [[item.id, item.name, item.url, item.telegram_chat_id, int(item.is_required), int(item.is_active), item.sort_order] for item in BotSubscriptionChannel.objects.all()]
+        elif section == "branches":
+            rows = [[item.id, item.name, item.code, int(item.is_active), item.sort_order] for item in Branch.objects.all()]
+        else:
+            organization_items = _scope_organizations_for_actor(
+                Organization.objects.select_related("branch").all(),
+                request.user,
+            )
+            rows = [[item.id, item.branch.name, item.name, item.code, int(item.is_active), item.sort_order] for item in organization_items]
         if request.GET.get("download") != "1":
             titles = {
                 "stations": "Предприятия",
@@ -2209,7 +2671,7 @@ def dictionary_excel_view(request, section, mode):
             }
             return render(request, "excel_export.html", {
                 "section": section,
-                "title": titles[section],
+                "title": localized_title or titles.get(section, section.replace("-", " ").title()),
                 "headers": headers,
                 "rows": rows[:200],
                 "total": len(rows),
@@ -2262,7 +2724,7 @@ def dictionary_excel_view(request, section, mode):
                 instance.is_active = truthy(row.get("is_active", "1"))
                 instance.sort_order = _int_or_zero(row.get("sort_order"))
                 instance.save()
-            else:
+            elif section == "channels":
                 chat_id = (row.get("telegram_chat_id") or "").strip()
                 instance = BotSubscriptionChannel.objects.filter(pk=row_id).first() if row_id else None
                 instance = instance or (BotSubscriptionChannel.objects.filter(telegram_chat_id=chat_id).first() if chat_id else None)
@@ -2274,6 +2736,30 @@ def dictionary_excel_view(request, section, mode):
                 instance.is_active = truthy(row.get("is_active", "1"))
                 instance.sort_order = _int_or_zero(row.get("sort_order"))
                 instance.save()
+            elif section == "branches":
+                instance = Branch.objects.filter(pk=row_id).first() if row_id else Branch.objects.filter(name=name).first()
+                instance = instance or Branch()
+                instance.name = name
+                instance.code = (row.get("code") or instance.code or "").strip()
+                instance.is_active = truthy(row.get("is_active", "1"))
+                instance.sort_order = _int_or_zero(row.get("sort_order"))
+                instance.save()
+            else:
+                branch_value = (row.get("branch") or "").strip()
+                branch = Branch.objects.filter(name__iexact=branch_value).first() or Branch.objects.filter(code__iexact=branch_value).first()
+                if user_is_branch_manager(request.user):
+                    branch = Branch.objects.filter(name=_actor_branch_name(request.user), is_active=True).first()
+                if not branch:
+                    continue
+                scoped_organizations = _scope_organizations_for_actor(Organization.objects.all(), request.user)
+                instance = scoped_organizations.filter(pk=row_id).first() if row_id else scoped_organizations.filter(branch=branch, name=name).first()
+                instance = instance or Organization(branch=branch)
+                instance.branch = branch
+                instance.name = name
+                instance.code = (row.get("code") or instance.code or "").strip()
+                instance.is_active = truthy(row.get("is_active", "1"))
+                instance.sort_order = _int_or_zero(row.get("sort_order"))
+                instance.save()
             imported += 1
 
     messages.success(request, f"Импортировано строк: {imported}.")
@@ -2281,7 +2767,7 @@ def dictionary_excel_view(request, section, mode):
 
 
 @login_required
-@user_passes_test(user_can_administer)
+@user_passes_test(user_can_api_settings)
 def api_settings_view(request):
     config = ApiConfiguration.load()
     form = ApiConfigurationForm(instance=config)

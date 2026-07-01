@@ -1,0 +1,231 @@
+/* Final manager page fixes. Loaded after app.css to avoid old manager styles winning. */
+.manager-list-panel,
+.manager-card-grid {
+  overflow: visible !important;
+  isolation: isolate;
+}
+
+.manager-split-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  overflow: visible;
+}
+
+.manager-type-section {
+  position: relative;
+  overflow: visible;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, .05), rgba(84, 225, 210, .05));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08);
+}
+
+.manager-type-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.manager-type-section-head h3 {
+  margin: 0 0 5px;
+  font-size: 20px;
+}
+
+.manager-type-section-head p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.manager-type-section-head > span {
+  display: grid;
+  place-items: center;
+  min-width: 46px;
+  height: 46px;
+  padding: 0 12px;
+  border: 1px solid rgba(84, 225, 210, .36);
+  border-radius: 16px;
+  background: rgba(84, 225, 210, .14);
+  color: var(--text);
+  font-size: 24px;
+  font-weight: 950;
+}
+
+html[data-theme="light"] .manager-type-section {
+  background: linear-gradient(135deg, rgba(255, 255, 255, .78), rgba(209, 246, 247, .42));
+  box-shadow: 0 14px 34px rgba(31, 55, 76, .06), inset 0 1px 0 rgba(255, 255, 255, .9);
+}
+
+.manager-card {
+  position: relative !important;
+  overflow: visible !important;
+  z-index: 1;
+}
+
+.manager-card:has(.manager-action-menu:not([hidden])),
+.manager-card.is-menu-open {
+  z-index: 90 !important;
+}
+
+.manager-card-actions {
+  position: relative !important;
+  z-index: 100 !important;
+}
+
+.manager-action-menu {
+  z-index: 1000 !important;
+  min-width: 230px !important;
+  padding: 12px !important;
+  border: 1px solid rgba(45, 77, 101, .24) !important;
+  background: #f7fdff !important;
+  color: #102333 !important;
+  box-shadow: 0 26px 64px rgba(31, 55, 76, .22), inset 0 1px 0 rgba(255, 255, 255, .9) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.manager-action-menu[hidden] {
+  display: none !important;
+}
+
+.manager-action-menu button {
+  color: #102333 !important;
+  font-weight: 900 !important;
+}
+
+.manager-action-menu button:hover {
+  background: rgba(68, 215, 182, .18) !important;
+}
+
+.manager-action-menu .is-danger {
+  color: #d33c55 !important;
+}
+
+html[data-theme="dark"] .manager-action-menu {
+  border-color: rgba(169, 194, 215, .24) !important;
+  background: #102231 !important;
+  color: #edf6ff !important;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, .48), inset 0 1px 0 rgba(255, 255, 255, .12) !important;
+}
+
+html[data-theme="dark"] .manager-action-menu button {
+  color: #edf6ff !important;
+}
+
+html[data-theme="dark"] .manager-action-menu .is-danger {
+  color: #ff7890 !important;
+}
+
+/* Manager edit dialog should feel like a real full-screen workspace. */
+.manager-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: clamp(14px, 2vw, 34px) !important;
+}
+
+.manager-modal[hidden] {
+  display: none !important;
+}
+
+.manager-modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(6, 15, 23, .66) !important;
+  backdrop-filter: blur(22px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(130%) !important;
+}
+
+.manager-modal-card {
+  position: relative !important;
+  z-index: 1 !important;
+  width: min(1320px, calc(100vw - 32px)) !important;
+  min-height: min(720px, calc(100vh - 32px)) !important;
+  max-height: calc(100vh - 32px) !important;
+  overflow: auto !important;
+  padding: clamp(20px, 2.2vw, 34px) !important;
+  border-radius: 28px !important;
+  border: 1px solid rgba(84, 225, 210, .42) !important;
+  background: linear-gradient(135deg, rgba(29, 56, 72, .96), rgba(12, 29, 42, .98)) !important;
+  box-shadow: 0 36px 110px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .18) !important;
+}
+
+.manager-modal-head {
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important;
+  margin: 0 54px 22px 0 !important;
+  padding-bottom: 18px !important;
+  border-bottom: 1px solid rgba(169, 194, 215, .18) !important;
+}
+
+.manager-edit-form {
+  grid-template-columns: repeat(3, minmax(220px, 1fr)) !important;
+  gap: 16px !important;
+}
+
+.manager-edit-form .manager-type-card {
+  grid-column: 1 / -1 !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.manager-modal-actions {
+  position: sticky !important;
+  bottom: -1px !important;
+  grid-column: 1 / -1 !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 12px !important;
+  padding-top: 16px !important;
+  background: linear-gradient(180deg, transparent, rgba(12, 29, 42, .96) 34%) !important;
+}
+
+html[data-theme="light"] .manager-modal-backdrop {
+  background: rgba(220, 238, 246, .72) !important;
+}
+
+html[data-theme="light"] .manager-modal-card {
+  background: linear-gradient(135deg, rgba(245, 253, 255, .98), rgba(223, 245, 248, .98)) !important;
+  box-shadow: 0 36px 100px rgba(31, 55, 76, .22), inset 0 1px 0 rgba(255, 255, 255, .9) !important;
+}
+
+html[data-theme="light"] .manager-modal-actions {
+  background: linear-gradient(180deg, transparent, rgba(245, 253, 255, .96) 34%) !important;
+}
+
+@media (max-width: 980px) {
+  .manager-split-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-edit-form,
+  .manager-edit-form .manager-type-card {
+    grid-template-columns: 1fr !important;
+  }
+
+  .manager-modal {
+    padding: 10px !important;
+  }
+
+  .manager-modal-card {
+    width: calc(100vw - 20px) !important;
+    min-height: calc(100vh - 20px) !important;
+    max-height: calc(100vh - 20px) !important;
+    border-radius: 22px !important;
+  }
+
+  .manager-modal-actions {
+    justify-content: stretch !important;
+  }
+
+  .manager-modal-actions .btn {
+    flex: 1;
+  }
+}

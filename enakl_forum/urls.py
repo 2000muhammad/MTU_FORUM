@@ -28,6 +28,8 @@ urlpatterns += i18n_patterns(
     path("programmers/", views.programmers_view, name="programmers"),
     path("tasks/", views.developer_tasks_view, name="developer_tasks"),
     path("tasks/create/", views.developer_task_create, name="developer_task_create"),
+    path("tasks/<int:pk>/edit/", views.developer_task_edit, name="developer_task_edit"),
+    path("tasks/<int:pk>/action/", views.developer_task_action, name="developer_task_action"),
 
     path("login/", views.LoginView.as_view(), name="login"),
     # RU: OneID/E-IMZO routes: старт входа и callback после ответа SSO.
@@ -49,9 +51,12 @@ urlpatterns += i18n_patterns(
     path("settings/excel/<str:section>/<str:mode>/", views.dictionary_excel_view, name="dictionary_excel"),
     path("settings/api/", views.api_settings_view, name="api_settings"),
     path("site-settings/", views.site_settings_view, name="site_settings"),
+    path("site-settings/database/export/", views.database_export_view, name="database_export"),
+    path("site-settings/database/import/", views.database_import_view, name="database_import"),
     path("settings/<str:section>/", views.settings_view, name="settings_section"),
     path("logs/", views.site_logs_view, name="site_logs"),
     path("users/", views.users_view, name="users"),
+    path("managers/", views.manager_accounts_view, name="manager_accounts"),
     path("requests/<int:pk>/edit/", views.request_edit, name="request_edit"),
 
     path("chats/", views.admin_chat_list, name="admin_chat_list"),
@@ -63,4 +68,5 @@ urlpatterns += i18n_patterns(
 
 
 if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

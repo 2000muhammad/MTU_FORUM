@@ -34,6 +34,25 @@
   stroke:currentColor!important;
   fill:none!important;
 }
+html[data-theme="light"] .topbar-actions .access-mode-btn,
+html[data-theme="light"] .login-quick-actions .access-mode-btn{
+  color:#244d68!important;
+  background:linear-gradient(145deg,rgba(255,255,255,.94),rgba(222,236,244,.82))!important;
+  border-color:rgba(34,77,104,.28)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 8px 20px rgba(31,55,76,.12)!important;
+}
+html[data-theme="light"] .topbar-actions .access-mode-btn.is-active,
+html[data-theme="light"] .login-quick-actions .access-mode-btn.is-active{
+  color:#075f53!important;
+  background:linear-gradient(145deg,rgba(68,215,182,.24),rgba(127,183,255,.2))!important;
+  border-color:rgba(7,95,83,.38)!important;
+}
+html[data-theme="light"] .topbar-actions .access-mode-btn:hover,
+html[data-theme="light"] .login-quick-actions .access-mode-btn:hover{
+  color:#071f2d!important;
+  background:linear-gradient(145deg,rgba(68,215,182,.3),rgba(127,183,255,.22))!important;
+  border-color:rgba(7,95,83,.5)!important;
+}
 .accessibility-panel,
 html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .accessibility-panel,
 html.accessibility-mode .accessibility-panel,
@@ -269,4 +288,179 @@ html.access-invert .accessibility-panel[hidden]{
   display:none!important;
   visibility:hidden!important;
   pointer-events:none!important;
+}
+
+.accessibility-panel.is-js-positioned,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .accessibility-panel.is-js-positioned,
+html.accessibility-mode .accessibility-panel.is-js-positioned,
+html.access-black-white .accessibility-panel.is-js-positioned,
+html.access-invert .accessibility-panel.is-js-positioned{
+  position:fixed!important;
+  left:var(--access-panel-left,auto)!important;
+  right:var(--access-panel-right,auto)!important;
+  top:var(--access-panel-top,auto)!important;
+  bottom:var(--access-panel-bottom,auto)!important;
+  width:var(--access-panel-width,min(350px,calc(100vw - 24px)))!important;
+  max-height:var(--access-panel-max-height,calc(100vh - 20px))!important;
+  overflow:auto!important;
+  transform:none!important;
+}
+
+/* Final lightweight accessibility popover: compact and smooth on dashboard */
+.accessibility-panel,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .accessibility-panel,
+html.accessibility-mode .accessibility-panel,
+html.access-black-white .accessibility-panel,
+html.access-invert .accessibility-panel{
+  width:min(320px,calc(100vw - 28px))!important;
+  max-height:min(560px,calc(100vh - 96px))!important;
+  gap:12px!important;
+  padding:14px!important;
+  border-radius:20px!important;
+  overflow:auto!important;
+  overscroll-behavior:contain!important;
+  backdrop-filter:blur(10px) saturate(1.08)!important;
+  -webkit-backdrop-filter:blur(10px) saturate(1.08)!important;
+  animation:none!important;
+}
+.accessibility-panel.is-js-positioned,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .accessibility-panel.is-js-positioned,
+html.accessibility-mode .accessibility-panel.is-js-positioned,
+html.access-black-white .accessibility-panel.is-js-positioned,
+html.access-invert .accessibility-panel.is-js-positioned{
+  width:min(var(--access-panel-width,320px),320px)!important;
+  max-height:min(var(--access-panel-max-height,560px),560px)!important;
+}
+.access-panel-head{gap:10px!important;padding-bottom:9px!important}
+.access-panel-head strong{font-size:16px!important;line-height:1.15!important;letter-spacing:0!important}
+.access-panel-head span{font-size:12px!important;line-height:1.25!important}
+.access-panel-close{width:32px!important;height:32px!important;min-width:32px!important}
+.access-panel-section{gap:8px!important}
+.access-panel-label{font-size:12px!important;line-height:1.2!important}
+.access-view-options{gap:8px!important}
+.access-view-btn{min-height:58px!important;padding:7px!important;border-radius:14px!important}
+.access-view-btn span{width:38px!important;height:38px!important;font-size:23px!important}
+.access-range-label{gap:5px!important}
+.access-range-label span{font-size:13px!important;line-height:1.2!important}
+.access-range-label strong{font-size:12px!important;line-height:1.2!important}
+.access-range{height:20px!important}
+.access-toggle-list{gap:7px!important;padding-top:10px!important}
+.access-switch{min-height:38px!important;padding:8px 10px!important;border-radius:13px!important;font-size:12px!important;line-height:1.2!important}
+.access-switch input{width:22px!important;height:22px!important;min-width:22px!important;border-radius:8px!important}
+.access-switch input::before{display:none!important}
+.access-switch input:checked::after{content:""!important;position:absolute!important;left:5px!important;top:5px!important;width:10px!important;height:6px!important;border-left:2px solid #031019!important;border-bottom:2px solid #031019!important;transform:rotate(-45deg)!important}
+.access-panel-actions button{min-height:36px!important;padding:0 14px!important;font-size:13px!important}
+html[data-theme="light"]:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .accessibility-panel{
+  background:linear-gradient(145deg,rgba(255,255,255,.96),rgba(232,247,249,.88))!important;
+  box-shadow:0 18px 44px rgba(31,55,76,.16),inset 0 1px 0 rgba(255,255,255,.92)!important;
+}
+html[data-theme="light"]:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .access-switch input{
+  background:rgba(255,255,255,.72)!important;
+  border-color:rgba(20,48,70,.18)!important;
+}
+
+/* Keep font-size slider text stable while dragging */
+.access-range-label{
+  min-height:38px!important;
+  grid-template-columns:1fr!important;
+  contain:layout!important;
+}
+.access-range-label span,
+.access-range-label strong{
+  display:block!important;
+  min-height:16px!important;
+  white-space:nowrap!important;
+}
+.access-range-label strong{
+  min-width:132px!important;
+  font-variant-numeric:tabular-nums!important;
+  font-feature-settings:"tnum" 1!important;
+}
+.access-range{
+  display:block!important;
+  width:100%!important;
+  flex:0 0 28px!important;
+  min-height:28px!important;
+  max-height:28px!important;
+  margin:0!important;
+  padding:0!important;
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  background:transparent!important;
+  outline:none!important;
+  transition:none!important;
+}
+.access-range::-webkit-slider-runnable-track{
+  width:100%!important;
+  height:8px!important;
+  border:1px solid rgba(84,151,188,.36)!important;
+  border-radius:999px!important;
+  background:linear-gradient(90deg,rgba(84,225,210,.72),rgba(116,172,255,.52))!important;
+  box-shadow:none!important;
+}
+.access-range::-webkit-slider-thumb{
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  width:22px!important;
+  height:22px!important;
+  margin-top:-8px!important;
+  border:1px solid rgba(255,255,255,.85)!important;
+  border-radius:50%!important;
+  background:linear-gradient(145deg,#72f0d4,#55d6ff)!important;
+  box-shadow:0 6px 14px rgba(45,215,183,.18)!important;
+  transition:none!important;
+  transform:none!important;
+}
+.access-range::-moz-range-track{
+  height:8px!important;
+  border:1px solid rgba(84,151,188,.36)!important;
+  border-radius:999px!important;
+  background:linear-gradient(90deg,rgba(84,225,210,.72),rgba(116,172,255,.52))!important;
+  box-shadow:none!important;
+}
+.access-range::-moz-range-thumb{
+  width:22px!important;
+  height:22px!important;
+  border:1px solid rgba(255,255,255,.85)!important;
+  border-radius:50%!important;
+  background:linear-gradient(145deg,#72f0d4,#55d6ff)!important;
+  box-shadow:0 6px 14px rgba(45,215,183,.18)!important;
+  transition:none!important;
+  transform:none!important;
+}
+.access-range:focus::-webkit-slider-thumb{box-shadow:0 0 0 4px rgba(84,225,210,.18)!important}
+.access-range:focus::-moz-range-thumb{box-shadow:0 0 0 4px rgba(84,225,210,.18)!important}
+html.access-font-slider-dragging .accessibility-panel{
+  pointer-events:auto!important;
+  transform:translateZ(0)!important;
+  contain:layout paint style!important;
+}
+html.access-font-slider-dragging .access-range,
+html.access-font-slider-dragging .access-range *{
+  transition:none!important;
+  animation:none!important;
+}
+
+/* Apply accessibility scale to page content, not to the accessibility panel itself. */
+body{zoom:1!important}
+.app-shell > :not(.topbar),
+.login-panel,
+.public-index-shell,
+.public-web-platforms{
+  zoom:var(--access-page-zoom,1);
+}
+.accessibility-panel,
+.public-index-header,
+.sidebar{
+  zoom:1!important;
+}
+@media (max-width:760px){
+  .accessibility-panel,
+  html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .accessibility-panel,
+  html.accessibility-mode .accessibility-panel,
+  html.access-black-white .accessibility-panel,
+  html.access-invert .accessibility-panel{
+    width:auto!important;
+    max-height:calc(100vh - 24px)!important;
+  }
 }

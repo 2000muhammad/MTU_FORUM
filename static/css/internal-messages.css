@@ -304,6 +304,68 @@ html[data-theme="light"] .internal-bubble {
   background: #fff;
 }
 
+html[data-theme="light"] .internal-sidebar,
+html[data-theme="light"] .internal-chat-pane,
+html[data-theme="light"] .internal-contact-row,
+html[data-theme="light"] .internal-start {
+  color: #13283a;
+}
+
+html[data-theme="light"] .internal-sidebar-head h2,
+html[data-theme="light"] .internal-chat-head h2,
+html[data-theme="light"] .internal-contacts h3,
+html[data-theme="light"] .internal-start h2,
+html[data-theme="light"] .internal-compose-box summary,
+html[data-theme="light"] .internal-edit-popover summary {
+  color: #0b1722;
+}
+
+html[data-theme="light"] .internal-compose-box summary {
+  background: linear-gradient(135deg, rgba(8, 127, 109, .08), rgba(23, 104, 184, .055));
+}
+
+html[data-theme="light"] .internal-chat-row {
+  color: #163044;
+}
+
+html[data-theme="light"] .internal-chat-row:hover,
+html[data-theme="light"] .internal-chat-row.active {
+  background: rgba(23, 104, 184, .09);
+  color: #07121c;
+}
+
+html[data-theme="light"] .internal-row-body small,
+html[data-theme="light"] .internal-empty,
+html[data-theme="light"] .internal-start p,
+html[data-theme="light"] .internal-chat-head span,
+html[data-theme="light"] .internal-empty-state {
+  color: #526a7d;
+}
+
+html[data-theme="light"] .internal-icon-btn {
+  color: #163044;
+  border-color: rgba(20, 48, 70, .18);
+}
+
+html[data-theme="light"] .internal-icon-btn:hover {
+  color: #07121c;
+  background: rgba(23, 104, 184, .1);
+}
+
+html[data-theme="light"] .internal-bubble,
+html[data-theme="light"] .internal-bubble p {
+  color: #13283a;
+}
+
+html[data-theme="light"] .internal-bubble strong {
+  color: #1768b8;
+}
+
+html[data-theme="light"] .internal-bubble > span,
+html[data-theme="light"] .internal-message-actions summary {
+  color: #526a7d;
+}
+
 @media (max-width: 980px) {
   .internal-messages-shell {
     grid-template-columns: 1fr;

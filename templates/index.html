@@ -13,15 +13,25 @@
   <script>
     (() => {
       const theme = localStorage.getItem('mtu-theme') || 'dark';
-      const accessibility = localStorage.getItem('mtu-accessibility') === 'on';
+      const accessView = localStorage.getItem('mtu-access-view');
+      const accessibility = localStorage.getItem('mtu-accessibility') === 'on' || accessView === 'dark' || accessView === 'contrast';
+      const soundGuide = localStorage.getItem('mtu-sound-guide') === 'on';
+      const fontScale = Number(localStorage.getItem('mtu-font-scale') || 0);
       document.documentElement.dataset.theme = theme;
+      document.documentElement.style.setProperty('--access-page-zoom', String(1 + Math.max(0, Math.min(fontScale, 40)) / 100));
       if (accessibility) document.documentElement.classList.add('accessibility-mode');
+      if (accessView === 'whiteblack') document.documentElement.classList.add('access-black-white');
+      if (accessView === 'dark' || accessView === 'contrast') document.documentElement.classList.add('access-invert');
+      if (soundGuide) document.documentElement.classList.add('sound-guide-mode');
+      if (localStorage.getItem('mtu-underline-links') === 'on') document.documentElement.classList.add('access-underline-links');
+      if (localStorage.getItem('mtu-reduce-motion') === 'on') document.documentElement.classList.add('access-reduce-motion');
+      if (localStorage.getItem('mtu-large-cursor') === 'on') document.documentElement.classList.add('access-large-cursor');
     })();
   </script>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260602-public-web-marquee">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260609-task-other-fix">
   <link rel="stylesheet" href="{% static 'css/accessibility-panel.css' %}?v=20260602-premium">
-  <link rel="stylesheet" href="{% static 'css/accessibility-compact.css' %}?v=20260602-hidden-fix">
+  <link rel="stylesheet" href="{% static 'css/accessibility-compact.css' %}?v=20260611-access-content-scale">
 </head>
 <body class="public-index-page">
   <header class="public-index-header">
@@ -182,11 +192,91 @@
       const accessUnderline = document.querySelector('[data-access-underline]');
       const accessReduceMotion = document.querySelector('[data-access-reduce-motion]');
       const accessLargeCursor = document.querySelector('[data-access-large-cursor]');
+      const voiceLangs = { ru: 'ru-RU', uz: 'uz-UZ', 'uz-cyrl': 'uz-UZ', en: 'en-US' };
+      const pageLang = (root.lang || 'ru').toLowerCase();
+      const voiceLang = voiceLangs[pageLang] || voiceLangs[pageLang.split('-')[0]] || 'ru-RU';
+      const clean = (value) => (value || '').replace(/\s+/g, ' ').trim();
+      const isSoundEnabled = () => localStorage.getItem('mtu-sound-guide') === 'on';
+      let hoverSpeechTimer = null;
+      let lastHoverSpeech = '';
+
+      const speak = (text, force = false) => {
+        if ((!force && !isSoundEnabled()) || !text || !('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        const message = new SpeechSynthesisUtterance(text);
+        message.lang = voiceLang;
+        message.rate = 0.92;
+        message.pitch = 1;
+        window.speechSynthesis.speak(message);
+      };
+
+      const readableText = (target) => {
+        const element = target.closest('button,a,input,select,textarea,label,[aria-label],[title],img,.public-web-item,.public-request-card,h1,h2,h3,h4,h5,h6,p,span,strong,small,b,em,li');
+        if (!element) return clean(target.textContent);
+        if (element.matches('input,select,textarea')) {
+          const label = element.id ? document.querySelector(`label[for="${CSS.escape(element.id)}"]`) : null;
+          return clean(element.getAttribute('aria-label') || label?.innerText || element.closest('label')?.innerText || element.placeholder || element.name);
+        }
+        if (element.matches('img')) return clean(element.getAttribute('aria-label') || element.alt || element.title);
+        const fullText = element.matches('button,a,label,.public-web-item,.public-request-card')
+          ? element.innerText || element.textContent
+          : element.textContent;
+        return clean(element.getAttribute('aria-label') || element.title || fullText);
+      };
+
+      const speakOnHover = (target) => {
+        if (!isSoundEnabled()) return;
+        const text = readableText(target);
+        if (!text || text === lastHoverSpeech) return;
+        window.clearTimeout(hoverSpeechTimer);
+        hoverSpeechTimer = window.setTimeout(() => {
+          lastHoverSpeech = text;
+          speak(text);
+        }, 220);
+      };
+
+      const positionAccessPanel = () => {
+        if (!accessPanel || !accessButton || accessPanel.hidden) return;
+        accessPanel.classList.add('is-js-positioned');
+        if (window.innerWidth <= 760) {
+          accessPanel.style.setProperty('--access-panel-left', '10px');
+          accessPanel.style.setProperty('--access-panel-right', '10px');
+          accessPanel.style.setProperty('--access-panel-top', '10px');
+          accessPanel.style.setProperty('--access-panel-bottom', 'auto');
+          accessPanel.style.setProperty('--access-panel-width', 'auto');
+          accessPanel.style.setProperty('--access-panel-max-height', 'calc(100vh - 20px)');
+          return;
+        }
+        const rect = accessButton.getBoundingClientRect();
+        const width = Math.min(320, window.innerWidth - 24);
+        const left = Math.max(12, Math.min(rect.left + rect.width / 2 - width / 2, window.innerWidth - width - 12));
+        accessPanel.style.setProperty('--access-panel-left', `${left}px`);
+        accessPanel.style.setProperty('--access-panel-right', 'auto');
+        accessPanel.style.setProperty('--access-panel-top', `${rect.bottom + 10}px`);
+        accessPanel.style.setProperty('--access-panel-bottom', 'auto');
+        accessPanel.style.setProperty('--access-panel-width', `${width}px`);
+        accessPanel.style.setProperty('--access-panel-max-height', 'calc(100vh - 24px)');
+      };
 
       const syncTheme = () => {
         const isLight = (root.dataset.theme || 'dark') === 'light';
         themeButton?.classList.toggle('is-active', isLight);
         themeButton?.setAttribute('aria-pressed', isLight ? 'true' : 'false');
+      };
+
+      const updateFontScaleLabel = (value) => {
+        const scale = Math.max(0, Math.min(Number(value) || 0, 40));
+        if (fontScaleOutput) {
+          fontScaleOutput.textContent = (fontScaleOutput.dataset.scaleTemplate || '{value}%').replace('{value}', `${scale}%`);
+        }
+      };
+
+      const applyPageZoom = (value) => {
+        const scale = Math.max(0, Math.min(Number(value) || 0, 40));
+        root.style.setProperty('--access-page-zoom', String(1 + scale / 100));
+        localStorage.setItem('mtu-font-scale', String(scale));
+        if (fontScaleInput) fontScaleInput.value = String(scale);
+        updateFontScaleLabel(scale);
       };
 
       const syncAccess = () => {
@@ -204,10 +294,7 @@
         accessButton?.setAttribute('aria-expanded', accessPanel && !accessPanel.hidden ? 'true' : 'false');
         accessViewButtons.forEach((button) => button.classList.toggle('active', button.dataset.accessView === view));
         if (fontScaleInput) fontScaleInput.value = localStorage.getItem('mtu-font-scale') || '0';
-        if (fontScaleOutput) {
-          const scale = localStorage.getItem('mtu-font-scale') || '0';
-          fontScaleOutput.textContent = (fontScaleOutput.dataset.scaleTemplate || '{value}%').replace('{value}', `${scale}%`);
-        }
+        updateFontScaleLabel(localStorage.getItem('mtu-font-scale') || 0);
         if (accessSoundHover) accessSoundHover.checked = localStorage.getItem('mtu-sound-guide') === 'on';
         if (accessUnderline) accessUnderline.checked = root.classList.contains('access-underline-links');
         if (accessReduceMotion) accessReduceMotion.checked = root.classList.contains('access-reduce-motion');
@@ -219,10 +306,12 @@
         root.dataset.theme = nextTheme;
         localStorage.setItem('mtu-theme', nextTheme);
         syncTheme();
+        speak(nextTheme === 'light' ? 'Дневной режим' : 'Ночной режим');
       });
 
       accessButton?.addEventListener('click', () => {
         accessPanel.hidden = !accessPanel.hidden;
+        positionAccessPanel();
         syncAccess();
       });
 
@@ -240,13 +329,33 @@
           localStorage.setItem('mtu-access-view', view);
           localStorage.setItem('mtu-accessibility', view === 'dark' ? 'on' : 'off');
           syncAccess();
+          speak(button.getAttribute('aria-label'));
         });
       });
 
+      fontScaleInput?.addEventListener('pointerdown', () => {
+        root.classList.add('access-font-slider-dragging');
+      });
+
       fontScaleInput?.addEventListener('input', () => {
-        const scale = Math.max(0, Math.min(Number(fontScaleInput.value) || 0, 40));
-        root.style.setProperty('--access-page-zoom', String(1 + scale / 100));
-        localStorage.setItem('mtu-font-scale', String(scale));
+        updateFontScaleLabel(fontScaleInput.value);
+      });
+
+      fontScaleInput?.addEventListener('change', () => {
+        root.classList.remove('access-font-slider-dragging');
+        applyPageZoom(fontScaleInput.value);
+        syncAccess();
+      });
+
+      fontScaleInput?.addEventListener('pointerup', () => {
+        root.classList.remove('access-font-slider-dragging');
+        applyPageZoom(fontScaleInput.value);
+        syncAccess();
+      });
+
+      fontScaleInput?.addEventListener('pointercancel', () => {
+        root.classList.remove('access-font-slider-dragging');
+        applyPageZoom(fontScaleInput.value);
         syncAccess();
       });
 
@@ -254,6 +363,7 @@
         localStorage.setItem('mtu-sound-guide', accessSoundHover.checked ? 'on' : 'off');
         root.classList.toggle('sound-guide-mode', accessSoundHover.checked);
         syncAccess();
+        speak(accessSoundHover.checked ? 'Озвучка при наведении включена' : 'Озвучка при наведении выключена', true);
       });
 
       accessUnderline?.addEventListener('change', () => {
@@ -285,7 +395,25 @@
         localStorage.setItem('mtu-reduce-motion', 'off');
         localStorage.setItem('mtu-large-cursor', 'off');
         syncAccess();
+        speak('Настройки доступности сброшены', true);
       });
+
+      document.addEventListener('pointerover', (event) => speakOnHover(event.target));
+      document.addEventListener('pointerout', () => window.clearTimeout(hoverSpeechTimer));
+      document.addEventListener('focusin', (event) => {
+        if (!isSoundEnabled()) return;
+        const text = readableText(event.target);
+        if (text) speak(text);
+      });
+      document.addEventListener('click', (event) => {
+        if (!isSoundEnabled()) return;
+        const interactive = event.target.closest('button,a,[role="button"],input,select,textarea');
+        if (!interactive || interactive === themeButton || interactive === accessButton) return;
+        const text = readableText(interactive);
+        if (text) speak(text);
+      });
+      window.addEventListener('resize', positionAccessPanel);
+      window.addEventListener('scroll', positionAccessPanel, {passive:true});
 
       syncTheme();
       syncAccess();

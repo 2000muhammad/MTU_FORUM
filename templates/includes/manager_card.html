@@ -1,0 +1,113 @@
+{% load ui_i18n %}
+<article class="manager-card {% if not item.is_active %}is-muted{% endif %}">
+  <div class="manager-avatar">
+    {% if item.profile.avatar %}
+      <img src="{{ item.profile.avatar.url }}" alt="{{ item.username }}">
+    {% elif item.profile.hrm_photo %}
+      <img src="{{ item.profile.hrm_photo }}" alt="{{ item.username }}">
+    {% else %}
+      <span>{{ item.username|first|upper }}</span>
+    {% endif %}
+  </div>
+  <div class="manager-card-body">
+    <div class="manager-card-top">
+      <strong>{{ item.get_full_name|default:item.username }}</strong>
+      <span class="manager-role-badge">{{ item.manager_role_name|default:"-" }}</span>
+    </div>
+    <p>{{ item.username }}{% if item.email %} · {{ item.email }}{% endif %}</p>
+    <div class="manager-tags">
+      {% if item.profile.branch %}<span>{% tr 'branch' %}: {{ item.profile.branch }}</span>{% endif %}
+      {% if item.profile.organization %}<span>{% tr 'organization' %}: {{ item.profile.organization }}</span>{% endif %}
+      {% if item.profile.phone %}<span>{{ item.profile.phone }}</span>{% endif %}
+      {% if item.is_active %}<span class="is-green">{% tr 'active' %}</span>{% else %}<span>{% tr 'inactive' %}</span>{% endif %}
+    </div>
+  </div>
+  <div class="manager-card-actions">
+    <button class="manager-kebab" type="button" data-manager-menu-toggle aria-label="Actions">⋮</button>
+    <div class="manager-action-menu" hidden>
+      <button type="button" data-open-manager-modal="manager-edit-{{ item.id }}">{% tr 'manager_edit_action' %}</button>
+      <form method="post" onsubmit="return confirm('{% tr 'reset_manager_password_confirm' %}')">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="reset_password">
+        <input type="hidden" name="id" value="{{ item.id }}">
+        <button type="submit">{% tr 'manager_reset_password_action' %}</button>
+      </form>
+      <form method="post" onsubmit="return confirm('{% tr 'delete_manager_confirm' %}')">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="delete">
+        <input type="hidden" name="id" value="{{ item.id }}">
+        <button class="is-danger" type="submit">{% tr 'manager_delete_action' %}</button>
+      </form>
+    </div>
+  </div>
+</article>
+
+<div class="manager-modal" id="manager-edit-{{ item.id }}" hidden>
+  <div class="manager-modal-backdrop" data-close-manager-modal></div>
+  <div class="manager-modal-card glass-card">
+    <button class="manager-modal-close" type="button" data-close-manager-modal aria-label="Close">×</button>
+    <header class="manager-modal-head">
+      <div class="manager-avatar">
+        {% if item.profile.avatar %}
+          <img src="{{ item.profile.avatar.url }}" alt="{{ item.username }}">
+        {% elif item.profile.hrm_photo %}
+          <img src="{{ item.profile.hrm_photo }}" alt="{{ item.username }}">
+        {% else %}
+          <span>{{ item.username|first|upper }}</span>
+        {% endif %}
+      </div>
+      <div>
+        <h2>{% tr 'edit_manager_account' %}</h2>
+        <strong>{{ item.username }}</strong>
+        <p>{{ item.get_full_name|default:item.username }}</p>
+      </div>
+    </header>
+    <form method="post" class="manager-edit-form manager-form" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save">
+      <input type="hidden" name="id" value="{{ item.id }}">
+
+      <div class="manager-type-card" data-manager-type-group>
+        <span>{% tr 'manager_type' %}</span>
+        {% if not ui_user_is_branch_manager %}
+        <label class="manager-type-option">
+          <input type="radio" name="manager_type" value="branch" {% if item.manager_type == 'branch' %}checked{% endif %}>
+          <span><strong>{% tr 'branch_manager' %}</strong><small>{% tr 'branch_manager_hint' %}</small></span>
+        </label>
+        {% endif %}
+        <label class="manager-type-option">
+          <input type="radio" name="manager_type" value="organization" {% if ui_user_is_branch_manager or item.manager_type == 'organization' %}checked{% endif %}>
+          <span><strong>{% tr 'organization_manager' %}</strong><small>{% tr 'organization_manager_hint' %}</small></span>
+        </label>
+      </div>
+
+      <label>{% tr 'username' %}<input class="form-control" name="username" value="{{ item.username }}" required></label>
+      <label>{% tr 'first_name' %}<input class="form-control" name="first_name" value="{{ item.first_name }}"></label>
+      <label>{% tr 'last_name' %}<input class="form-control" name="last_name" value="{{ item.last_name }}"></label>
+      <label>Email<input class="form-control" type="email" name="email" value="{{ item.email }}"></label>
+      <label>{% tr 'phone' %}<input class="form-control" name="phone" value="{{ item.profile.phone }}"></label>
+      <label>{% tr 'password' %}<input class="form-control" type="password" name="password" placeholder="{% tr 'leave_blank_keep_password' %}"></label>
+      <label>{% tr 'branch' %}
+        <select class="form-select" name="branch" required>
+          <option value="">{% tr 'select_branch' %}</option>
+          {% for branch in branches %}
+          <option value="{{ branch.id }}" {% if item.manager_branch_id == branch.id %}selected{% endif %}>{{ branch.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label data-organization-field>{% tr 'organization' %}
+        <select class="form-select" name="organization">
+          <option value="">{% tr 'all_organizations' %}</option>
+          {% for organization in organizations %}
+          <option value="{{ organization.id }}" data-branch-id="{{ organization.branch_id }}" {% if item.manager_organization_id == organization.id %}selected{% endif %}>{{ organization.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="check-line"><input type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> {% tr 'active' %}</label>
+      <div class="manager-modal-actions">
+        <button class="btn btn-outline-light" type="button" data-close-manager-modal>{% tr 'cancel' %}</button>
+        <button class="btn btn-primary" type="submit">{% tr 'save' %}</button>
+      </div>
+    </form>
+  </div>
+</div>

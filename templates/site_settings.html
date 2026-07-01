@@ -142,6 +142,25 @@
     </section>
   </div>
 </form>
+
+<section class="glass-card api-card site-settings-card database-tools-card">
+  <div class="api-card-head"><span>03</span><h2>{% tr 'database_tools' %}</h2></div>
+  <p class="hint">{% tr 'database_tools_hint' %}</p>
+  <div class="database-tools-grid">
+    <div class="database-tool-box">
+      <h3>{% tr 'database_export' %}</h3>
+      <p class="hint">{% tr 'database_export_hint' %}</p>
+      <a class="btn btn-outline" href="{% url 'database_export' %}">{% tr 'download_backup' %}</a>
+    </div>
+    <form class="database-tool-box database-import-form" method="post" enctype="multipart/form-data" action="{% url 'database_import' %}" data-confirm-submit="{% tr 'database_import_confirm' %}">
+      {% csrf_token %}
+      <h3>{% tr 'database_import' %}</h3>
+      <p class="hint">{% tr 'database_import_hint' %}</p>
+      <label>{% tr 'database_file' %}<input class="form-control" type="file" name="database_file" accept="application/json,.json" required></label>
+      <button class="btn btn-primary" type="submit">{% tr 'upload_backup' %}</button>
+    </form>
+  </div>
+</section>
 {% endblock %}
 
 {% block scripts %}
@@ -151,6 +170,12 @@ document.querySelectorAll('[data-sound-tab]').forEach((button) => {
     const lang = button.dataset.soundTab;
     document.querySelectorAll('[data-sound-tab]').forEach((item) => item.classList.toggle('active', item === button));
     document.querySelectorAll('[data-sound-panel]').forEach((panel) => panel.classList.toggle('active', panel.dataset.soundPanel === lang));
+  });
+});
+document.querySelectorAll('[data-confirm-submit]').forEach((form) => {
+  form.addEventListener('submit', (event) => {
+    const message = form.dataset.confirmSubmit;
+    if (message && !window.confirm(message)) event.preventDefault();
   });
 });
 </script>

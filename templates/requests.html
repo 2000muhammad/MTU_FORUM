@@ -18,15 +18,8 @@
   </div>
 </section>
 
-<section class="glass-card table-card">
-  <div class="table-responsive">
-    <table class="table align-middle request-table">
-      <thead><tr>
-        <th>{% tr 'id' %}</th><th>{% tr 'date' %}</th><th>{% tr 'platform' %}</th><th>{% tr 'reason' %}</th><th>{% tr 'pnfl' %}</th><th>{% tr 'company' %}</th><th>{% tr 'department' %}</th><th>{% tr 'position' %}</th><th>{% tr 'full_name' %}</th><th>{% tr 'passport' %}</th><th>{% tr 'phone' %}</th><th>{% tr 'telegram_id' %}</th><th>{% tr 'status' %}</th><th></th>
-      </tr></thead>
-      <tbody id="requestRows"></tbody>
-    </table>
-  </div>
+<section class="glass-card request-directory-panel">
+  <div id="requestRows" class="request-card-list"></div>
 </section>
 {% endblock %}
 {% block scripts %}
@@ -37,5 +30,5 @@ window.UI_TEXTS = {
   new: "{% tr 'new' %}", done: "{% tr 'done' %}", blocked: "{% tr 'blocked' %}"
 };
 </script>
-<script src="{% static 'js/dashboard.js' %}?v=20260525-department"></script>
+<script src="{% static 'js/dashboard.js' %}?v=20260603-request-cards"></script>
 {% endblock %}

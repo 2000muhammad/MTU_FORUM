@@ -1,22 +1,25 @@
 {% extends "base.html" %}
+{% load ui_i18n %}
 
-{% block title %}Задание | MTU FORUM{% endblock %}
-{% block page_title %}Задание{% endblock %}
+{% block title %}{% tr 'tasks' %} | MTU FORUM{% endblock %}
+{% block page_title %}{% tr 'tasks' %}{% endblock %}
 
 {% block content %}
 <section class="glass-card task-hero">
   <div>
-    <p class="eyebrow">Task control center</p>
-    <h2>Задание</h2>
-    <p>Создание, контроль статусов и быстрые счетчики по всем рабочим задачам.</p>
+    <p class="eyebrow">{% tr 'task_control_center' %}</p>
+    <h2>{% tr 'tasks' %}</h2>
+    <p>{% tr 'task_page_intro' %}</p>
   </div>
-  <a class="btn btn-primary" href="{% url 'developer_task_create' %}">Создать Задание</a>
+  {% if can_manage_tasks %}
+  <a class="btn btn-primary" href="{% url 'developer_task_create' %}">{% tr 'create_task' %}</a>
+  {% endif %}
 </section>
 
 <section class="task-counter-grid">
   {% for item in counters_main %}
   <a class="glass-card task-counter {% if active_filter == item.key %}active{% endif %}" href="?status={{ item.key }}{% if query %}&q={{ query|urlencode }}{% endif %}">
-    <span>{{ item.label }}</span>
+    <span>{% tr item.label_key %}</span>
     <strong>{{ item.count }}</strong>
   </a>
   {% endfor %}
@@ -24,13 +27,13 @@
 
 <section class="glass-card task-other-panel">
   <div>
-    <p class="eyebrow">Другие</p>
-    <h2>Дополнительные статусы</h2>
+    <p class="eyebrow">{% tr 'task_other' %}</p>
+    <h2>{% tr 'task_extra_statuses' %}</h2>
   </div>
   <div class="task-other-grid">
     {% for item in counters_other %}
     <a class="task-other-link {% if active_filter == item.key %}active{% endif %}" href="?status={{ item.key }}{% if query %}&q={{ query|urlencode }}{% endif %}">
-      <span>{{ item.label }}</span>
+      <span>{% tr item.label_key %}</span>
       <strong>{{ item.count }}</strong>
     </a>
     {% endfor %}
@@ -40,40 +43,95 @@
 <section class="glass-card task-toolbar">
   <form method="get">
     <input type="hidden" name="status" value="{{ active_filter }}">
-    <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="Поиск по названию, описанию, исполнителю">
-    <button class="btn btn-outline" type="submit">Поиск</button>
+    <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="{% tr 'task_search_placeholder' %}">
+    <button class="btn btn-outline" type="submit">{% tr 'search' %}</button>
   </form>
 </section>
 
 <section class="glass-card task-list-card">
   <div class="task-list-head">
-    <span>Название</span>
-    <span>Статус</span>
-    <span>Исполнитель</span>
-    <span>Срок</span>
-    <span>Просмотр</span>
+    <span>{% tr 'task_col_title' %}</span>
+    <span>{% tr 'task_col_status' %}</span>
+    <span>{% tr 'task_col_assignee' %}</span>
+    <span>{% tr 'task_col_due' %}</span>
+    <span>{% tr 'task_col_view' %}</span>
+    <span>{% tr 'task_col_actions' %}</span>
   </div>
   {% for task in page_obj %}
   <article class="task-row">
     <div>
       <strong>{{ task.title }}</strong>
-      <p>{{ task.description|default:"Без описания"|truncatechars:120 }}</p>
+      <p>{% if task.description %}{{ task.description|truncatechars:120 }}{% else %}{% tr 'task_no_description' %}{% endif %}</p>
     </div>
-    <span class="status-pill status-{{ task.status }}">{{ task.get_status_display }}</span>
-    <span>{{ task.assignee.get_full_name|default:task.assignee.username|default:"Не назначен" }}</span>
-    <span>{{ task.due_date|date:"d.m.Y"|default:"Без срока" }}</span>
-    <span>{% if task.is_viewed %}Просмотрено{% else %}Новое{% endif %}</span>
+    <span class="status-pill status-{{ task.status }}">{% tr task.status_label_key %}</span>
+    <span>{% if task.assignee %}{{ task.assignee.get_full_name|default:task.assignee.username }}{% else %}{% tr 'task_unassigned' %}{% endif %}</span>
+    <span>{% if task.due_date %}{{ task.due_date|date:"d.m.Y" }}{% else %}{% tr 'task_no_due' %}{% endif %}</span>
+    <span>{% if task.is_viewed %}{% tr 'task_viewed' %}{% else %}{% tr 'task_new' %}{% endif %}</span>
+    <div class="task-row-actions">
+      <a class="task-action-btn task-action-edit" href="{% url 'developer_task_edit' task.id %}">
+        <span class="task-action-icon">↗</span>
+        <span>{% tr 'edit' %}</span>
+      </a>
+      {% if not task.is_viewed %}
+      <form method="post" action="{% url 'developer_task_action' task.id %}">
+        {% csrf_token %}
+        <button class="task-action-btn task-action-view" name="action" value="view">
+          <span class="task-action-icon">✓</span>
+          <span>{% tr 'task_viewed' %}</span>
+        </button>
+      </form>
+      {% else %}
+      <span class="task-action-state">
+        <span class="task-action-icon">✓</span>
+        <span>{% tr 'task_viewed' %}</span>
+      </span>
+      {% endif %}
+      {% if task.status != "in_progress" and task.status != "approval" and task.status != "done" and task.status != "done_late" %}
+      <form method="post" action="{% url 'developer_task_action' task.id %}">
+        {% csrf_token %}
+        <button class="task-action-btn task-action-take" name="action" value="take">
+          <span class="task-action-icon">▶</span>
+          <span>{% tr 'task_take' %}</span>
+        </button>
+      </form>
+      {% endif %}
+      {% if task.status == "in_progress" or task.status == "revision" or task.status == "resumed" %}
+      <form method="post" action="{% url 'developer_task_action' task.id %}">
+        {% csrf_token %}
+        <button class="task-action-btn task-action-complete" name="action" value="complete">
+          <span class="task-action-icon">✓</span>
+          <span>{% tr 'task_complete' %}</span>
+        </button>
+      </form>
+      {% endif %}
+      {% if can_manage_tasks and task.status == "approval" %}
+      <form method="post" action="{% url 'developer_task_action' task.id %}">
+        {% csrf_token %}
+        <button class="task-action-btn task-action-complete" name="action" value="approve">
+          <span class="task-action-icon">✓</span>
+          <span>{% tr 'task_approve' %}</span>
+        </button>
+      </form>
+      <form method="post" action="{% url 'developer_task_action' task.id %}">
+        {% csrf_token %}
+        <button class="task-action-btn task-action-danger" name="action" value="revision">
+          <span class="task-action-icon">!</span>
+          <span>{% tr 'task_revision' %}</span>
+        </button>
+      </form>
+      {% endif %}
+    </div>
   </article>
   {% empty %}
-  <div class="empty-state">Заданий пока нет.</div>
+  <div class="empty-state">{% tr 'task_empty' %}</div>
   {% endfor %}
 </section>
 
 {% if page_obj.has_other_pages %}
 <nav class="pagination-line">
-  {% if page_obj.has_previous %}<a class="btn btn-outline" href="?page={{ page_obj.previous_page_number }}&status={{ active_filter }}{% if query %}&q={{ query|urlencode }}{% endif %}">Назад</a>{% endif %}
+  {% if page_obj.has_previous %}<a class="btn btn-outline" href="?page={{ page_obj.previous_page_number }}&status={{ active_filter }}{% if query %}&q={{ query|urlencode }}{% endif %}">{% tr 'back' %}</a>{% endif %}
   <span>{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
-  {% if page_obj.has_next %}<a class="btn btn-outline" href="?page={{ page_obj.next_page_number }}&status={{ active_filter }}{% if query %}&q={{ query|urlencode }}{% endif %}">Вперед</a>{% endif %}
+  {% if page_obj.has_next %}<a class="btn btn-outline" href="?page={{ page_obj.next_page_number }}&status={{ active_filter }}{% if query %}&q={{ query|urlencode }}{% endif %}">{% tr 'next' %}</a>{% endif %}
 </nav>
 {% endif %}
 {% endblock %}

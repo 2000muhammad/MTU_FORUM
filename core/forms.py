@@ -6,7 +6,7 @@ from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 
 from django.contrib.auth.models import User
 
-from .models import ApiConfiguration, BotSubscriptionChannel, DeveloperTask, ExternalApiConnection, IntakeRequest, Platform, Position, SiteRole, SiteSettings, Station, UserProfile, WebPlatform
+from .models import ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, Organization, Platform, Position, SiteRole, SiteSettings, Station, UserProfile, WebPlatform
 
 
 PUBLIC_INTAKE_TEXTS = {
@@ -329,7 +329,7 @@ class StationForm(AdminStyledModelForm):
 
         model = Station
 
-        fields = ["name", "code", "is_active", "sort_order"]
+        fields = ["name", "is_active", "sort_order"]
 
 
 
@@ -345,13 +345,30 @@ class PositionForm(AdminStyledModelForm):
 
 
 
+class BranchForm(AdminStyledModelForm):
+    class Meta:
+        model = Branch
+        fields = ["name", "is_active", "sort_order"]
+
+
+class OrganizationForm(AdminStyledModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["branch"].empty_label = "Выберите филиал"
+        self.fields["branch"].widget.attrs["class"] = "form-select"
+
+    class Meta:
+        model = Organization
+        fields = ["branch", "name", "is_active", "sort_order"]
+
+
 class PlatformForm(AdminStyledModelForm):
 
     class Meta:
 
         model = Platform
 
-        fields = ["name", "code", "is_active", "sort_order"]
+        fields = ["name", "is_active", "sort_order"]
 
 
 
@@ -360,7 +377,6 @@ class SiteRoleForm(AdminStyledModelForm):
         model = SiteRole
         fields = [
             "name",
-            "code",
             "description",
             "is_staff_role",
             "is_admin_role",
@@ -570,12 +586,20 @@ class SiteSettingsForm(AdminStyledModelForm):
         }
 
 
+class SingleRoleRadioSelect(forms.RadioSelect):
+    """Render one role while keeping ModelMultipleChoiceField's list contract."""
+
+    def value_from_datadict(self, data, files, name):
+        value = data.get(name)
+        return [value] if value else []
+
+
 class UserForm(AdminStyledModelForm):
 
     roles = forms.ModelMultipleChoiceField(
         queryset=SiteRole.objects.none(),
         required=False,
-        widget=forms.CheckboxSelectMultiple,
+        widget=SingleRoleRadioSelect,
     )
     password = forms.CharField(required=False, widget=forms.PasswordInput(render_value=False))
     pnfl = forms.CharField(required=False, max_length=32)
@@ -583,25 +607,68 @@ class UserForm(AdminStyledModelForm):
     phone = forms.CharField(required=False, max_length=32)
     birth_date = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
     employee_pinfl = forms.CharField(required=False, max_length=32)
-    branch = forms.CharField(required=False, max_length=180)
-    organization = forms.CharField(required=False, max_length=220)
+    branch = forms.ChoiceField(required=False, choices=[])
+    organization = forms.ChoiceField(required=False, choices=[])
     department = forms.CharField(required=False, max_length=220)
     position = forms.CharField(required=False, max_length=220)
     avatar = forms.ImageField(required=False, widget=forms.FileInput(attrs={"accept": "image/*"}))
     hrm_photo = forms.CharField(required=False, widget=forms.HiddenInput())
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, actor=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["roles"].queryset = SiteRole.objects.filter(is_active=True).order_by("sort_order", "name")
+        actor_profile = getattr(actor, "profile", None) if actor else None
+        actor_branch = getattr(actor_profile, "branch", "") if actor_profile else ""
+        actor_is_branch_manager = bool(
+            actor_profile and actor_profile.roles.filter(code="branch_manager", is_active=True).exists()
+        )
+        self.actor_is_branch_manager = actor_is_branch_manager
+        self.actor_branch = actor_branch
+        roles = SiteRole.objects.filter(is_active=True).order_by("sort_order", "name")
+        branches_qs = Branch.objects.filter(is_active=True)
+        organizations_qs = Organization.objects.filter(is_active=True, branch__is_active=True)
+        if actor_is_branch_manager and actor_branch:
+            roles = roles.exclude(is_admin_role=True).exclude(code__in=["branch_manager"])
+            branches_qs = branches_qs.filter(name=actor_branch)
+            organizations_qs = organizations_qs.filter(branch__name=actor_branch)
+            self.fields["branch"].initial = actor_branch
+        self.fields["roles"].queryset = roles
+        branch_names = list(branches_qs.values_list("name", flat=True))
+        organization_names = list(organizations_qs.values_list("name", flat=True))
         user = self.instance if getattr(self.instance, "pk", None) else None
         if user:
             profile = getattr(user, "profile", None)
             if profile:
-                self.fields["roles"].initial = profile.roles.all()
+                if profile.branch and profile.branch not in branch_names:
+                    branch_names.append(profile.branch)
+                if profile.organization and profile.organization not in organization_names:
+                    organization_names.append(profile.organization)
+                selected_role = profile.roles.filter(is_active=True).order_by("sort_order", "name").first()
+                self.fields["roles"].initial = [selected_role.pk] if selected_role else []
                 for field in USER_PROFILE_FORM_FIELDS:
                     if field == "avatar":
                         continue
                     self.fields[field].initial = getattr(profile, field, None)
+        for field_name, values, placeholder in (
+            ("branch", branch_names, "Выберите филиал"),
+            ("organization", organization_names, "Выберите организацию"),
+        ):
+            posted_value = self.data.get(field_name) if self.is_bound else self.initial.get(field_name)
+            if posted_value and posted_value not in values:
+                values.append(posted_value)
+            self.fields[field_name].choices = [("", placeholder)] + [(value, value) for value in values]
+            self.fields[field_name].widget.attrs["class"] = "form-select"
+
+    def clean(self):
+        cleaned_data = super().clean()
+        branch = cleaned_data.get("branch")
+        organization = cleaned_data.get("organization")
+        if branch and organization:
+            directory_matches = Organization.objects.filter(name=organization)
+            if directory_matches.exists() and not directory_matches.filter(branch__name=branch).exists():
+                self.add_error("organization", "Выбранная организация не относится к выбранному филиалу.")
+        if getattr(self, "actor_is_branch_manager", False) and branch != getattr(self, "actor_branch", ""):
+            self.add_error("branch", "Можно выбирать только свой филиал.")
+        return cleaned_data
 
 
 
@@ -630,6 +697,81 @@ class UserForm(AdminStyledModelForm):
             "position",
             "avatar",
             "hrm_photo",
+        ]
+
+
+class ManagerAccountForm(AdminStyledModelForm):
+    MANAGER_BRANCH = "branch"
+    MANAGER_ORGANIZATION = "organization"
+    MANAGER_TYPE_CHOICES = (
+        (MANAGER_BRANCH, "Менеджер филиала"),
+        (MANAGER_ORGANIZATION, "Менеджер организации"),
+    )
+
+    manager_type = forms.ChoiceField(choices=MANAGER_TYPE_CHOICES, widget=forms.RadioSelect)
+    password = forms.CharField(required=False, widget=forms.PasswordInput(render_value=False))
+    phone = forms.CharField(required=False, max_length=32)
+    branch = forms.ModelChoiceField(queryset=Branch.objects.none(), required=True)
+    organization = forms.ModelChoiceField(queryset=Organization.objects.none(), required=False)
+
+    def __init__(self, *args, actor=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        actor_profile = getattr(actor, "profile", None) if actor else None
+        actor_branch = getattr(actor_profile, "branch", "") if actor_profile else ""
+        actor_is_branch_manager = bool(
+            actor_profile and actor_profile.roles.filter(code="branch_manager", is_active=True).exists()
+        )
+        self.actor_is_branch_manager = actor_is_branch_manager
+        self.actor_branch = actor_branch
+        branch_qs = Branch.objects.filter(is_active=True).order_by("sort_order", "name")
+        organization_qs = Organization.objects.filter(
+            is_active=True, branch__is_active=True
+        ).select_related("branch").order_by("branch__sort_order", "branch__name", "sort_order", "name")
+        if actor_is_branch_manager and actor_branch:
+            branch_qs = branch_qs.filter(name=actor_branch)
+            organization_qs = organization_qs.filter(branch__name=actor_branch)
+            self.fields["manager_type"].choices = ((self.MANAGER_ORGANIZATION, "Менеджер организации"),)
+            self.fields["manager_type"].initial = self.MANAGER_ORGANIZATION
+            branch = branch_qs.first()
+            if branch:
+                self.fields["branch"].initial = branch.pk
+        self.fields["branch"].queryset = branch_qs
+        self.fields["organization"].queryset = organization_qs
+        self.fields["branch"].empty_label = "Выберите филиал"
+        self.fields["organization"].empty_label = "Выберите организацию"
+        self.fields["branch"].widget.attrs["class"] = "form-select"
+        self.fields["organization"].widget.attrs["class"] = "form-select"
+        self.fields["password"].widget.attrs["placeholder"] = "1234567"
+
+    def clean(self):
+        cleaned_data = super().clean()
+        manager_type = cleaned_data.get("manager_type")
+        branch = cleaned_data.get("branch")
+        organization = cleaned_data.get("organization")
+        if manager_type == self.MANAGER_ORGANIZATION and not organization:
+            self.add_error("organization", "Выберите организацию для менеджера организации.")
+        if branch and organization and organization.branch_id != branch.id:
+            self.add_error("organization", "Организация не относится к выбранному филиалу.")
+        if getattr(self, "actor_is_branch_manager", False):
+            if manager_type != self.MANAGER_ORGANIZATION:
+                self.add_error("manager_type", "Можно создавать только менеджера организации.")
+            if branch and branch.name != getattr(self, "actor_branch", ""):
+                self.add_error("branch", "Можно выбирать только свой филиал.")
+        return cleaned_data
+
+    class Meta:
+        model = User
+        fields = [
+            "username",
+            "first_name",
+            "last_name",
+            "email",
+            "is_active",
+            "password",
+            "manager_type",
+            "phone",
+            "branch",
+            "organization",
         ]
 
 
