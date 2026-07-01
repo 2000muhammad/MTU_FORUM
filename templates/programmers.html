@@ -1,16 +1,17 @@
 {% extends "base.html" %}
+{% load ui_i18n %}
 
-{% block title %}Программисты | MTU FORUM{% endblock %}
-{% block page_title %}Программисты{% endblock %}
+{% block title %}{% tr 'programmers' %} | MTU FORUM{% endblock %}
+{% block page_title %}{% tr 'programmers' %}{% endblock %}
 
 {% block content %}
 <section class="glass-card task-hero">
   <div>
-    <p class="eyebrow">Команда разработки</p>
-    <h2>Программисты</h2>
-    <p>Сводка по исполнителям, активным заданиям и задачам соисполнителей.</p>
+    <p class="eyebrow">{% tr 'development_team' %}</p>
+    <h2>{% tr 'programmers' %}</h2>
+    <p>{% tr 'programmers_summary' %}</p>
   </div>
-  <a class="btn btn-primary" href="{% url 'developer_task_create' %}">Создать Задание</a>
+  <a class="btn btn-primary" href="{% url 'developer_task_create' %}">{% tr 'create_task' %}</a>
 </section>
 
 <section class="programmer-grid">
@@ -24,18 +25,18 @@
       {% endif %}
       <div>
         <h3>{{ programmer.get_full_name|default:programmer.username }}</h3>
-        <p>{{ programmer.email|default:"Email не указан" }}</p>
+        <p>{% if programmer.email %}{{ programmer.email }}{% else %}{% tr 'email_not_specified' %}{% endif %}</p>
       </div>
     </div>
     <div class="programmer-stats">
-      <span><strong>{{ programmer.assigned_tasks_count }}</strong>Все</span>
-      <span><strong>{{ programmer.active_tasks_count }}</strong>В работе</span>
-      <span><strong>{{ programmer.done_tasks_count }}</strong>Готово</span>
-      <span><strong>{{ programmer.coexecutor_tasks_count }}</strong>Соисп.</span>
+      <span><strong>{{ programmer.assigned_tasks_count }}</strong>{% tr 'all_tasks' %}</span>
+      <span><strong>{{ programmer.active_tasks_count }}</strong>{% tr 'tasks_in_progress' %}</span>
+      <span><strong>{{ programmer.done_tasks_count }}</strong>{% tr 'tasks_done' %}</span>
+      <span><strong>{{ programmer.coexecutor_tasks_count }}</strong>{% tr 'coexecutor_short' %}</span>
     </div>
   </article>
   {% empty %}
-  <div class="glass-card empty-state">Пользователи не найдены.</div>
+  <div class="glass-card empty-state">{% tr 'users_not_found' %}</div>
   {% endfor %}
 </section>
 {% endblock %}

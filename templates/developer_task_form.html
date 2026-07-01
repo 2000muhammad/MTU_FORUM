@@ -1,165 +1,145 @@
 {% extends "base.html" %}
+{% load ui_i18n %}
 
-{% block title %}Создать Задание | MTU FORUM{% endblock %}
-{% block page_title %}Создать Задание{% endblock %}
+{% block title %}{% if task %}{% tr 'edit_task' %}{% else %}{% tr 'create_task' %}{% endif %} | MTU FORUM{% endblock %}
+{% block page_title %}{% if task %}{% tr 'edit_task' %}{% else %}{% tr 'create_task' %}{% endif %}{% endblock %}
 
 {% block content %}
 <section class="glass-card task-hero">
   <div>
-    <p class="eyebrow">Task creation</p>
-    <h2>Новое задание</h2>
-    <p>Заполните данные, назначьте исполнителя и статус выполнения.</p>
+    <p class="eyebrow">{% tr 'task_workspace' %}</p>
+    <h2>{% if task %}{% tr 'task_edit_title' %}{% else %}{% tr 'task_new_title' %}{% endif %}</h2>
+    <p>{% tr 'task_form_intro' %}</p>
   </div>
-  <a class="btn btn-outline" href="{% url 'developer_tasks' %}">Назад</a>
+  <a class="btn btn-outline" href="{% url 'developer_tasks' %}">{% tr 'back' %}</a>
 </section>
 
 <form class="glass-card task-form" method="post">
   {% csrf_token %}
-  <label>{{ form.title.label }}{{ form.title }}</label>
-  <label>{{ form.status.label }}{{ form.status }}</label>
-  <label>{{ form.assignee.label }}{{ form.assignee }}</label>
-  <label>{{ form.coexecutors.label }}{{ form.coexecutors }}</label>
-  <label class="task-date-field">{{ form.due_date.label }}
-    <span class="task-date-shell">
-      {{ form.due_date }}
-      <button class="task-date-trigger" type="button" data-task-date-trigger>
-        <span data-task-date-text>Выберите дату</span>
-        <span class="task-date-icon" aria-hidden="true"></span>
-      </button>
+  <label>{% tr 'task_field_title' %}{{ form.title }}</label>
+  <label>{% tr 'task_field_status' %}{{ form.status }}</label>
+  <label>{% tr 'task_field_assignee' %}{{ form.assignee }}</label>
+  <label class="task-person-picker-field">
+    {% tr 'task_field_coexecutors' %}
+    <span class="task-person-picker" data-person-picker data-placeholder="{% tr 'task_coexecutors_search' %}" data-empty="{% tr 'task_coexecutors_empty' %}" data-selected-label="{% tr 'task_coexecutors_selected' %}">
+      {{ form.coexecutors }}
     </span>
   </label>
-  <label>{{ form.priority.label }}{{ form.priority }}</label>
-  <label class="task-checkbox">{{ form.is_viewed }} <span>{{ form.is_viewed.label }}</span></label>
-  <label class="task-form-wide">{{ form.description.label }}{{ form.description }}</label>
+  <label>{% tr 'task_field_due_date' %}{{ form.due_date }}</label>
+  <label>{% tr 'task_field_priority' %}{{ form.priority }}</label>
+  <label class="task-checkbox">{{ form.is_viewed }} <span>{% tr 'task_field_is_viewed' %}</span></label>
+  <label class="task-form-wide">{% tr 'task_field_description' %}{{ form.description }}</label>
   {% if form.errors %}
   <div class="alert alert-danger task-form-wide">{{ form.errors }}</div>
   {% endif %}
   <div class="task-form-actions task-form-wide">
-    <button class="btn btn-primary" type="submit">Сохранить</button>
-    <a class="btn btn-outline" href="{% url 'developer_tasks' %}">Отмена</a>
+    <button class="btn btn-primary" type="submit">{% tr 'save' %}</button>
+    <a class="btn btn-outline" href="{% url 'developer_tasks' %}">{% tr 'cancel' %}</a>
   </div>
 </form>
 {% endblock %}
 
 {% block scripts %}
 <script>
-(() => {
-  const input = document.querySelector('#id_due_date');
-  const trigger = document.querySelector('[data-task-date-trigger]');
-  const text = document.querySelector('[data-task-date-text]');
-  if (!input || !trigger || !text) return;
+document.querySelectorAll('[data-person-picker]').forEach((picker) => {
+  const select = picker.querySelector('select');
+  if (!select) return;
 
-  const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-  const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-  const today = new Date();
-  let selected = input.value ? parseDate(input.value) : null;
-  let view = selected ? new Date(selected.getFullYear(), selected.getMonth(), 1) : new Date(today.getFullYear(), today.getMonth(), 1);
+  select.classList.add('task-person-native-select');
+  const placeholder = picker.dataset.placeholder || 'Search';
+  const emptyText = picker.dataset.empty || 'No users found';
+  const selectedLabel = picker.dataset.selectedLabel || 'Selected';
 
-  input.type = 'hidden';
+  const shell = document.createElement('div');
+  shell.className = 'task-person-shell';
 
-  const panel = document.createElement('div');
-  panel.className = 'task-calendar-panel';
-  panel.hidden = true;
-  trigger.parentElement.appendChild(panel);
+  const head = document.createElement('div');
+  head.className = 'task-person-head';
 
-  function parseDate(value) {
-    const parts = String(value || '').split('-').map(Number);
-    if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
-    return new Date(parts[0], parts[1] - 1, parts[2]);
-  }
+  const search = document.createElement('input');
+  search.type = 'search';
+  search.className = 'task-person-search';
+  search.placeholder = placeholder;
 
-  function isoDate(date) {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-  }
+  const selected = document.createElement('div');
+  selected.className = 'task-person-selected';
 
-  function displayDate(date) {
-    if (!date) return 'Выберите дату';
-    return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`;
-  }
+  const list = document.createElement('div');
+  list.className = 'task-person-list';
 
-  function isSameDay(a, b) {
-    return a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-  }
+  const empty = document.createElement('div');
+  empty.className = 'task-person-empty';
+  empty.textContent = emptyText;
+  empty.hidden = true;
 
-  function updateText() {
-    text.textContent = displayDate(selected);
-  }
+  head.append(search);
+  shell.append(head, selected, list, empty);
+  picker.append(shell);
 
-  function choose(date) {
-    selected = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    input.value = isoDate(selected);
-    view = new Date(selected.getFullYear(), selected.getMonth(), 1);
-    updateText();
-    render();
-    panel.hidden = true;
-  }
+  const initials = (text) => text.trim().split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase() || '?';
+  const options = Array.from(select.options).filter((option) => option.value);
 
-  function render() {
-    const first = new Date(view.getFullYear(), view.getMonth(), 1);
-    const startOffset = (first.getDay() + 6) % 7;
-    const start = new Date(first);
-    start.setDate(first.getDate() - startOffset);
+  const renderSelected = () => {
+    selected.innerHTML = '';
+    const chosen = options.filter((option) => option.selected);
+    const counter = document.createElement('span');
+    counter.className = 'task-person-counter';
+    counter.textContent = `${selectedLabel}: ${chosen.length}`;
+    selected.append(counter);
 
-    const days = Array.from({ length: 42 }, (_, index) => {
-      const day = new Date(start);
-      day.setDate(start.getDate() + index);
-      return day;
+    chosen.forEach((option) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'task-person-chip';
+      chip.textContent = option.text;
+      chip.addEventListener('click', () => {
+        option.selected = false;
+        renderAll();
+      });
+      selected.append(chip);
+    });
+  };
+
+  const renderList = () => {
+    const query = search.value.trim().toLowerCase();
+    list.innerHTML = '';
+    let shown = 0;
+
+    options.forEach((option) => {
+      const text = option.text.trim();
+      if (query && !text.toLowerCase().includes(query)) return;
+      shown += 1;
+
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = `task-person-option${option.selected ? ' is-selected' : ''}`;
+      const avatar = document.createElement('span');
+      avatar.className = 'task-person-avatar';
+      avatar.textContent = initials(text);
+      const name = document.createElement('span');
+      name.className = 'task-person-name';
+      name.textContent = text;
+      const check = document.createElement('span');
+      check.className = 'task-person-check';
+      check.textContent = '✓';
+      item.append(avatar, name, check);
+      item.addEventListener('click', () => {
+        option.selected = !option.selected;
+        renderAll();
+      });
+      list.append(item);
     });
 
-    panel.innerHTML = `
-      <div class="task-calendar-head">
-        <button type="button" data-cal-prev aria-label="Предыдущий месяц"></button>
-        <strong>${monthNames[view.getMonth()]} ${view.getFullYear()}</strong>
-        <button type="button" data-cal-next aria-label="Следующий месяц"></button>
-      </div>
-      <div class="task-calendar-weekdays">${weekdays.map((day) => `<span>${day}</span>`).join('')}</div>
-      <div class="task-calendar-grid">
-        ${days.map((day) => {
-          const muted = day.getMonth() !== view.getMonth() ? ' muted' : '';
-          const active = isSameDay(day, selected) ? ' active' : '';
-          const now = isSameDay(day, today) ? ' today' : '';
-          return `<button type="button" class="task-calendar-day${muted}${active}${now}" data-date="${isoDate(day)}">${day.getDate()}</button>`;
-        }).join('')}
-      </div>
-      <div class="task-calendar-actions">
-        <button type="button" data-cal-clear>Очистить</button>
-        <button type="button" data-cal-today>Сегодня</button>
-      </div>
-    `;
+    empty.hidden = shown !== 0;
+  };
 
-    panel.querySelector('[data-cal-prev]').addEventListener('click', () => {
-      view = new Date(view.getFullYear(), view.getMonth() - 1, 1);
-      render();
-    });
-    panel.querySelector('[data-cal-next]').addEventListener('click', () => {
-      view = new Date(view.getFullYear(), view.getMonth() + 1, 1);
-      render();
-    });
-    panel.querySelector('[data-cal-clear]').addEventListener('click', () => {
-      selected = null;
-      input.value = '';
-      updateText();
-      render();
-      panel.hidden = true;
-    });
-    panel.querySelector('[data-cal-today]').addEventListener('click', () => choose(today));
-    panel.querySelectorAll('[data-date]').forEach((button) => {
-      button.addEventListener('click', () => choose(parseDate(button.dataset.date)));
-    });
-  }
+  const renderAll = () => {
+    renderSelected();
+    renderList();
+  };
 
-  trigger.addEventListener('click', () => {
-    panel.hidden = !panel.hidden;
-    if (!panel.hidden) render();
-  });
-
-  document.addEventListener('click', (event) => {
-    if (panel.hidden) return;
-    if (!panel.contains(event.target) && !trigger.contains(event.target)) panel.hidden = true;
-  });
-
-  updateText();
-  render();
-})();
+  search.addEventListener('input', renderList);
+  renderAll();
+});
 </script>
 {% endblock %}

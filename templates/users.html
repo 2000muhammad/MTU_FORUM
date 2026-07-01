@@ -1,10 +1,10 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 {% load ui_i18n %}
 {% block page_title %}{% tr 'users' %}{% endblock %}
 {% block content %}
 <section class="glass-card users-create-panel">
   <div><h2>{% tr 'add_user' %}</h2><p class="text-secondary mb-0">{% tr 'new_password' %}</p></div>
-  <form method="post" enctype="multipart/form-data" class="user-create-form">
+  <form method="post" enctype="multipart/form-data" class="user-create-form" id="user-create-form" novalidate>
     {% csrf_token %}<input type="hidden" name="action" value="save">
     {{ user_form.hrm_photo }}
     <label>{% tr 'pnfl_jshshir' %}{{ user_form.pnfl }}</label>
@@ -16,8 +16,18 @@
     <label>{% tr 'phone' %}{{ user_form.phone }}</label>
     <label>{% tr 'birth_date' %}{{ user_form.birth_date }}</label>
     <label>{% tr 'employee_pinfl' %}{{ user_form.employee_pinfl }}</label>
-    <label>{% tr 'branch' %}{{ user_form.branch }}</label>
-    <label>{% tr 'organization' %}{{ user_form.organization }}</label>
+    <label>{% tr 'branch' %}
+      <select class="form-select" name="branch" data-branch-select>
+        <option value="">Выберите филиал</option>
+        {% for branch in branches %}<option value="{{ branch.name }}" {% if user_form.branch.value == branch.name %}selected{% endif %}>{{ branch.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>{% tr 'organization' %}
+      <select class="form-select" name="organization" data-organization-select>
+        <option value="">Сначала выберите филиал</option>
+        {% for organization in organizations %}<option value="{{ organization.name }}" data-branch="{{ organization.branch.name }}" {% if user_form.organization.value == organization.name %}selected{% endif %}>{{ organization.name }}</option>{% endfor %}
+      </select>
+    </label>
     <label>{% tr 'department' %}{{ user_form.department }}</label>
     <label>{% tr 'position' %}{{ user_form.position }}</label>
     <label>{% tr 'photo_upload' %}{{ user_form.avatar }}</label>
@@ -34,11 +44,17 @@
       </span>
     </label>
     <div class="role-picker role-picker-create">
-      <button class="role-picker-toggle" type="button" data-role-toggle>Роли</button>
+      <button class="role-picker-toggle" type="button" data-role-toggle data-default-label="Роли">Роли</button>
       <div class="role-picker-panel">
-        {{ user_form.roles }}
+        {% for role in roles %}
+        <label class="role-check">
+          <input class="form-check-input" type="radio" data-role-choice data-role-name="{{ role.name }}" value="{{ role.id }}">
+          <span>{{ role.name }}</span>
+        </label>
+        {% endfor %}
       </div>
     </div>
+    <input type="hidden" name="roles" value="" data-selected-role>
     <label class="check-line">{{ user_form.is_active }} {% tr 'active' %}</label>
     <div class="user-create-actions">
       <button class="btn btn-outline-info" name="action" value="hrm_lookup" formnovalidate>{% tr 'hrm_lookup' %}</button>
@@ -47,100 +63,423 @@
   </form>
 </section>
 
-<section class="glass-card users-list-panel">
+<section class="glass-card users-list-panel user-directory-panel">
   <form method="get" class="users-search-form">
     <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="{% tr 'users_search_placeholder' %}">
     <button class="btn btn-outline-info">{% tr 'search_users' %}</button>
     {% if query %}<a class="btn btn-outline-light" href="{% url 'users' %}">{% tr 'reset_filter' %}</a>{% endif %}
   </form>
-  <div class="table-responsive">
-    <table class="table request-table user-table">
-      <thead><tr><th>{% tr 'photo_upload' %}</th><th>{% tr 'pnfl_jshshir' %}</th><th>{% tr 'username' %}</th><th>{% tr 'first_name' %}</th><th>{% tr 'last_name' %}</th><th>{% tr 'middle_name' %}</th><th>Email</th><th>{% tr 'phone' %}</th><th>{% tr 'birth_date' %}</th><th>{% tr 'employee_pinfl' %}</th><th>{% tr 'branch' %}</th><th>{% tr 'organization' %}</th><th>{% tr 'department' %}</th><th>{% tr 'position' %}</th><th>Роли</th><th>{% tr 'active' %}</th><th>{% tr 'new_password' %}</th><th></th></tr></thead>
-      <tbody>
-      {% for u in users %}
-      <tr>
-        <form method="post" enctype="multipart/form-data">
-          {% csrf_token %}<input type="hidden" name="id" value="{{ u.id }}">
-          <td class="user-photo-cell">
-            {% if u.profile.avatar %}
-              <img src="{{ u.profile.avatar.url }}" alt="{{ u.username }}">
-            {% elif u.profile.hrm_photo %}
-              <img src="{{ u.profile.hrm_photo }}" alt="{{ u.username }}">
+
+  <div class="user-card-grid">
+    {% for u in users %}
+    <article class="user-card {% if not u.is_active %}is-muted{% endif %}">
+      <div class="user-card-main">
+        <div class="user-avatar">
+          {% if u.profile.avatar %}
+            <img src="{{ u.profile.avatar.url }}" alt="{{ u.username }}">
+          {% elif u.profile.hrm_photo %}
+            <img src="{{ u.profile.hrm_photo }}" alt="{{ u.username }}">
+          {% else %}
+            <span>{{ u.username|first|upper }}</span>
+          {% endif %}
+        </div>
+        <div class="user-card-info">
+          <div class="user-card-title">
+            <strong>{{ u.username }}</strong>
+            {% if u.is_active %}
+              <span class="user-status is-active">Активен</span>
+            {% else %}
+              <span class="user-status is-blocked">Неактивен</span>
             {% endif %}
-            <input class="form-control" type="file" name="avatar" accept="image/*">
-          </td>
-          <td><input class="form-control" name="pnfl" value="{{ u.profile.pnfl }}"></td>
-          <td><input class="form-control" name="username" value="{{ u.username }}"></td>
-          <td><input class="form-control" name="first_name" value="{{ u.first_name }}"></td>
-          <td><input class="form-control" name="last_name" value="{{ u.last_name }}"></td>
-          <td><input class="form-control" name="middle_name" value="{{ u.profile.middle_name }}"></td>
-          <td><input class="form-control" name="email" value="{{ u.email }}"></td>
-          <td><input class="form-control" name="phone" value="{{ u.profile.phone }}"></td>
-          <td><input class="form-control" type="date" name="birth_date" value="{{ u.profile.birth_date|date:'Y-m-d' }}"></td>
-          <td><input class="form-control" name="employee_pinfl" value="{{ u.profile.employee_pinfl }}"></td>
-          <td><input class="form-control" name="branch" value="{{ u.profile.branch }}"></td>
-          <td><input class="form-control" name="organization" value="{{ u.profile.organization }}"></td>
-          <td><input class="form-control" name="department" value="{{ u.profile.department }}"></td>
-          <td><input class="form-control" name="position" value="{{ u.profile.position }}"></td>
-          <td>
-            <div class="role-picker role-picker-table">
-              <button class="role-picker-toggle" type="button" data-role-toggle>Роли</button>
-              <div class="role-picker-panel">
-                {% for role in roles %}
-                <label class="role-check">
-                  <input class="form-check-input" type="checkbox" name="roles" value="{{ role.id }}" {% if role in u.profile.roles.all %}checked{% endif %}>
-                  <span>{{ role.name }}</span>
-                </label>
-                {% endfor %}
-              </div>
+          </div>
+          <p>{{ u.first_name|default:"-" }} {{ u.last_name }}{% if u.profile.middle_name %} {{ u.profile.middle_name }}{% endif %}</p>
+          <div class="user-meta-line">
+            {% if u.email %}<span>{{ u.email }}</span>{% endif %}
+            {% if u.profile.phone %}<span>{{ u.profile.phone }}</span>{% endif %}
+            {% if u.profile.employee_pinfl or u.profile.pnfl %}<span>ПИНФЛ: {{ u.profile.employee_pinfl|default:u.profile.pnfl }}</span>{% endif %}
+          </div>
+          <div class="user-role-row">
+            {% if u.is_superuser %}<span>Суперадмин</span>{% endif %}
+            {% if u.is_staff %}<span>Сотрудник</span>{% endif %}
+            {% for role in u.profile.roles.all %}<span>{{ role.name }}</span>{% endfor %}
+            {% if u.profile.organization %}<span>{{ u.profile.organization }}</span>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="user-card-actions">
+        <button class="user-kebab" type="button" data-user-menu-toggle aria-label="Действия">⋮</button>
+        <div class="user-action-menu">
+          <button type="button" data-open-user-modal="user-edit-{{ u.id }}">Редактировать</button>
+          <form method="post" data-confirm-form data-confirm-message="Вы точно хотите сбросить пароль?" data-confirm-yes="Да" data-confirm-no="Нет">
+            {% csrf_token %}
+            <input type="hidden" name="id" value="{{ u.id }}">
+            <input type="hidden" name="action" value="reset_password">
+            <button type="submit">Сброс пароля</button>
+          </form>
+          <form method="post" data-confirm-form data-confirm-message="Вы точно хотите удалить пользователя?" data-confirm-yes="Да" data-confirm-no="Нет">
+            {% csrf_token %}
+            <input type="hidden" name="id" value="{{ u.id }}">
+            <input type="hidden" name="action" value="delete">
+            <button class="danger" type="submit">Удалить</button>
+          </form>
+        </div>
+      </div>
+    </article>
+
+    <div class="user-modal" id="user-edit-{{ u.id }}" hidden>
+      <div class="user-modal-backdrop" data-close-user-modal></div>
+      <div class="user-modal-card glass-card" role="dialog" aria-modal="true" aria-label="Редактировать пользователя">
+        <div class="user-modal-head">
+          <div class="user-modal-person">
+            <div class="user-avatar">
+              {% if u.profile.avatar %}
+                <img src="{{ u.profile.avatar.url }}" alt="{{ u.username }}">
+              {% elif u.profile.hrm_photo %}
+                <img src="{{ u.profile.hrm_photo }}" alt="{{ u.username }}">
+              {% else %}
+                <span>{{ u.username|first|upper }}</span>
+              {% endif %}
             </div>
-          </td>
-          <td><label class="check-line"><input class="form-check-input" type="checkbox" name="is_active" {% if u.is_active %}checked{% endif %}></label></td>
-          <td>
+            <div>
+              <strong>{{ u.username }}</strong>
+              <span>{{ u.first_name|default:"Пользователь" }} {{ u.last_name }}</span>
+            </div>
+          </div>
+          <button class="user-modal-close" type="button" data-close-user-modal aria-label="Закрыть">×</button>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" class="user-edit-form" id="user-edit-form-{{ u.id }}" novalidate>
+          {% csrf_token %}
+          <input type="hidden" name="action" value="save">
+          <input type="hidden" name="id" value="{{ u.id }}">
+          <label>{% tr 'pnfl_jshshir' %}<input class="form-control" name="pnfl" value="{{ u.profile.pnfl }}"></label>
+          <label>{% tr 'username' %}<input class="form-control" name="username" value="{{ u.username }}"></label>
+          <label>{% tr 'first_name' %}<input class="form-control" name="first_name" value="{{ u.first_name }}"></label>
+          <label>{% tr 'last_name' %}<input class="form-control" name="last_name" value="{{ u.last_name }}"></label>
+          <label>{% tr 'middle_name' %}<input class="form-control" name="middle_name" value="{{ u.profile.middle_name }}"></label>
+          <label>Email<input class="form-control" name="email" value="{{ u.email }}"></label>
+          <label>{% tr 'phone' %}<input class="form-control" name="phone" value="{{ u.profile.phone }}"></label>
+          <label>{% tr 'birth_date' %}<input class="form-control" type="date" name="birth_date" value="{{ u.profile.birth_date|date:'Y-m-d' }}"></label>
+          <label>{% tr 'employee_pinfl' %}<input class="form-control" name="employee_pinfl" value="{{ u.profile.employee_pinfl }}"></label>
+          <label>{% tr 'branch' %}
+            <select class="form-select" name="branch" data-branch-select>
+              <option value="">Выберите филиал</option>
+              {% for branch in branches %}<option value="{{ branch.name }}" {% if u.profile.branch == branch.name %}selected{% endif %}>{{ branch.name }}</option>{% endfor %}
+            </select>
+          </label>
+          <label>{% tr 'organization' %}
+            <select class="form-select" name="organization" data-organization-select>
+              <option value="">Сначала выберите филиал</option>
+              {% for organization in organizations %}<option value="{{ organization.name }}" data-branch="{{ organization.branch.name }}" {% if u.profile.organization == organization.name %}selected{% endif %}>{{ organization.name }}</option>{% endfor %}
+            </select>
+          </label>
+          <label>{% tr 'department' %}<input class="form-control" name="department" value="{{ u.profile.department }}"></label>
+          <label>{% tr 'position' %}<input class="form-control" name="position" value="{{ u.profile.position }}"></label>
+          <label>{% tr 'photo_upload' %}<input class="form-control" type="file" name="avatar" accept="image/*"></label>
+          <label>{% tr 'new_password' %}
             <span class="secret-input-wrap user-password-wrap">
               <input class="form-control" type="password" name="password" placeholder="{% tr 'leave_blank_password' %}">
               <button class="secret-toggle-btn" type="button" data-secret-toggle data-show="{% tr 'show' %}" data-hide="{% tr 'hide' %}">{% tr 'show' %}</button>
             </span>
-          </td>
-          <td class="user-actions"><button class="btn btn-outline-info" name="action" value="save">{% tr 'save' %}</button><button class="btn btn-outline-primary" name="action" value="hrm_sync" formnovalidate>{% tr 'sync_hrm' %}</button><button class="btn btn-outline-danger" name="action" value="delete" formnovalidate onclick="return confirm('{% tr 'delete_user_confirm' %}')">{% tr 'delete' %}</button></td>
+          </label>
+          <div class="role-picker role-picker-modal">
+            <button class="role-picker-toggle" type="button" data-role-toggle data-default-label="Роли">{% if u.selected_role_id %}{% for role in roles %}{% if role.id == u.selected_role_id %}{{ role.name }}{% endif %}{% endfor %}{% else %}Роли{% endif %}</button>
+            <div class="role-picker-panel">
+              {% for role in roles %}
+              <label class="role-check">
+                <input class="form-check-input" type="radio" data-role-choice data-role-name="{{ role.name }}" value="{{ role.id }}" {% if role.id == u.selected_role_id %}checked{% endif %}>
+                <span>{{ role.name }}</span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+          <input type="hidden" name="roles" value="{{ u.selected_role_id|default:'' }}" data-selected-role>
+          <label class="check-line"><input class="form-check-input" type="checkbox" name="is_active" {% if u.is_active %}checked{% endif %}> {% tr 'active' %}</label>
+          <div class="user-modal-actions">
+            <button class="btn btn-outline-primary" name="action" value="hrm_sync" formnovalidate>{% tr 'sync_hrm' %}</button>
+            <button class="btn btn-outline-light" type="button" data-close-user-modal>Отмена</button>
+            <button class="btn btn-primary" name="action" value="save">Сохранить</button>
+          </div>
         </form>
-      </tr>
-      {% empty %}<tr><td colspan="18" class="text-center text-secondary py-5">{% tr 'no_records' %}</td></tr>{% endfor %}
-      </tbody>
-    </table>
+      </div>
+    </div>
+    {% empty %}
+    <div class="empty-state user-empty-state">{% tr 'no_records' %}</div>
+    {% endfor %}
   </div>
 </section>
+
+<div class="confirm-modal" id="user-confirm-modal" hidden>
+  <div class="confirm-modal-backdrop"></div>
+  <div class="confirm-modal-card glass-card" role="dialog" aria-modal="true">
+    <strong data-confirm-text>Вы уверены?</strong>
+    <div class="confirm-modal-actions">
+      <button class="btn btn-outline-light" type="button" data-confirm-no>Нет</button>
+      <button class="btn btn-primary" type="button" data-confirm-yes>Да</button>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+function syncOrganizationSelect(branchSelect, resetInvalid = false) {
+  const form = branchSelect.closest('form');
+  const organizationSelect = form ? form.querySelector('[data-organization-select]') : null;
+  if (!organizationSelect) return;
+  const selectedBranch = branchSelect.value;
+  let selectedStillAvailable = false;
+
+  [...organizationSelect.options].forEach((option, index) => {
+    if (index === 0) {
+      option.textContent = selectedBranch ? 'Выберите организацию' : 'Сначала выберите филиал';
+      return;
+    }
+    const matches = Boolean(selectedBranch) && option.dataset.branch === selectedBranch;
+    option.hidden = !matches;
+    option.disabled = !matches;
+    if (matches && option.selected) selectedStillAvailable = true;
+  });
+
+  organizationSelect.disabled = !selectedBranch;
+  if (resetInvalid && !selectedStillAvailable) organizationSelect.value = '';
+}
+
+document.querySelectorAll('[data-branch-select]').forEach((branchSelect) => {
+  syncOrganizationSelect(branchSelect);
+  branchSelect.addEventListener('change', () => syncOrganizationSelect(branchSelect, true));
+});
+
 document.querySelectorAll('[data-secret-toggle]').forEach((button) => {
   button.addEventListener('click', () => {
     const wrap = button.closest('.secret-input-wrap');
     const input = wrap ? wrap.querySelector('input') : null;
     if (!input) return;
-
     const isHidden = input.type === 'password';
     input.type = isHidden ? 'text' : 'password';
     button.textContent = isHidden ? button.dataset.hide : button.dataset.show;
   });
 });
 
+let generatedRoleFormId = 0;
+
+function ensureRoleFormId(form) {
+  if (!form) return '';
+  let formId = form.getAttribute('id');
+  if (!formId) {
+    generatedRoleFormId += 1;
+    formId = `role-form-${generatedRoleFormId}`;
+    form.setAttribute('id', formId);
+  }
+  return formId;
+}
+
+function closeRolePicker(picker) {
+  if (!picker) return;
+  picker.classList.remove('is-open');
+  const panel = picker._floatingRolePanel;
+  if (panel) {
+    panel.classList.remove('is-floating');
+    panel.removeAttribute('style');
+    picker.appendChild(panel);
+    picker._floatingRolePanel = null;
+  }
+}
+
+function closeRolePickers(exceptPicker = null) {
+  document.querySelectorAll('.role-picker.is-open').forEach((picker) => {
+    if (picker !== exceptPicker) closeRolePicker(picker);
+  });
+}
+
+function positionRolePanel(button, panel) {
+  const rect = button.getBoundingClientRect();
+  const width = Math.min(Math.max(rect.width, 320), window.innerWidth - 24);
+  const left = Math.min(Math.max(12, rect.left), window.innerWidth - width - 12);
+  panel.style.width = `${width}px`;
+  panel.style.left = `${left}px`;
+  panel.style.top = `${rect.bottom + 8}px`;
+  panel.style.maxHeight = `${Math.max(220, window.innerHeight - rect.bottom - 28)}px`;
+}
+
 document.querySelectorAll('[data-role-toggle]').forEach((button) => {
   button.addEventListener('click', (event) => {
     event.stopPropagation();
     const picker = button.closest('.role-picker');
-    document.querySelectorAll('.role-picker.is-open').forEach((item) => {
-      if (item !== picker) item.classList.remove('is-open');
+    const panel = picker ? (picker._floatingRolePanel || picker.querySelector('.role-picker-panel')) : null;
+    if (!picker || !panel) return;
+
+    const willOpen = !picker.classList.contains('is-open');
+    closeRolePickers(picker);
+
+    if (!willOpen) {
+      closeRolePicker(picker);
+      return;
+    }
+
+    const formId = ensureRoleFormId(button.closest('form'));
+    panel.querySelectorAll('input, select, textarea, button').forEach((field) => {
+      if (formId) field.dataset.roleForm = formId;
     });
-    picker?.classList.toggle('is-open');
+    picker._floatingRolePanel = panel;
+    picker.classList.add('is-open');
+    document.body.appendChild(panel);
+    panel.classList.add('is-floating');
+    positionRolePanel(button, panel);
   });
 });
-document.addEventListener('click', () => {
-  document.querySelectorAll('.role-picker.is-open').forEach((item) => item.classList.remove('is-open'));
+
+document.querySelectorAll('[data-user-menu-toggle]').forEach((button) => {
+  button.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const actions = button.closest('.user-card-actions');
+    const menu = actions ? actions.querySelector('.user-action-menu') : null;
+    const isOpen = actions?.classList.contains('is-open');
+    document.querySelectorAll('.user-card-actions.is-open').forEach((item) => {
+      if (item !== actions) closeUserActionMenu(item);
+    });
+    if (!actions || !menu) return;
+    if (isOpen) {
+      closeUserActionMenu(actions);
+      return;
+    }
+    actions.classList.add('is-open');
+    actions._floatingActionMenu = menu;
+    document.body.appendChild(menu);
+    menu.classList.add('is-floating');
+    positionUserActionMenu(button, menu);
+  });
 });
-document.querySelectorAll('.role-picker-panel').forEach((panel) => {
+
+function positionUserActionMenu(button, menu) {
+  const rect = button.getBoundingClientRect();
+  const width = 230;
+  const left = Math.min(Math.max(12, rect.right - width), window.innerWidth - width - 12);
+  const preferredTop = rect.bottom + 8;
+  const maxTop = window.innerHeight - menu.offsetHeight - 12;
+  menu.style.width = `${width}px`;
+  menu.style.left = `${left}px`;
+  menu.style.top = `${Math.max(12, Math.min(preferredTop, maxTop))}px`;
+}
+
+function closeUserActionMenu(actions) {
+  if (!actions) return;
+  actions.classList.remove('is-open');
+  const menu = actions._floatingActionMenu;
+  if (menu) {
+    menu.classList.remove('is-floating');
+    menu.removeAttribute('style');
+    actions.appendChild(menu);
+    actions._floatingActionMenu = null;
+  }
+}
+
+function closeUserModals() {
+  document.querySelectorAll('.user-modal').forEach((modal) => {
+    modal.hidden = true;
+  });
+  document.documentElement.classList.remove('modal-open');
+}
+
+document.querySelectorAll('[data-open-user-modal]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const modal = document.getElementById(button.dataset.openUserModal);
+    if (!modal) return;
+    document.querySelectorAll('.user-card-actions.is-open').forEach((item) => closeUserActionMenu(item));
+    document.body.appendChild(modal);
+    modal.hidden = false;
+    document.documentElement.classList.add('modal-open');
+  });
+});
+
+document.querySelectorAll('[data-close-user-modal]').forEach((button) => {
+  button.addEventListener('click', closeUserModals);
+});
+
+document.addEventListener('click', () => {
+  closeRolePickers();
+  document.querySelectorAll('.user-card-actions.is-open').forEach((item) => closeUserActionMenu(item));
+});
+
+document.querySelectorAll('.role-picker-panel, .user-action-menu').forEach((panel) => {
   panel.addEventListener('click', (event) => event.stopPropagation());
 });
+
+document.querySelectorAll('.role-picker-panel .role-check').forEach((option) => {
+  option.addEventListener('click', (event) => {
+    event.preventDefault();
+    const input = option.querySelector('[data-role-choice]');
+    if (!input) return;
+    const shouldClear = input.checked;
+    const panel = option.closest('.role-picker-panel');
+    panel.querySelectorAll('[data-role-choice]').forEach((item) => {
+      item.checked = false;
+    });
+    input.checked = !shouldClear;
+    const form = document.getElementById(input.dataset.roleForm);
+    const selectedRole = form ? form.querySelector('[data-selected-role]') : null;
+    if (selectedRole) selectedRole.value = shouldClear ? '' : input.value;
+    const picker = [...document.querySelectorAll('.role-picker.is-open')]
+      .find((item) => item._floatingRolePanel === panel);
+    const toggle = picker ? picker.querySelector('[data-role-toggle]') : null;
+    if (toggle) toggle.textContent = shouldClear ? (toggle.dataset.defaultLabel || 'Роли') : input.dataset.roleName;
+    closeRolePicker(picker);
+  });
+});
+
+document.querySelectorAll('form').forEach((form) => {
+  form.addEventListener('submit', () => {
+    closeRolePickers();
+    document.querySelectorAll('.user-card-actions.is-open').forEach((item) => closeUserActionMenu(item));
+  });
+});
+
+const confirmModal = document.getElementById('user-confirm-modal');
+let pendingConfirmForm = null;
+
+function closeConfirmModal() {
+  if (confirmModal) confirmModal.hidden = true;
+  pendingConfirmForm = null;
+}
+
+document.querySelectorAll('[data-confirm-form]').forEach((form) => {
+  form.addEventListener('submit', (event) => {
+    if (form.dataset.confirmed === '1') return;
+    event.preventDefault();
+    pendingConfirmForm = form;
+    if (!confirmModal) return;
+    confirmModal.querySelector('[data-confirm-text]').textContent = form.dataset.confirmMessage || 'Вы уверены?';
+    confirmModal.querySelector('[data-confirm-yes]').textContent = form.dataset.confirmYes || 'Да';
+    confirmModal.querySelector('[data-confirm-no]').textContent = form.dataset.confirmNo || 'Нет';
+    confirmModal.hidden = false;
+  });
+});
+
+confirmModal?.querySelector('[data-confirm-no]')?.addEventListener('click', closeConfirmModal);
+confirmModal?.querySelector('.confirm-modal-backdrop')?.addEventListener('click', closeConfirmModal);
+confirmModal?.querySelector('[data-confirm-yes]')?.addEventListener('click', () => {
+  if (!pendingConfirmForm) return;
+  pendingConfirmForm.dataset.confirmed = '1';
+  pendingConfirmForm.submit();
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    closeRolePickers();
+    document.querySelectorAll('.user-card-actions.is-open').forEach((item) => closeUserActionMenu(item));
+    closeUserModals();
+    closeConfirmModal();
+  }
+});
+
+window.addEventListener('resize', () => {
+  closeRolePickers();
+  document.querySelectorAll('.user-card-actions.is-open').forEach((item) => closeUserActionMenu(item));
+});
+window.addEventListener('scroll', () => {
+  closeRolePickers();
+  document.querySelectorAll('.user-card-actions.is-open').forEach((item) => closeUserActionMenu(item));
+}, true);
 </script>
 {% endblock %}

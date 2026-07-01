@@ -3,12 +3,48 @@ from django.contrib.auth.models import User
 from django.db import models
 
 from django.utils import timezone
+from django.utils.text import slugify
+
+
+def _make_unique_code(instance, name, max_length=32, queryset=None):
+    """Generate a stable readable code and avoid collisions in its directory."""
+    queryset = queryset if queryset is not None else instance.__class__.objects.all()
+    base = slugify(name or "", allow_unicode=True).replace("-", "_") or "item"
+    base = base[:max_length]
+    candidate = base
+    counter = 2
+    if instance.pk:
+        queryset = queryset.exclude(pk=instance.pk)
+    while queryset.filter(code=candidate).exists():
+        suffix = f"_{counter}"
+        candidate = f"{base[:max_length - len(suffix)]}{suffix}"
+        counter += 1
+    return candidate
+
+
+class AutomaticCodeMixin:
+    code_max_length = 32
+
+    def code_queryset(self):
+        return self.__class__.objects.all()
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            self.code = _make_unique_code(
+                self,
+                self.name,
+                max_length=self.code_max_length,
+                queryset=self.code_queryset(),
+            )
+            if kwargs.get("update_fields") is not None:
+                kwargs["update_fields"] = set(kwargs["update_fields"]) | {"code"}
+        super().save(*args, **kwargs)
 
 
 
 
 
-class Station(models.Model):
+class Station(AutomaticCodeMixin, models.Model):
 
     name = models.CharField(max_length=180, unique=True)
 
@@ -58,7 +94,41 @@ class Position(models.Model):
 
 
 
-class SiteRole(models.Model):
+class Branch(AutomaticCodeMixin, models.Model):
+    name = models.CharField(max_length=180, unique=True)
+    code = models.CharField(max_length=32, blank=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+
+    def __str__(self):
+        return self.name
+
+
+class Organization(AutomaticCodeMixin, models.Model):
+    branch = models.ForeignKey(Branch, on_delete=models.PROTECT, related_name="organizations")
+    name = models.CharField(max_length=220)
+    code = models.CharField(max_length=32, blank=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["branch__sort_order", "branch__name", "sort_order", "name"]
+        constraints = [
+            models.UniqueConstraint(fields=["branch", "name"], name="unique_organization_name_per_branch"),
+        ]
+
+    def code_queryset(self):
+        return self.__class__.objects.filter(branch=self.branch)
+
+    def __str__(self):
+        return f"{self.branch} — {self.name}"
+
+
+class SiteRole(AutomaticCodeMixin, models.Model):
+    code_max_length = 80
     name = models.CharField(max_length=120, unique=True)
     code = models.SlugField(max_length=80, unique=True)
     description = models.TextField(blank=True)
@@ -89,7 +159,7 @@ class SiteRole(models.Model):
         return self.name
 
 
-class Platform(models.Model):
+class Platform(AutomaticCodeMixin, models.Model):
 
     name = models.CharField(max_length=180, unique=True)
 

@@ -1,0 +1,292 @@
+{% extends 'base.html' %}
+{% load ui_i18n %}
+{% block page_title %}{% tr 'manager_accounts' %}{% endblock %}
+
+{% block content %}
+<section class="manager-hero glass-card">
+  <div>
+    <span class="eyebrow">{% tr 'enterprise' %}</span>
+    <h1>{% tr 'manager_accounts' %}</h1>
+    <p>{% tr 'manager_accounts_hint' %}</p>
+  </div>
+  <div class="manager-stat">
+    <span>{% tr 'total_managers' %}</span>
+    <strong>{{ manager_users|length }}</strong>
+  </div>
+</section>
+
+<section class="glass-card manager-create-panel">
+  <div class="section-head">
+    <div>
+      <h2>{% tr 'create_manager_account' %}</h2>
+      <p>{% tr 'create_manager_account_hint' %}</p>
+    </div>
+  </div>
+  <form method="post" class="manager-create-form manager-form" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="action" value="save">
+    <div class="manager-type-card" data-manager-type-group>
+      <span>{% tr 'manager_type' %}</span>
+      {% with mt=form.manager_type.value|default:'branch' %}
+      {% if not ui_user_is_branch_manager %}
+      <label class="manager-type-option">
+        <input type="radio" name="manager_type" value="branch" {% if mt == 'branch' %}checked{% endif %}>
+        <span><strong>{% tr 'branch_manager' %}</strong><small>{% tr 'branch_manager_hint' %}</small></span>
+      </label>
+      {% endif %}
+      <label class="manager-type-option">
+        <input type="radio" name="manager_type" value="organization" {% if ui_user_is_branch_manager or mt == 'organization' %}checked{% endif %}>
+        <span><strong>{% tr 'organization_manager' %}</strong><small>{% tr 'organization_manager_hint' %}</small></span>
+      </label>
+      {% endwith %}
+    </div>
+    <label>{% tr 'username' %}{{ form.username }}</label>
+    <label>{% tr 'first_name' %}{{ form.first_name }}</label>
+    <label>{% tr 'last_name' %}{{ form.last_name }}</label>
+    <label>Email{{ form.email }}</label>
+    <label>{% tr 'phone' %}{{ form.phone }}</label>
+    <label>{% tr 'password' %}{{ form.password }}<small>{% tr 'password_default_hint' %}</small></label>
+    <label>{% tr 'branch' %}{{ form.branch }}</label>
+    <label data-organization-field>{% tr 'organization' %}{{ form.organization }}</label>
+    <label class="check-line">{{ form.is_active }} {% tr 'active' %}</label>
+    <button class="btn btn-primary" type="submit">{% tr 'create_account' %}</button>
+  </form>
+</section>
+
+<section class="glass-card manager-list-panel">
+  <div class="section-head manager-list-head">
+    <div>
+      <h2>{% tr 'created_managers' %}</h2>
+      <p>{% tr 'created_managers_hint' %}</p>
+    </div>
+    <form method="get" class="manager-search">
+      <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="{% tr 'manager_search_placeholder' %}">
+      <button class="btn btn-outline-info">{% tr 'search' %}</button>
+      {% if query %}<a class="btn btn-outline-light" href="{% url 'manager_accounts' %}">{% tr 'reset' %}</a>{% endif %}
+    </form>
+  </div>
+
+  <div class="manager-split-grid">
+    {% if not ui_user_is_branch_manager %}
+    <section class="manager-type-section">
+      <div class="manager-type-section-head">
+        <div>
+          <h3>{% tr 'branch_managers' %}</h3>
+          <p>{% tr 'branch_managers_hint' %}</p>
+        </div>
+        <span>{{ branch_manager_users|length }}</span>
+      </div>
+      <div class="manager-card-grid">
+        {% for item in branch_manager_users %}
+          {% include 'includes/manager_card.html' %}
+        {% empty %}
+          <div class="empty-state">{% tr 'no_branch_managers' %}</div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="manager-type-section">
+      <div class="manager-type-section-head">
+        <div>
+          <h3>{% tr 'organization_managers' %}</h3>
+          <p>{% tr 'organization_managers_hint' %}</p>
+        </div>
+        <span>{{ organization_manager_users|length }}</span>
+      </div>
+      <div class="manager-card-grid">
+        {% for item in organization_manager_users %}
+          {% include 'includes/manager_card.html' %}
+        {% empty %}
+          <div class="empty-state">{% tr 'no_organization_managers' %}</div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+
+  {% comment %}
+  <div class="manager-card-grid">
+    {% for item in manager_users %}
+    <article class="manager-card {% if not item.is_active %}is-muted{% endif %}">
+      <div class="manager-avatar">
+        {% if item.profile.avatar %}
+          <img src="{{ item.profile.avatar.url }}" alt="{{ item.username }}">
+        {% elif item.profile.hrm_photo %}
+          <img src="{{ item.profile.hrm_photo }}" alt="{{ item.username }}">
+        {% else %}
+          <span>{{ item.username|first|upper }}</span>
+        {% endif %}
+      </div>
+      <div class="manager-card-body">
+        <div class="manager-card-top">
+          <strong>{{ item.get_full_name|default:item.username }}</strong>
+          <span class="manager-role-badge">{{ item.manager_role_name|default:"-" }}</span>
+        </div>
+        <p>{{ item.username }}{% if item.email %} · {{ item.email }}{% endif %}</p>
+        <div class="manager-tags">
+          {% if item.profile.branch %}<span>{% tr 'branch' %}: {{ item.profile.branch }}</span>{% endif %}
+          {% if item.profile.organization %}<span>{% tr 'organization' %}: {{ item.profile.organization }}</span>{% endif %}
+          {% if item.profile.phone %}<span>{{ item.profile.phone }}</span>{% endif %}
+          {% if item.is_active %}<span class="is-green">{% tr 'active' %}</span>{% else %}<span>{% tr 'inactive' %}</span>{% endif %}
+        </div>
+      </div>
+      <div class="manager-card-actions">
+        <button class="manager-kebab" type="button" data-manager-menu-toggle aria-label="Actions">⋮</button>
+        <div class="manager-action-menu" hidden>
+          <button type="button" data-open-manager-modal="manager-edit-{{ item.id }}">{% tr 'manager_edit_action' %}</button>
+          <form method="post" onsubmit="return confirm('{% tr 'reset_manager_password_confirm' %}')">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="reset_password">
+            <input type="hidden" name="id" value="{{ item.id }}">
+            <button type="submit">{% tr 'manager_reset_password_action' %}</button>
+          </form>
+          <form method="post" onsubmit="return confirm('{% tr 'delete_manager_confirm' %}')">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="id" value="{{ item.id }}">
+            <button class="is-danger" type="submit">{% tr 'manager_delete_action' %}</button>
+          </form>
+        </div>
+      </div>
+    </article>
+
+    <div class="manager-modal" id="manager-edit-{{ item.id }}" hidden>
+      <div class="manager-modal-backdrop" data-close-manager-modal></div>
+      <div class="manager-modal-card glass-card">
+        <button class="manager-modal-close" type="button" data-close-manager-modal aria-label="Close">×</button>
+        <header class="manager-modal-head">
+          <div class="manager-avatar">
+            {% if item.profile.avatar %}
+              <img src="{{ item.profile.avatar.url }}" alt="{{ item.username }}">
+            {% elif item.profile.hrm_photo %}
+              <img src="{{ item.profile.hrm_photo }}" alt="{{ item.username }}">
+            {% else %}
+              <span>{{ item.username|first|upper }}</span>
+            {% endif %}
+          </div>
+          <div>
+            <h2>{% tr 'edit_manager_account' %}</h2>
+            <strong>{{ item.username }}</strong>
+            <p>{{ item.get_full_name|default:item.username }}</p>
+          </div>
+        </header>
+        <form method="post" class="manager-edit-form manager-form" novalidate>
+          {% csrf_token %}
+          <input type="hidden" name="action" value="save">
+          <input type="hidden" name="id" value="{{ item.id }}">
+
+          <div class="manager-type-card" data-manager-type-group>
+            <span>{% tr 'manager_type' %}</span>
+            <label class="manager-type-option">
+              <input type="radio" name="manager_type" value="branch" {% if item.manager_type == 'branch' %}checked{% endif %}>
+              <span><strong>{% tr 'branch_manager' %}</strong><small>{% tr 'branch_manager_hint' %}</small></span>
+            </label>
+            <label class="manager-type-option">
+              <input type="radio" name="manager_type" value="organization" {% if item.manager_type == 'organization' %}checked{% endif %}>
+              <span><strong>{% tr 'organization_manager' %}</strong><small>{% tr 'organization_manager_hint' %}</small></span>
+            </label>
+          </div>
+
+          <label>{% tr 'username' %}<input class="form-control" name="username" value="{{ item.username }}" required></label>
+          <label>{% tr 'first_name' %}<input class="form-control" name="first_name" value="{{ item.first_name }}"></label>
+          <label>{% tr 'last_name' %}<input class="form-control" name="last_name" value="{{ item.last_name }}"></label>
+          <label>Email<input class="form-control" type="email" name="email" value="{{ item.email }}"></label>
+          <label>{% tr 'phone' %}<input class="form-control" name="phone" value="{{ item.profile.phone }}"></label>
+          <label>{% tr 'password' %}<input class="form-control" type="password" name="password" placeholder="{% tr 'leave_blank_keep_password' %}"></label>
+          <label>{% tr 'branch' %}
+            <select class="form-select" name="branch" required>
+              <option value="">{% tr 'select_branch' %}</option>
+              {% for branch in branches %}
+              <option value="{{ branch.id }}" {% if item.manager_branch_id == branch.id %}selected{% endif %}>{{ branch.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label data-organization-field>{% tr 'organization' %}
+            <select class="form-select" name="organization">
+              <option value="">{% tr 'all_organizations' %}</option>
+              {% for organization in organizations %}
+              <option value="{{ organization.id }}" data-branch-id="{{ organization.branch_id }}" {% if item.manager_organization_id == organization.id %}selected{% endif %}>{{ organization.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="check-line"><input type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> {% tr 'active' %}</label>
+          <div class="manager-modal-actions">
+            <button class="btn btn-outline-light" type="button" data-close-manager-modal>{% tr 'cancel' %}</button>
+            <button class="btn btn-primary" type="submit">{% tr 'save' %}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% empty %}
+    <div class="empty-state">{% tr 'no_managers' %}</div>
+    {% endfor %}
+  </div>
+  {% endcomment %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const managerOrganizations = {
+  {% for organization in organizations %}
+  "{{ organization.id }}": "{{ organization.branch_id }}"{% if not forloop.last %},{% endif %}
+  {% endfor %}
+};
+
+function syncManagerOrganization(form) {
+  const branchSelect = form.querySelector('select[name="branch"]');
+  const organizationSelect = form.querySelector('select[name="organization"]');
+  const organizationField = form.querySelector('[data-organization-field]');
+  const managerType = form.querySelector('input[name="manager_type"]:checked')?.value || 'branch';
+  if (!branchSelect || !organizationSelect || !organizationField) return;
+  const branchId = branchSelect.value;
+  organizationField.classList.toggle('is-soft-disabled', managerType !== 'organization');
+  organizationSelect.disabled = managerType !== 'organization';
+  [...organizationSelect.options].forEach((option, index) => {
+    if (index === 0) return;
+    const optionBranch = option.dataset.branchId || managerOrganizations[option.value];
+    const visible = Boolean(branchId && optionBranch === branchId);
+    option.hidden = !visible;
+    option.disabled = !visible;
+  });
+  if (organizationSelect.selectedOptions[0]?.disabled) organizationSelect.value = '';
+}
+
+document.querySelectorAll('.manager-form').forEach((form) => {
+  form.querySelectorAll('input[name="manager_type"], select[name="branch"]').forEach((item) => {
+    item.addEventListener('change', () => syncManagerOrganization(form));
+  });
+  syncManagerOrganization(form);
+});
+
+document.addEventListener('click', (event) => {
+  const toggle = event.target.closest('[data-manager-menu-toggle]');
+  document.querySelectorAll('.manager-action-menu').forEach((menu) => {
+    if (!toggle || menu !== toggle.nextElementSibling) {
+      menu.hidden = true;
+      menu.closest('.manager-card')?.classList.remove('is-menu-open');
+    }
+  });
+  if (toggle) {
+    const menu = toggle.nextElementSibling;
+    menu.hidden = !menu.hidden;
+    toggle.closest('.manager-card')?.classList.toggle('is-menu-open', !menu.hidden);
+    return;
+  }
+
+  const opener = event.target.closest('[data-open-manager-modal]');
+  if (opener) {
+    const modal = document.getElementById(opener.dataset.openManagerModal);
+    if (modal) {
+      modal.hidden = false;
+      modal.querySelector('.manager-modal-card')?.focus();
+    }
+    return;
+  }
+
+  if (event.target.closest('[data-close-manager-modal]')) {
+    event.target.closest('.manager-modal')?.setAttribute('hidden', '');
+  }
+});
+</script>
+{% endblock %}

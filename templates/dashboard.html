@@ -4,12 +4,17 @@
 {% block content %}
 {% if show_admin_dashboard %}
 <section class="dashboard-grid">
+  {% if dashboard_can_requests %}
   <div class="glass-card metric"><span>{% tr 'new' %}</span><strong>{{ stats.new }}</strong></div>
   <div class="glass-card metric"><span>{% tr 'done' %}</span><strong>{{ stats.done }}</strong></div>
   <div class="glass-card metric"><span>{% tr 'blocked' %}</span><strong>{{ stats.blocked }}</strong></div>
+  {% endif %}
+  {% if dashboard_can_chats %}
   <a class="glass-card metric metric-link unread-chat-card" href="{% url 'admin_chat_list' %}"><span>{% tr 'unread_chats' %}</span><strong>{{ stats.chats }}</strong></a>
+  {% endif %}
 </section>
 
+{% if dashboard_can_requests %}
 <section class="platform-summary">
   <div class="platform-summary-head">
     <div>
@@ -34,6 +39,7 @@
     {% endfor %}
   </div>
 </section>
+{% endif %}
 {% endif %}
 
 <section class="platform-summary web-platform-section">

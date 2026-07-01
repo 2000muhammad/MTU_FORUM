@@ -36,45 +36,111 @@ def user_is_admin(user):
     profile = getattr(user, "profile", None)
     if not profile:
         return False
-    return bool(profile.roles.filter(is_active=True).filter(
-        is_admin_role=True
-    ).exists() or profile.roles.filter(is_active=True).filter(
-        can_users=True
-    ).exists() or profile.roles.filter(is_active=True).filter(
-        can_directories=True
-    ).exists() or profile.roles.filter(is_active=True).filter(
-        can_api_settings=True
-    ).exists() or profile.roles.filter(is_active=True).filter(
-        can_site_settings=True
-    ).exists() or profile.roles.filter(is_active=True).filter(
-        can_logs=True
-    ).exists())
+    return profile.roles.filter(is_active=True, is_admin_role=True).exists()
+
+
+def user_has_permission(user, permission):
+    if not user or not user.is_authenticated:
+        return False
+    if user_is_admin(user):
+        return True
+    if permission == "can_profile":
+        return True
+    profile = getattr(user, "profile", None)
+    if not profile or not hasattr(profile.roles.model, permission):
+        return False
+    return profile.roles.filter(is_active=True, **{permission: True}).exists()
 
 
 def user_is_staff_role(user):
     if not user or not user.is_authenticated:
         return False
-    if user.is_staff or user.groups.filter(name="staff").exists():
+    if user.groups.filter(name="staff").exists():
         return True
     profile = getattr(user, "profile", None)
     if not profile:
         return False
-    return bool(profile.roles.filter(is_active=True).filter(
-        is_staff_role=True
-    ).exists() or profile.roles.filter(is_active=True).filter(
-        can_requests=True
-    ).exists() or profile.roles.filter(is_active=True).filter(
-        can_chats=True
-    ).exists() or profile.roles.filter(is_active=True).filter(
-        can_programmers=True
-    ).exists() or profile.roles.filter(is_active=True).filter(
-        can_tasks=True
-    ).exists())
+    return profile.roles.filter(is_active=True, is_staff_role=True).exists()
 
 
 def user_can_manage(user):
-    return user_is_admin(user) or user_is_staff_role(user)
+    return any((
+        user_can_requests(user),
+        user_can_chats(user),
+        user_can_programmers(user),
+        user_can_tasks(user),
+        user_can_messages(user),
+    ))
 
 
 def user_can_administer(user):
     return user_is_admin(user)
+
+
+def user_can_dashboard(user):
+    return user_has_permission(user, "can_dashboard")
+
+
+def user_can_messages(user):
+    return user_has_permission(user, "can_messages")
+
+
+def user_can_requests(user):
+    return user_has_permission(user, "can_requests")
+
+
+def user_can_chats(user):
+    return user_has_permission(user, "can_chats")
+
+
+def user_can_programmers(user):
+    return user_has_permission(user, "can_programmers")
+
+
+def user_can_tasks(user):
+    return user_has_permission(user, "can_tasks")
+
+
+def user_can_directories(user):
+    return user_has_permission(user, "can_directories")
+
+
+def user_can_api_settings(user):
+    return user_has_permission(user, "can_api_settings")
+
+
+def user_can_site_settings(user):
+    return user_has_permission(user, "can_site_settings")
+
+
+def user_can_logs(user):
+    return user_has_permission(user, "can_logs")
+
+
+def user_has_role_code(user, code):
+    if not user or not user.is_authenticated:
+        return False
+    profile = getattr(user, "profile", None)
+    if not profile:
+        return False
+    return profile.roles.filter(code=code, is_active=True).exists()
+
+
+def user_is_branch_manager(user):
+    return user_has_role_code(user, "branch_manager")
+
+
+def user_is_organization_manager(user):
+    return user_has_role_code(user, "organization_manager")
+
+
+def user_can_manage_people(user):
+    return user_has_permission(user, "can_users")
+
+
+def user_can_manage_manager_accounts(user):
+    return user_can_administer(user) or user_is_branch_manager(user)
+
+
+def user_can_manage_organizations(user):
+    return user_can_directories(user) or user_is_branch_manager(user)

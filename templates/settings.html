@@ -3,7 +3,10 @@
 {% block page_title %}{% tr 'directories_title' %}{% endblock %}
 {% block content %}
 <div class="settings-folder-shell">
-  <nav class="settings-folders glass-card" aria-label="{% tr 'directories' %}">
+  <div class="settings-folder-nav" data-folder-nav>
+    <button class="settings-folder-arrow settings-folder-arrow-left" type="button" data-folder-scroll="-1" aria-label="{% tr 'scroll_left' %}">‹</button>
+    <nav class="settings-folders glass-card" aria-label="{% tr 'directories' %}" data-folder-track>
+    {% if not ui_user_is_branch_manager %}
     <a class="folder-tab {% if active_section == 'stations' %}active{% endif %}" href="{% url 'settings_section' 'stations' %}">
       <span class="folder-tab-title"><em>01</em><strong>{% tr 'stations' %}</strong></span><span class="folder-tab-count">{{ stations|length }}</span>
     </a>
@@ -19,10 +22,21 @@
     <a class="folder-tab {% if active_section == 'channels' %}active{% endif %}" href="{% url 'settings_section' 'channels' %}">
       <span class="folder-tab-title"><em>05</em><strong>{% tr 'telegram_channels' %}</strong></span><span class="folder-tab-count">{{ channels|length }}</span>
     </a>
-    <a class="folder-tab {% if active_section == 'roles' %}active{% endif %}" href="{% url 'settings_section' 'roles' %}">
-      <span class="folder-tab-title"><em>06</em><strong>Создание ролей</strong></span><span class="folder-tab-count">{{ roles|length }}</span>
+    <a class="folder-tab {% if active_section == 'branches' %}active{% endif %}" href="{% url 'settings_section' 'branches' %}">
+      <span class="folder-tab-title"><em>06</em><strong>{% tr 'branches' %}</strong></span><span class="folder-tab-count">{{ branches|length }}</span>
     </a>
-  </nav>
+    {% endif %}
+    <a class="folder-tab {% if active_section == 'organizations' %}active{% endif %}" href="{% url 'settings_section' 'organizations' %}">
+      <span class="folder-tab-title"><em>{% if ui_user_is_branch_manager %}01{% else %}07{% endif %}</em><strong>{% tr 'organizations' %}</strong></span><span class="folder-tab-count">{{ organizations|length }}</span>
+    </a>
+    {% if not ui_user_is_branch_manager %}
+    <a class="folder-tab {% if active_section == 'roles' %}active{% endif %}" href="{% url 'settings_section' 'roles' %}">
+      <span class="folder-tab-title"><em>08</em><strong>{% tr 'role_creation' %}</strong></span><span class="folder-tab-count">{{ roles|length }}</span>
+    </a>
+    {% endif %}
+    </nav>
+    <button class="settings-folder-arrow settings-folder-arrow-right" type="button" data-folder-scroll="1" aria-label="{% tr 'scroll_right' %}">›</button>
+  </div>
 
   <div class="settings-crud">
     {% if active_section == 'stations' %}
@@ -39,14 +53,14 @@
       </div>
       <form method="post" class="crud-form add-form">
         {% csrf_token %}<input type="hidden" name="section" value="station"><input type="hidden" name="action" value="save">
-        <label>{% tr 'name' %}{{ station_form.name }}</label><label>{% tr 'code' %}{{ station_form.code }}</label><label>{% tr 'sort_order' %}{{ station_form.sort_order }}</label>
+        <label>{% tr 'name' %}{{ station_form.name }}</label><span class="auto-code-note">{% tr 'code' %}: создаётся автоматически</span><label>{% tr 'sort_order' %}{{ station_form.sort_order }}</label>
         <label class="check-line">{{ station_form.is_active }} {% tr 'active' %}</label><button class="btn btn-primary">{% tr 'add' %}</button>
       </form>
       <div class="crud-list">
         {% for item in stations %}
         <form method="post" class="crud-row">
           {% csrf_token %}<input type="hidden" name="section" value="station"><input type="hidden" name="id" value="{{ item.id }}">
-          <input class="form-control" name="name" value="{{ item.name }}" placeholder="{% tr 'name' %}"><input class="form-control" name="code" value="{{ item.code }}" placeholder="{% tr 'code' %}">
+          <input class="form-control" name="name" value="{{ item.name }}" placeholder="{% tr 'name' %}"><span class="auto-code-value">{{ item.code }}</span>
           <input class="form-control small-input" type="number" name="sort_order" value="{{ item.sort_order }}">
           <label class="check-line"><input class="form-check-input" type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> {% tr 'active' %}</label>
           <button class="btn btn-outline-info" name="action" value="save">{% tr 'save' %}</button><button class="btn btn-outline-danger" name="action" value="delete" onclick="return confirm('{% tr 'delete_station_confirm' %}')">{% tr 'delete' %}</button>
@@ -101,14 +115,14 @@
       </div>
       <form method="post" class="crud-form add-form">
         {% csrf_token %}<input type="hidden" name="section" value="platform"><input type="hidden" name="action" value="save">
-        <label>{% tr 'name' %}{{ platform_form.name }}</label><label>{% tr 'code' %}{{ platform_form.code }}</label><label>{% tr 'sort_order' %}{{ platform_form.sort_order }}</label>
+        <label>{% tr 'name' %}{{ platform_form.name }}</label><span class="auto-code-note">{% tr 'code' %}: создаётся автоматически</span><label>{% tr 'sort_order' %}{{ platform_form.sort_order }}</label>
         <label class="check-line">{{ platform_form.is_active }} {% tr 'active' %}</label><button class="btn btn-primary">{% tr 'add' %}</button>
       </form>
       <div class="crud-list">
         {% for item in platforms %}
         <form method="post" class="crud-row">
           {% csrf_token %}<input type="hidden" name="section" value="platform"><input type="hidden" name="id" value="{{ item.id }}">
-          <input class="form-control" name="name" value="{{ item.name }}" placeholder="{% tr 'name' %}"><input class="form-control" name="code" value="{{ item.code }}" placeholder="{% tr 'code' %}">
+          <input class="form-control" name="name" value="{{ item.name }}" placeholder="{% tr 'name' %}"><span class="auto-code-value">{{ item.code }}</span>
           <input class="form-control small-input" type="number" name="sort_order" value="{{ item.sort_order }}">
           <label class="check-line"><input class="form-check-input" type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> {% tr 'active' %}</label>
           <button class="btn btn-outline-info" name="action" value="save">{% tr 'save' %}</button><button class="btn btn-outline-danger" name="action" value="delete" onclick="return confirm('{% tr 'delete_platform_confirm' %}')">{% tr 'delete' %}</button>
@@ -182,63 +196,154 @@
     </section>
     {% endif %}
 
+    {% if active_section == 'branches' %}
+    <section class="glass-card crud-panel settings-folder-panel active">
+      <div class="crud-head">
+        <div><h2>{% tr 'branches' %}</h2><span>{% tr 'branches_hint' %}</span></div>
+        <div class="excel-actions">
+          <a class="btn btn-outline-info btn-sm" href="{% url 'dictionary_excel' 'branches' 'export' %}">{% tr 'export' %}</a>
+          <form method="post" enctype="multipart/form-data" action="{% url 'dictionary_excel' 'branches' 'import' %}" class="excel-import-form">
+            {% csrf_token %}<label class="btn btn-outline-light btn-sm" for="branches-import">{% tr 'import' %}</label><input id="branches-import" type="file" name="file" accept=".xlsx" onchange="this.form.submit()">
+          </form>
+          <a class="btn btn-outline-warning btn-sm" href="{% url 'dictionary_excel' 'branches' 'sample' %}">{% tr 'sample' %}</a>
+        </div>
+      </div>
+      <form method="get" class="directory-search-bar">
+        <input class="form-control" name="branch_q" value="{{ branch_query }}" placeholder="{% tr 'branch_search_placeholder' %}">
+        <button class="btn btn-outline-info" type="submit">{% tr 'search' %}</button>
+        {% if branch_query %}<a class="btn btn-outline-light" href="{% url 'settings_section' 'branches' %}">{% tr 'reset' %}</a>{% endif %}
+      </form>
+      <form method="post" class="crud-form add-form">
+        {% csrf_token %}<input type="hidden" name="section" value="branch"><input type="hidden" name="action" value="save">
+        <label>{% tr 'name' %}{{ branch_form.name }}</label><span class="auto-code-note">{% tr 'automatic_code' %}</span><label>{% tr 'sort_order' %}{{ branch_form.sort_order }}</label>
+        <label class="check-line">{{ branch_form.is_active }} {% tr 'active' %}</label><button class="btn btn-primary">{% tr 'add' %}</button>
+      </form>
+      <div class="crud-list">
+        {% for item in branch_rows %}
+        <form method="post" class="crud-row">
+          {% csrf_token %}<input type="hidden" name="section" value="branch"><input type="hidden" name="id" value="{{ item.id }}">
+          <input class="form-control" name="name" value="{{ item.name }}" placeholder="{% tr 'name' %}">
+          <span class="auto-code-value">{{ item.code }}</span>
+          <input class="form-control small-input" type="number" name="sort_order" value="{{ item.sort_order }}">
+          <label class="check-line"><input class="form-check-input" type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> {% tr 'active' %}</label>
+          <button class="btn btn-outline-info" name="action" value="save">{% tr 'save' %}</button>
+          <button class="btn btn-outline-danger" name="action" value="delete" onclick="return confirm('{% tr 'delete_branch_confirm' %}')">{% tr 'delete' %}</button>
+        </form>
+        {% empty %}<p class="text-secondary">{% tr 'no_branches' %}</p>{% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if active_section == 'organizations' %}
+    <section class="glass-card crud-panel settings-folder-panel active">
+      <div class="crud-head">
+        <div><h2>{% tr 'organizations' %}</h2><span>{% tr 'organizations_hint' %}</span></div>
+        <div class="excel-actions">
+          <a class="btn btn-outline-info btn-sm" href="{% url 'dictionary_excel' 'organizations' 'export' %}">{% tr 'export' %}</a>
+          <form method="post" enctype="multipart/form-data" action="{% url 'dictionary_excel' 'organizations' 'import' %}" class="excel-import-form">
+            {% csrf_token %}<label class="btn btn-outline-light btn-sm" for="organizations-import">{% tr 'import' %}</label><input id="organizations-import" type="file" name="file" accept=".xlsx" onchange="this.form.submit()">
+          </form>
+          <a class="btn btn-outline-warning btn-sm" href="{% url 'dictionary_excel' 'organizations' 'sample' %}">{% tr 'sample' %}</a>
+        </div>
+      </div>
+      <form method="get" class="directory-search-bar directory-search-with-filter">
+        <input class="form-control" name="organization_q" value="{{ organization_query }}" placeholder="{% tr 'organization_search_placeholder' %}">
+        <select class="form-select" name="organization_branch">
+          <option value="">{% tr 'all_branches' %}</option>
+          {% for branch in branches %}<option value="{{ branch.id }}" {% if organization_branch == branch.id|stringformat:'s' %}selected{% endif %}>{{ branch.name }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-outline-info" type="submit">{% tr 'search' %}</button>
+        {% if organization_query or organization_branch %}<a class="btn btn-outline-light" href="{% url 'settings_section' 'organizations' %}">{% tr 'reset' %}</a>{% endif %}
+      </form>
+      <form method="post" class="crud-form organization-add-form">
+        {% csrf_token %}<input type="hidden" name="section" value="organization"><input type="hidden" name="action" value="save">
+        <label>{% tr 'branch' %}
+          <select class="form-select" name="branch" required>
+            <option value="">{% tr 'select_branch' %}</option>
+            {% for branch in branches %}<option value="{{ branch.id }}">{{ branch.name }}</option>{% endfor %}
+          </select>
+        </label><label>{% tr 'name' %}{{ organization_form.name }}</label><span class="auto-code-note">{% tr 'automatic_code' %}</span>
+        <label>{% tr 'sort_order' %}{{ organization_form.sort_order }}</label><label class="check-line">{{ organization_form.is_active }} {% tr 'active' %}</label>
+        <button class="btn btn-primary">{% tr 'add' %}</button>
+      </form>
+      <div class="crud-list">
+        {% for item in organization_rows %}
+        <form method="post" class="crud-row organization-row">
+          {% csrf_token %}<input type="hidden" name="section" value="organization"><input type="hidden" name="id" value="{{ item.id }}">
+          <select class="form-select" name="branch">
+            {% for branch in branches %}<option value="{{ branch.id }}" {% if branch.id == item.branch_id %}selected{% endif %}>{{ branch.name }}</option>{% endfor %}
+          </select>
+          <input class="form-control" name="name" value="{{ item.name }}" placeholder="{% tr 'name' %}">
+          <span class="auto-code-value">{{ item.code }}</span>
+          <input class="form-control small-input" type="number" name="sort_order" value="{{ item.sort_order }}">
+          <label class="check-line"><input class="form-check-input" type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> {% tr 'active' %}</label>
+          <button class="btn btn-outline-info" name="action" value="save">{% tr 'save' %}</button>
+          <button class="btn btn-outline-danger" name="action" value="delete" onclick="return confirm('{% tr 'delete_organization_confirm' %}')">{% tr 'delete' %}</button>
+        </form>
+        {% empty %}<p class="text-secondary">{% tr 'no_organizations' %}</p>{% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
     {% if active_section == 'roles' %}
     <section class="glass-card crud-panel settings-folder-panel active">
       <div class="crud-head">
-        <div><h2>Создание ролей</h2><span>Выберите доступы к страницам сайта.</span></div>
+        <div><h2>{% tr 'role_creation' %}</h2><span>{% tr 'role_creation_hint' %}</span></div>
       </div>
       <form method="post" class="crud-form role-add-form">
         {% csrf_token %}<input type="hidden" name="section" value="role"><input type="hidden" name="action" value="save">
-        <label>Название{{ role_form.name }}</label>
-        <label>Код{{ role_form.code }}</label>
-        <label>Сортировка{{ role_form.sort_order }}</label>
-        <label class="role-description">Описание{{ role_form.description }}</label>
+        <label>{% tr 'name' %}{{ role_form.name }}</label>
+        <span class="auto-code-note">{% tr 'automatic_code' %}</span>
+        <label>{% tr 'sort_order' %}{{ role_form.sort_order }}</label>
+        <label class="role-description">{% tr 'description' %}{{ role_form.description }}</label>
         <div class="role-access-grid">
-          <label>{{ role_form.is_staff_role }} Сотрудник</label>
-          <label>{{ role_form.is_admin_role }} Суперадмин</label>
+          <label>{{ role_form.is_staff_role }} {% tr 'staff' %}</label>
+          <label>{{ role_form.is_admin_role }} {% tr 'superadmin' %}</label>
           <label>{{ role_form.can_dashboard }} Dashboard</label>
-          <label>{{ role_form.can_messages }} Сообщения</label>
-          <label>{{ role_form.can_requests }} Заявки</label>
-          <label>{{ role_form.can_chats }} Чаты</label>
-          <label>{{ role_form.can_programmers }} Программисты</label>
-          <label>{{ role_form.can_tasks }} Задание</label>
-          <label>{{ role_form.can_users }} Пользователи</label>
-          <label>{{ role_form.can_directories }} Справочники</label>
-          <label>{{ role_form.can_api_settings }} API настройки</label>
-          <label>{{ role_form.can_site_settings }} Настройки сайта</label>
-          <label>{{ role_form.can_logs }} Логи сайта</label>
-          <label>{{ role_form.can_profile }} Профиль</label>
-          <label>{{ role_form.is_active }} Активно</label>
+          <label>{{ role_form.can_messages }} {% tr 'internal_messages' %}</label>
+          <label>{{ role_form.can_requests }} {% tr 'requests_label' %}</label>
+          <label>{{ role_form.can_chats }} {% tr 'chats' %}</label>
+          <label>{{ role_form.can_programmers }} {% tr 'programmers' %}</label>
+          <label>{{ role_form.can_tasks }} {% tr 'tasks' %}</label>
+          <label>{{ role_form.can_users }} {% tr 'users' %}</label>
+          <label>{{ role_form.can_directories }} {% tr 'directories' %}</label>
+          <label>{{ role_form.can_api_settings }} {% tr 'api_settings' %}</label>
+          <label>{{ role_form.can_site_settings }} {% tr 'site_settings' %}</label>
+          <label>{{ role_form.can_logs }} {% tr 'site_logs' %}</label>
+          <label>{{ role_form.can_profile }} {% tr 'profile' %}</label>
+          <label>{{ role_form.is_active }} {% tr 'active' %}</label>
         </div>
-        <button class="btn btn-primary">Добавить</button>
+        <button class="btn btn-primary">{% tr 'add' %}</button>
       </form>
       <div class="crud-list">
         {% for item in roles %}
         <form method="post" class="crud-row role-row">
           {% csrf_token %}<input type="hidden" name="section" value="role"><input type="hidden" name="id" value="{{ item.id }}">
-          <input class="form-control" name="name" value="{{ item.name }}" placeholder="Название">
-          <input class="form-control" name="code" value="{{ item.code }}" placeholder="Код" {% if item.is_builtin %}readonly{% endif %}>
+          <input class="form-control" name="name" value="{{ item.name }}" placeholder="{% tr 'name' %}">
+          <span class="auto-code-value">{{ item.code }}</span>
           <input class="form-control small-input" type="number" name="sort_order" value="{{ item.sort_order }}">
-          <textarea class="form-control" name="description" rows="2" placeholder="Описание">{{ item.description }}</textarea>
+          <textarea class="form-control" name="description" rows="2" placeholder="{% tr 'description' %}">{{ item.description }}</textarea>
           <div class="role-access-grid role-access-grid-row">
-            <label><input class="form-check-input" type="checkbox" name="is_staff_role" {% if item.is_staff_role %}checked{% endif %}> Сотрудник</label>
-            <label><input class="form-check-input" type="checkbox" name="is_admin_role" {% if item.is_admin_role %}checked{% endif %}> Суперадмин</label>
+            <label><input class="form-check-input" type="checkbox" name="is_staff_role" {% if item.is_staff_role %}checked{% endif %}> {% tr 'staff' %}</label>
+            <label><input class="form-check-input" type="checkbox" name="is_admin_role" {% if item.is_admin_role %}checked{% endif %}> {% tr 'superadmin' %}</label>
             <label><input class="form-check-input" type="checkbox" name="can_dashboard" {% if item.can_dashboard %}checked{% endif %}> Dashboard</label>
-            <label><input class="form-check-input" type="checkbox" name="can_messages" {% if item.can_messages %}checked{% endif %}> Сообщения</label>
-            <label><input class="form-check-input" type="checkbox" name="can_requests" {% if item.can_requests %}checked{% endif %}> Заявки</label>
-            <label><input class="form-check-input" type="checkbox" name="can_chats" {% if item.can_chats %}checked{% endif %}> Чаты</label>
-            <label><input class="form-check-input" type="checkbox" name="can_programmers" {% if item.can_programmers %}checked{% endif %}> Программисты</label>
-            <label><input class="form-check-input" type="checkbox" name="can_tasks" {% if item.can_tasks %}checked{% endif %}> Задание</label>
-            <label><input class="form-check-input" type="checkbox" name="can_users" {% if item.can_users %}checked{% endif %}> Пользователи</label>
-            <label><input class="form-check-input" type="checkbox" name="can_directories" {% if item.can_directories %}checked{% endif %}> Справочники</label>
-            <label><input class="form-check-input" type="checkbox" name="can_api_settings" {% if item.can_api_settings %}checked{% endif %}> API</label>
-            <label><input class="form-check-input" type="checkbox" name="can_site_settings" {% if item.can_site_settings %}checked{% endif %}> Настройки сайта</label>
-            <label><input class="form-check-input" type="checkbox" name="can_logs" {% if item.can_logs %}checked{% endif %}> Логи</label>
-            <label><input class="form-check-input" type="checkbox" name="can_profile" {% if item.can_profile %}checked{% endif %}> Профиль</label>
-            <label><input class="form-check-input" type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> Активно</label>
+            <label><input class="form-check-input" type="checkbox" name="can_messages" {% if item.can_messages %}checked{% endif %}> {% tr 'internal_messages' %}</label>
+            <label><input class="form-check-input" type="checkbox" name="can_requests" {% if item.can_requests %}checked{% endif %}> {% tr 'requests_label' %}</label>
+            <label><input class="form-check-input" type="checkbox" name="can_chats" {% if item.can_chats %}checked{% endif %}> {% tr 'chats' %}</label>
+            <label><input class="form-check-input" type="checkbox" name="can_programmers" {% if item.can_programmers %}checked{% endif %}> {% tr 'programmers' %}</label>
+            <label><input class="form-check-input" type="checkbox" name="can_tasks" {% if item.can_tasks %}checked{% endif %}> {% tr 'tasks' %}</label>
+            <label><input class="form-check-input" type="checkbox" name="can_users" {% if item.can_users %}checked{% endif %}> {% tr 'users' %}</label>
+            <label><input class="form-check-input" type="checkbox" name="can_directories" {% if item.can_directories %}checked{% endif %}> {% tr 'directories' %}</label>
+            <label><input class="form-check-input" type="checkbox" name="can_api_settings" {% if item.can_api_settings %}checked{% endif %}> {% tr 'api_settings' %}</label>
+            <label><input class="form-check-input" type="checkbox" name="can_site_settings" {% if item.can_site_settings %}checked{% endif %}> {% tr 'site_settings' %}</label>
+            <label><input class="form-check-input" type="checkbox" name="can_logs" {% if item.can_logs %}checked{% endif %}> {% tr 'site_logs' %}</label>
+            <label><input class="form-check-input" type="checkbox" name="can_profile" {% if item.can_profile %}checked{% endif %}> {% tr 'profile' %}</label>
+            <label><input class="form-check-input" type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> {% tr 'active' %}</label>
           </div>
-          <button class="btn btn-outline-info" name="action" value="save">Сохранить</button>
-          <button class="btn btn-outline-danger" name="action" value="delete" {% if item.is_builtin %}disabled{% endif %} onclick="return confirm('Удалить роль?')">Удалить</button>
+          <div class="role-row-actions">
+            <button class="btn btn-outline-info" name="action" value="save">{% tr 'save' %}</button>
+            <button class="btn btn-outline-danger" name="action" value="delete" {% if item.is_builtin %}disabled{% endif %} onclick="return confirm('{% tr 'delete_role_confirm' %}')">{% tr 'delete' %}</button>
+          </div>
         </form>
         {% empty %}<p class="text-secondary">{% tr 'no_records' %}</p>{% endfor %}
       </div>
@@ -246,4 +351,101 @@
     {% endif %}
   </div>
 </div>
+<style>
+  .settings-folder-nav{position:relative;min-width:0}
+  .settings-folder-nav .settings-folders{
+    display:flex;grid-template-columns:none;overflow-x:auto;overflow-y:hidden;
+    scroll-behavior:smooth;scroll-snap-type:x proximity;scrollbar-width:thin;
+    scrollbar-color:rgba(68,215,182,.48) transparent
+  }
+  .settings-folder-nav .folder-tab{scroll-snap-align:start;flex:0 0 210px}
+  .settings-folder-nav .settings-folders::-webkit-scrollbar{height:6px}
+  .settings-folder-nav .settings-folders::-webkit-scrollbar-thumb{border-radius:999px;background:rgba(68,215,182,.48)}
+  .settings-folder-arrow{
+    position:absolute;top:50%;z-index:5;display:none;place-items:center;width:42px;height:42px;
+    padding:0;border:1px solid rgba(68,215,182,.42);border-radius:50%;
+    background:rgba(12,31,43,.88);color:#fff;font-size:28px;line-height:1;
+    box-shadow:0 10px 28px rgba(0,0,0,.28);backdrop-filter:blur(14px);
+    transform:translateY(-50%);transition:opacity .18s ease,transform .18s ease,background .18s ease
+  }
+  .settings-folder-arrow:hover{background:linear-gradient(135deg,var(--brand),var(--accent));color:#061019;transform:translateY(-50%) scale(1.05)}
+  .settings-folder-arrow:disabled{opacity:0;pointer-events:none}
+  .settings-folder-arrow-left{left:8px}.settings-folder-arrow-right{right:8px}
+  .settings-folder-nav.has-overflow .settings-folder-arrow{display:grid}
+  .settings-folder-nav.has-overflow .settings-folders{padding-left:58px;padding-right:58px}
+  html[data-theme="light"] .settings-folder-arrow{background:rgba(255,255,255,.92);color:#163044;border-color:rgba(20,120,110,.3)}
+  .organization-add-form{
+    grid-template-columns:minmax(180px,1.15fr) minmax(260px,2fr) minmax(130px,.8fr) 110px 110px auto;
+  }
+  .organization-row{
+    grid-template-columns:minmax(180px,1.15fr) minmax(260px,2fr) minmax(130px,.8fr) 90px 110px auto auto;
+  }
+  .organization-row .btn{white-space:nowrap}
+  .directory-search-bar{
+    display:grid;grid-template-columns:minmax(240px,1fr) auto auto;gap:10px;
+    align-items:center;margin:16px 0 20px;padding:12px;border:1px solid var(--border);
+    border-radius:12px;background:rgba(12,31,43,.16)
+  }
+  .directory-search-with-filter{grid-template-columns:minmax(240px,1fr) minmax(220px,.45fr) auto auto}
+  html[data-theme="light"] .directory-search-bar{background:rgba(255,255,255,.42)}
+  .auto-code-note,.auto-code-value{
+    display:flex;align-items:center;min-height:40px;padding:8px 12px;border:1px dashed rgba(68,215,182,.38);
+    border-radius:10px;color:var(--muted);background:rgba(68,215,182,.06);font-size:13px
+  }
+  .auto-code-value{color:var(--text);font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+  html[data-theme="light"] .auto-code-note,html[data-theme="light"] .auto-code-value{background:rgba(28,160,145,.06)}
+  .role-row-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px}
+  @media (max-width:1280px){
+    .organization-add-form,.organization-row{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  }
+  @media (max-width:720px){
+    .organization-add-form,.organization-row{grid-template-columns:1fr!important}
+    .role-row-actions{flex-direction:column}
+    .directory-search-bar,.directory-search-with-filter{grid-template-columns:1fr}
+    .settings-folder-arrow{width:38px;height:38px}
+    .settings-folder-nav.has-overflow .settings-folders{padding-left:52px;padding-right:52px}
+  }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const nav = document.querySelector('[data-folder-nav]');
+  const track = nav?.querySelector('[data-folder-track]');
+  if (!nav || !track) return;
+
+  const arrows = [...nav.querySelectorAll('[data-folder-scroll]')];
+  const updateArrows = () => {
+    const overflow = track.scrollWidth > track.clientWidth + 2;
+    nav.classList.toggle('has-overflow', overflow);
+    arrows.forEach((arrow) => {
+      const direction = Number(arrow.dataset.folderScroll);
+      arrow.disabled = !overflow
+        || (direction < 0 && track.scrollLeft <= 2)
+        || (direction > 0 && track.scrollLeft + track.clientWidth >= track.scrollWidth - 2);
+    });
+  };
+
+  arrows.forEach((arrow) => {
+    arrow.addEventListener('click', () => {
+      track.scrollBy({left: Number(arrow.dataset.folderScroll) * Math.max(260, track.clientWidth * .72), behavior: 'smooth'});
+    });
+  });
+  track.addEventListener('wheel', (event) => {
+    if (Math.abs(event.deltaY) <= Math.abs(event.deltaX) || track.scrollWidth <= track.clientWidth) return;
+    event.preventDefault();
+    track.scrollBy({left: event.deltaY, behavior: 'auto'});
+  }, {passive:false});
+  track.addEventListener('scroll', updateArrows, {passive:true});
+  window.addEventListener('resize', updateArrows);
+
+  const active = track.querySelector('.folder-tab.active');
+  requestAnimationFrame(() => {
+    active?.scrollIntoView({behavior:'auto', block:'nearest', inline:'center'});
+    updateArrows();
+  });
+})();
+
+</script>
 {% endblock %}
