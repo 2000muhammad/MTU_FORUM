@@ -1643,12 +1643,44 @@ def _developer_task_filter(queryset, key):
 @user_passes_test(user_can_programmers)
 def programmers_view(request):
     programmers = [
-        {"name": "Muhammad Q.M.", "url": "https://www.instagram.com/k.muhammad_727"},
-        {"name": "Bekhruz A.J.", "url": "https://www.instagram.com/bekhruz2122"},
-        {"name": "Lazizbek N.R.", "url": "https://github.com/Lazizbek0001"},
-        {"name": "RJUIKT TOSHKENT", "url": "https://t.me/RJUIKT"},
-        {"name": "Kamronbek Y.M.", "url": "https://github.com/necrolimmin"},
-        {"name": "Saidov M.B.", "url": "https://t.me/rindoshimotesumto"},
+        {
+            "name": "Muhammad Q.M.",
+            "url": "https://www.instagram.com/k.muhammad_727",
+            "image_url": "https://unavatar.io/instagram/k.muhammad_727",
+            "image_fallback_url": "https://images.weserv.nl/?url=unavatar.io/instagram/k.muhammad_727",
+            "icon_url": "https://www.google.com/s2/favicons?sz=128&domain_url=https://www.instagram.com/k.muhammad_727",
+        },
+        {
+            "name": "Bekhruz A.J.",
+            "url": "https://www.instagram.com/bekhruz2122",
+            "image_url": "https://unavatar.io/instagram/bekhruz2122",
+            "image_fallback_url": "https://images.weserv.nl/?url=unavatar.io/instagram/bekhruz2122",
+            "icon_url": "https://www.google.com/s2/favicons?sz=128&domain_url=https://www.instagram.com/bekhruz2122",
+        },
+        {
+            "name": "Lazizbek N.R.",
+            "url": "https://github.com/Lazizbek0001",
+            "image_url": "https://github.com/Lazizbek0001.png",
+            "icon_url": "https://www.google.com/s2/favicons?sz=128&domain_url=https://github.com/Lazizbek0001",
+        },
+        {
+            "name": "RJUIKT TOSHKENT",
+            "url": "https://t.me/RJUIKT",
+            "image_url": "https://t.me/i/userpic/320/RJUIKT.jpg",
+            "icon_url": "https://www.google.com/s2/favicons?sz=128&domain_url=https://t.me/RJUIKT",
+        },
+        {
+            "name": "Kamronbek Y.M.",
+            "url": "https://github.com/necrolimmin",
+            "image_url": "https://github.com/necrolimmin.png",
+            "icon_url": "https://www.google.com/s2/favicons?sz=128&domain_url=https://github.com/necrolimmin",
+        },
+        {
+            "name": "Saidov M.B.",
+            "url": "https://t.me/rindoshimotesumto",
+            "image_url": "https://t.me/i/userpic/320/rindoshimotesumto.jpg",
+            "icon_url": "https://www.google.com/s2/favicons?sz=128&domain_url=https://t.me/rindoshimotesumto",
+        },
     ]
     return render(request, "programmers.html", {"programmers": programmers})
 
