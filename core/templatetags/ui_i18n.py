@@ -178,7 +178,7 @@ UI = {
         "hide": "Yashirish",
         "editor": "Tahrirlash",
         "block_unblock": "Bloklash/Ochish",
-        "delete": "O'chirish",
+        "delete": "O‘chirish",
         "save": "Saqlash",
         "add": "Qo'shish",
         "active": "Faol",
@@ -1690,7 +1690,7 @@ UI["uz"].update({
     "edit_manager_account": "Menejerni tahrirlash",
     "manager_edit_action": "Tahrirlash",
     "manager_reset_password_action": "Parolni tiklash",
-    "manager_delete_action": "O'chirish",
+    "manager_delete_action": "O‘chirish",
     "reset_manager_password_confirm": "Parolni 1234567 ga tiklashni tasdiqlaysizmi?",
     "delete_manager_confirm": "Menejerni o'chirishni tasdiqlaysizmi?",
 })

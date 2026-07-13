@@ -23,11 +23,20 @@
 </section>
 {% endblock %}
 {% block scripts %}
+{% tr 'show' as ui_show %}
+{% tr 'hide' as ui_hide %}
+{% tr 'editor' as ui_editor %}
+{% tr 'block_unblock' as ui_block_unblock %}
+{% tr 'delete' as ui_delete %}
+{% tr 'no_requests' as ui_no_requests %}
+{% tr 'new' as ui_new %}
+{% tr 'done' as ui_done %}
+{% tr 'blocked' as ui_blocked %}
 <script>
 window.UI_TEXTS = {
-  show: "{% tr 'show' %}", hide: "{% tr 'hide' %}", editor: "{% tr 'editor' %}",
-  block_unblock: "{% tr 'block_unblock' %}", delete: "{% tr 'delete' %}", no_requests: "{% tr 'no_requests' %}",
-  new: "{% tr 'new' %}", done: "{% tr 'done' %}", blocked: "{% tr 'blocked' %}"
+  show: "{{ ui_show|escapejs }}", hide: "{{ ui_hide|escapejs }}", editor: "{{ ui_editor|escapejs }}",
+  block_unblock: "{{ ui_block_unblock|escapejs }}", delete: "{{ ui_delete|escapejs }}", no_requests: "{{ ui_no_requests|escapejs }}",
+  new: "{{ ui_new|escapejs }}", done: "{{ ui_done|escapejs }}", blocked: "{{ ui_blocked|escapejs }}"
 };
 </script>
 <script src="{% static 'js/dashboard.js' %}?v=20260603-request-cards"></script>
