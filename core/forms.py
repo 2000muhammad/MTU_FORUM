@@ -569,7 +569,7 @@ class SiteSettingsForm(AdminStyledModelForm):
         ]
         widgets = {
             "site_description": forms.Textarea(attrs={"rows": 3, "placeholder": "Короткое описание сайта для браузера, поиска и публичных экранов"}),
-            "site_tags": forms.TextInput(attrs={"placeholder": "MTU FORUM, заявки, Telegram, HRM"}),
+            "site_tags": forms.TextInput(attrs={"placeholder": "MTU FORUM, заявки, Telegram"}),
             "site_logo": forms.FileInput(attrs={"accept": "image/*,.svg"}),
             "site_favicon": forms.FileInput(attrs={"accept": "image/*,.svg,.ico"}),
             "site_image": forms.FileInput(attrs={"accept": "image/*,.svg"}),

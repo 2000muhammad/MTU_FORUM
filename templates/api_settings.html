@@ -59,31 +59,11 @@
       <p class="hint">{% tr 'mobile_hint' %}</p>
     </section>
 
-    <section class="glass-card api-card">
-      <div class="api-card-head"><span>04</span><h2>{% tr 'hrm_api' %}</h2></div>
-      <label>{% tr 'hrm_base_url' %}{{ form.hrm_base_url }}</label>
-      <label>{% tr 'hrm_client_id' %}{{ form.hrm_client_id }}</label>
-      <label>HRM public key{{ form.hrm_public_key }}</label>
-      <label>HRM secret type{{ form.hrm_secret_type }}</label>
-      <label>{% tr 'hrm_secret' %}
-        <span class="secret-input-wrap">
-          {{ form.hrm_secret }}
-          <button class="secret-toggle-btn" type="button" data-secret-toggle data-show="{% tr 'show' %}" data-hide="{% tr 'hide' %}">{% tr 'show' %}</button>
-        </span>
-      </label>
-      <label class="check-line api-toggle">{{ form.hrm_verify_ssl }} Verify SSL</label>
-      <div class="endpoint-list">
-        <div><b>Check worker</b><code>/api/v1/integration/mobile-face/check-worker</code></div>
-        <div><b>Payload</b><code>{"pin":"PINFL"}</code></div>
-      </div>
-      <label>{% tr 'notes' %}{{ form.notes }}</label>
-    </section>
-
     {# RU: OneID/E-IMZO block: реальные SSO endpoint-ы и credentials от оператора OneID. #}
     {# UZ: OneID/E-IMZO bloki: operator bergan haqiqiy SSO endpoint va credentials. #}
     {# EN: OneID/E-IMZO block: real SSO endpoints and credentials issued by the OneID operator. #}
     <section class="glass-card api-card">
-      <div class="api-card-head"><span>05</span><h2>{% tr 'oneid_eimzo' %}</h2></div>
+      <div class="api-card-head"><span>04</span><h2>{% tr 'oneid_eimzo' %}</h2></div>
       <label class="check-line api-toggle">{{ form.oneid_enabled }} {% tr 'oneid_enabled' %}</label>
       <label>{% tr 'oneid_client_id' %}{{ form.oneid_client_id }}</label>
       <label>{% tr 'oneid_client_secret' %}
@@ -131,7 +111,6 @@
       <select class="form-select" name="purpose">
         <option value="generic">{% tr 'api_purpose_generic' %}</option>
         <option value="face_id">{% tr 'api_purpose_face_id' %}</option>
-        <option value="hrm">{% tr 'api_purpose_hrm' %}</option>
         <option value="data_sync">{% tr 'api_purpose_data_sync' %}</option>
         <option value="notification">{% tr 'api_purpose_notification' %}</option>
       </select>
@@ -171,7 +150,6 @@
           <select class="form-select" name="purpose">
             <option value="generic" {% if api.purpose == 'generic' %}selected{% endif %}>{% tr 'api_purpose_generic' %}</option>
             <option value="face_id" {% if api.purpose == 'face_id' %}selected{% endif %}>{% tr 'api_purpose_face_id' %}</option>
-            <option value="hrm" {% if api.purpose == 'hrm' %}selected{% endif %}>{% tr 'api_purpose_hrm' %}</option>
             <option value="data_sync" {% if api.purpose == 'data_sync' %}selected{% endif %}>{% tr 'api_purpose_data_sync' %}</option>
             <option value="notification" {% if api.purpose == 'notification' %}selected{% endif %}>{% tr 'api_purpose_notification' %}</option>
           </select>

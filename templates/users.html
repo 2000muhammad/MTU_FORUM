@@ -6,7 +6,6 @@
   <div><h2>{% tr 'add_user' %}</h2><p class="text-secondary mb-0">{% tr 'new_password' %}</p></div>
   <form method="post" enctype="multipart/form-data" class="user-create-form" id="user-create-form" novalidate>
     {% csrf_token %}<input type="hidden" name="action" value="save">
-    {{ user_form.hrm_photo }}
     <label>{% tr 'pnfl_jshshir' %}{{ user_form.pnfl }}</label>
     <label>{% tr 'username' %}{{ user_form.username }}</label>
     <label>{% tr 'first_name' %}{{ user_form.first_name }}</label>
@@ -31,12 +30,6 @@
     <label>{% tr 'department' %}{{ user_form.department }}</label>
     <label>{% tr 'position' %}{{ user_form.position }}</label>
     <label>{% tr 'photo_upload' %}{{ user_form.avatar }}</label>
-    {% if user_form.hrm_photo.value %}
-    <div class="hrm-photo-preview">
-      <img src="{{ user_form.hrm_photo.value }}" alt="{% tr 'hrm_photo_loaded' %}">
-      <span>{% tr 'hrm_photo_loaded' %}</span>
-    </div>
-    {% endif %}
     <label>{% tr 'new_password' %}
       <span class="secret-input-wrap user-password-wrap">
         {{ user_form.password }}
@@ -57,7 +50,6 @@
     <input type="hidden" name="roles" value="" data-selected-role>
     <label class="check-line">{{ user_form.is_active }} {% tr 'active' %}</label>
     <div class="user-create-actions">
-      <button class="btn btn-outline-info" name="action" value="hrm_lookup" formnovalidate>{% tr 'hrm_lookup' %}</button>
       <button class="btn btn-primary" name="action" value="save">{% tr 'add' %}</button>
     </div>
   </form>
@@ -197,7 +189,6 @@
           <input type="hidden" name="roles" value="{{ u.selected_role_id|default:'' }}" data-selected-role>
           <label class="check-line"><input class="form-check-input" type="checkbox" name="is_active" {% if u.is_active %}checked{% endif %}> {% tr 'active' %}</label>
           <div class="user-modal-actions">
-            <button class="btn btn-outline-primary" name="action" value="hrm_sync" formnovalidate>{% tr 'sync_hrm' %}</button>
             <button class="btn btn-outline-light" type="button" data-close-user-modal>Отмена</button>
             <button class="btn btn-primary" name="action" value="save">Сохранить</button>
           </div>
