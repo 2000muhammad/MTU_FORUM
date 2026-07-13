@@ -49,7 +49,6 @@ from PIL import Image, ImageOps
 
 from .forms import ApiConfigurationForm, BotSubscriptionChannelForm, BranchForm, DeveloperTaskForm, EmployeeProfileForm, ExternalApiConnectionForm, IntakeRequestForm, LoginForm, ManagerAccountForm, OrganizationForm, PlatformForm, PositionForm, SiteIntakeForm, SiteRoleForm, SiteSettingsForm, StationForm, StyledPasswordChangeForm, UserForm, UserInfoForm, UserProfileForm, WebPlatformForm
 from .excel_utils import build_xlsx, parse_xlsx, truthy
-from .hrm_client import HRMClient, NOT_FOUND_MESSAGE
 from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, Platform, Position, SiteLog, SiteRole, SiteSettings, Station, UserProfile, WebPlatform, WebPlatformFavorite
 from .site_logs import write_site_log
 from .telegram import get_telegram_profile_photo, send_telegram_media, send_telegram_message
@@ -149,46 +148,28 @@ def index(request):
     if request.method == "POST":
         if form.is_valid():
             data = form.cleaned_data
-            try:
-                hrm = HRMClient().find_employee(data["pnfl"], data["phone"])
-            except Exception as exc:
-                hrm = {"found": False, "message": NOT_FOUND_MESSAGE, "raw": {"error": str(exc)}}
-                write_site_log(
-                    request,
-                    level=SiteLog.Level.ERROR,
-                    source="hrm",
-                    action="site_intake_check_worker",
-                    message=str(exc),
-                    status_code=502,
-                    meta={"pnfl": data["pnfl"], "phone": data["phone"]},
-                )
-
-            if hrm.get("found"):
-                item = IntakeRequest.objects.create(
-                    platform=data["platform"],
-                    cause=data["cause"],
-                    pnfl=data["pnfl"],
-                    company=data["company"],
-                    position=data["position"],
-                    full_name=data["full_name"],
-                    passport=data["passport"],
-                    phone=hrm.get("phone") or data["phone"],
-                    telegram_id=0,
-                    lang=lang_code,
-                    hrm_payload={"found": True, "message": hrm.get("message", ""), "raw": hrm.get("raw", {})},
-                )
-                write_site_log(
-                    request,
-                    source="site",
-                    action="site_intake_create",
-                    message=f"Created site intake request #{item.id}",
-                    meta={"request_id": item.id, "pnfl": data["pnfl"], "platform": data["platform"]},
-                )
-                messages.success(request, form.texts["success"])
-                return redirect("index")
-
-            message = hrm.get("message") or form.texts["not_found"]
-            messages.error(request, message)
+            item = IntakeRequest.objects.create(
+                platform=data["platform"],
+                cause=data["cause"],
+                pnfl=data["pnfl"],
+                company=data["company"],
+                position=data["position"],
+                full_name=data["full_name"],
+                passport=data["passport"],
+                phone=data["phone"],
+                telegram_id=0,
+                lang=lang_code,
+                hrm_payload={"found": False, "message": "HRM integration disabled.", "raw": {"disabled": True}},
+            )
+            write_site_log(
+                request,
+                source="site",
+                action="site_intake_create",
+                message=f"Created site intake request #{item.id}",
+                meta={"request_id": item.id, "pnfl": data["pnfl"], "platform": data["platform"]},
+            )
+            messages.success(request, form.texts["success"])
+            return redirect("index")
 
     web_platforms = WebPlatform.objects.filter(is_active=True).order_by("sort_order", "name")
     return render(request, "index.html", {"form": form, "web_platforms": web_platforms})
@@ -1931,25 +1912,7 @@ def _save_hrm_profile_photo(profile, photo_value, *, replace=True):
 
 
 def _try_fill_profile_photo_from_hrm(profile):
-    if profile.avatar or not profile.pnfl:
-        return False
-    try:
-        hrm = HRMClient().find_employee(profile.pnfl, profile.phone)
-    except Exception as exc:
-        write_site_log(
-            None,
-            level=SiteLog.Level.WARNING,
-            source="hrm",
-            action="photo_lookup",
-            message=f"{profile.user.username}: {exc}",
-            status_code=502,
-        )
-        return False
-    if not hrm.get("found"):
-        return False
-    profile.hrm_payload = hrm.get("raw", {}) or profile.hrm_payload
-    profile.hrm_synced_at = timezone.now()
-    return _save_hrm_profile_photo(profile, hrm.get("photo", ""), replace=False)
+    return False
 
 
 def _save_user_profile_from_form(user, form):
@@ -1965,8 +1928,6 @@ def _save_user_profile_from_form(user, form):
         profile.avatar = avatar
     elif form.cleaned_data.get("hrm_photo"):
         _save_hrm_profile_photo(profile, form.cleaned_data.get("hrm_photo"), replace=False)
-    else:
-        _try_fill_profile_photo_from_hrm(profile)
     profile.save()
     if "roles" in form.cleaned_data:
         roles = form.cleaned_data.get("roles")
@@ -2102,6 +2063,10 @@ def users_view(request):
             instance.set_password("1234567")
             instance.save(update_fields=["password"])
             messages.success(request, f"Пароль пользователя {instance.username} сброшен на 1234567.")
+            return redirect("users")
+
+        if action in {"hrm_lookup", "hrm_sync"}:
+            messages.info(request, "HRM integration disabled.")
             return redirect("users")
 
         if action == "hrm_lookup":
