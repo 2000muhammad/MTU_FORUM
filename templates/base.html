@@ -59,9 +59,6 @@
       {% if ui_can_chats %}
       <a class="nav-link {% if current_url == 'admin_chat_list' or current_url == 'admin_chat_detail' or current_url == 'admin_chat_thread_detail' %}active{% endif %}" href="{% url 'admin_chat_list' %}" {% if current_url == 'admin_chat_list' or current_url == 'admin_chat_detail' or current_url == 'admin_chat_thread_detail' %}aria-current="page"{% endif %}>{% tr 'chats' %}</a>
       {% endif %}
-      {% if ui_can_programmers %}
-      <a class="nav-link {% if current_url == 'programmers' %}active{% endif %}" href="{% url 'programmers' %}" {% if current_url == 'programmers' %}aria-current="page"{% endif %}>{% tr 'programmers' %}</a>
-      {% endif %}
       {% if ui_can_tasks %}
       <a class="nav-link {% if current_url == 'developer_tasks' or current_url == 'developer_task_create' %}active{% endif %}" href="{% url 'developer_tasks' %}" {% if current_url == 'developer_tasks' or current_url == 'developer_task_create' %}aria-current="page"{% endif %}>{% tr 'tasks' %}</a>
       {% endif %}
@@ -109,6 +106,12 @@
         <span class="sidebar-logout-icon" aria-hidden="true"></span>
         <span>{% tr 'logout' %}</span>
       </a>
+      {% if ui_can_programmers %}
+      <a class="sidebar-dev-link {% if request.resolver_match.url_name == 'programmers' %}active{% endif %}" href="{% url 'programmers' %}">
+        <span class="sidebar-dev-icon" aria-hidden="true">&#128104;&#8205;&#128187;</span>
+        <span>{% tr 'programmers_static_title' %}</span>
+      </a>
+      {% endif %}
     </div>
   </aside>
   {% endif %}

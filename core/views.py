@@ -124,6 +124,14 @@ class LoginView(DjangoLoginView):
 
     redirect_authenticated_user = True
 
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        if form.cleaned_data.get("remember_me"):
+            self.request.session.set_expiry(getattr(settings, "REMEMBER_ME_COOKIE_AGE", 60 * 60 * 24 * 30))
+        else:
+            self.request.session.set_expiry(getattr(settings, "SESSION_COOKIE_AGE", 3600))
+        return response
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["web_platforms"] = WebPlatform.objects.filter(is_active=True).order_by("sort_order", "name")
@@ -1634,14 +1642,14 @@ def _developer_task_filter(queryset, key):
 @login_required
 @user_passes_test(user_can_programmers)
 def programmers_view(request):
-    done_statuses = [DeveloperTask.Status.DONE, DeveloperTask.Status.DONE_LATE]
-    active_statuses = [DeveloperTask.Status.NEW, DeveloperTask.Status.IN_PROGRESS, DeveloperTask.Status.APPROVAL]
-    programmers = User.objects.filter(is_active=True).annotate(
-        assigned_tasks_count=Count("assigned_developer_tasks", distinct=True),
-        active_tasks_count=Count("assigned_developer_tasks", filter=Q(assigned_developer_tasks__status__in=active_statuses), distinct=True),
-        done_tasks_count=Count("assigned_developer_tasks", filter=Q(assigned_developer_tasks__status__in=done_statuses), distinct=True),
-        coexecutor_tasks_count=Count("coexecuted_developer_tasks", distinct=True),
-    ).order_by("-assigned_tasks_count", "first_name", "last_name", "username")
+    programmers = [
+        {"name": "Muhammad Q.M.", "url": "https://www.instagram.com/k.muhammad_727"},
+        {"name": "Bekhruz A.J.", "url": "https://www.instagram.com/bekhruz2122"},
+        {"name": "Lazizbek N.R.", "url": "https://github.com/Lazizbek0001"},
+        {"name": "RJUIKT TOSHKENT", "url": "https://t.me/RJUIKT"},
+        {"name": "Kamronbek Y.M.", "url": "https://github.com/necrolimmin"},
+        {"name": "Saidov M.B.", "url": "https://t.me/rindoshimotesumto"},
+    ]
     return render(request, "programmers.html", {"programmers": programmers})
 
 
@@ -2915,59 +2923,19 @@ def telegram_intake_api(request):
     if not payload.get("pnfl") or not payload.get("telegram_id"):
         return JsonResponse({"ok": False, "error": "pnfl and telegram_id are required"}, status=400)
 
-    try:
-        hrm = HRMClient().find_employee(payload.get("pnfl", ""), payload.get("phone", ""))
-    except Exception as exc:
-        hrm = {"found": False, "message": NOT_FOUND_MESSAGE, "raw": {"error": str(exc)}}
-        write_site_log(
-            request,
-            level=SiteLog.Level.ERROR,
-            source="hrm",
-            action="check_worker",
-            message=str(exc),
-            status_code=502,
-            meta={"pnfl": payload.get("pnfl", ""), "telegram_id": payload.get("telegram_id")},
-        )
-
-    hrm_found = bool(hrm.get("found"))
+    # Telegram intake works without HRM. Admins can review and complete data later.
+    hrm = {"found": False, "message": "HRM API disabled for Telegram intake.", "raw": {"disabled": True}}
+    hrm_found = False
     selected_position = payload.get("selected_position") or payload.get("position", "")
     selected_company = payload.get("company", "") or payload.get("station", "")
     selected_department = payload.get("department", "")
     reply_via_bot = bool(payload.get("reply_via_bot"))
 
-    if not hrm_found:
-        message = hrm.get("message") or NOT_FOUND_MESSAGE
-        write_site_log(
-            request,
-            level=SiteLog.Level.WARNING,
-            source="hrm",
-            action="worker_not_found",
-            message=message,
-            status_code=200,
-            meta={"pnfl": payload.get("pnfl", ""), "telegram_id": payload.get("telegram_id")},
-        )
-        telegram_notified = False
-        if not reply_via_bot:
-            try:
-                send_telegram_message(payload.get("telegram_id"), message)
-                telegram_notified = True
-            except Exception as exc:
-                write_site_log(
-                    request,
-                    level=SiteLog.Level.ERROR,
-                    source="telegram",
-                    action="send_intake_response",
-                    message=str(exc),
-                    status_code=502,
-                    meta={"pnfl": payload.get("pnfl", ""), "telegram_id": payload.get("telegram_id")},
-                )
-        return JsonResponse({"ok": False, "hrm_found": False, "message": message, "telegram_notified": telegram_notified})
-
     item = IntakeRequest.objects.create(
 
         pnfl=payload.get("pnfl", ""),
 
-        phone=hrm.get("phone") or payload.get("phone", ""),
+        phone=payload.get("phone", ""),
 
         telegram_id=payload.get("telegram_id"),
 
@@ -2983,9 +2951,9 @@ def telegram_intake_api(request):
 
         platform=payload.get("platform", ""),
 
-        full_name=payload.get("full_name", "") or hrm.get("full_name", ""),
+        full_name=payload.get("full_name", ""),
 
-        company=selected_company or hrm.get("company", ""),
+        company=selected_company,
 
         hrm_payload={"found": hrm_found, "message": hrm.get("message", ""), "raw": hrm.get("raw", {})},
 
@@ -2994,7 +2962,7 @@ def telegram_intake_api(request):
     message = "Ваша заявка принята. Администратор обработает ее в ближайшее время."
     telegram_notified = False
     if reply_via_bot:
-        return JsonResponse({"ok": True, "id": item.id, "hrm_found": True, "message": message, "telegram_notified": False})
+        return JsonResponse({"ok": True, "id": item.id, "hrm_found": False, "hrm_disabled": True, "message": message, "telegram_notified": False})
 
     try:
         send_telegram_message(item.telegram_id, message)
@@ -3011,7 +2979,7 @@ def telegram_intake_api(request):
             meta={"request_id": item.id, "telegram_id": item.telegram_id},
         )
 
-    return JsonResponse({"ok": True, "id": item.id, "hrm_found": hrm_found, "message": message, "telegram_notified": telegram_notified})
+    return JsonResponse({"ok": True, "id": item.id, "hrm_found": hrm_found, "hrm_disabled": True, "message": message, "telegram_notified": telegram_notified})
 
 
 

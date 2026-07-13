@@ -2068,6 +2068,34 @@ UI["en"].update({
     "upload_backup": "Import database",
     "database_import_confirm": "Import will change the current database data. Continue?",
 })
+
+UI["ru"].update({
+    "remember_me": "Запомнить меня",
+    "programmers_static_title": "Разработчики проекта MTU FORUM",
+    "programmers_static_summary": "Официальные контакты команды разработки.",
+    "official_link": "Официальная ссылка",
+})
+
+UI["uz"].update({
+    "remember_me": "Meni eslab qolish",
+    "programmers_static_title": "MTU FORUM loyihasi dasturchilari",
+    "programmers_static_summary": "Loyiha dasturchilari va rasmiy havolalari.",
+    "official_link": "Rasmiy havola",
+})
+
+UI["uz-cyrl"].update({
+    "remember_me": "Мени эслаб қолиш",
+    "programmers_static_title": "MTU FORUM лойиҳаси дастурчилари",
+    "programmers_static_summary": "Лойиҳа дастурчилари ва расмий ҳаволалари.",
+    "official_link": "Расмий ҳавола",
+})
+
+UI["en"].update({
+    "remember_me": "Remember me",
+    "programmers_static_title": "MTU FORUM project developers",
+    "programmers_static_summary": "Project developers and official links.",
+    "official_link": "Official link",
+})
   
   
 def _lang(context=None):
