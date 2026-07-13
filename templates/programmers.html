@@ -15,16 +15,19 @@
 
 <section class="programmer-directory">
   {% for programmer in programmers %}
-  <article class="glass-card programmer-card programmer-static-card">
+  <a class="glass-card programmer-card programmer-static-card" href="{{ programmer.url }}" target="_blank" rel="noopener" aria-label="{{ programmer.name }}">
     <div class="programmer-head">
-      <span>{{ programmer.name|first|upper }}</span>
+      <span class="developer-avatar">
+        <img src="{{ programmer.image_url }}" {% if programmer.image_fallback_url %}data-fallback-src="{{ programmer.image_fallback_url }}"{% endif %} data-icon-src="{{ programmer.icon_url }}" alt="{{ programmer.name }}" loading="lazy" onerror="if (this.dataset.fallbackSrc && !this.dataset.fallbackUsed) { this.dataset.fallbackUsed = '1'; this.src = this.dataset.fallbackSrc; } else if (this.dataset.iconSrc && !this.dataset.iconUsed) { this.dataset.iconUsed = '1'; this.src = this.dataset.iconSrc; this.classList.add('is-site-icon'); } else { this.hidden=true; this.nextElementSibling.hidden=false; }">
+        <span hidden>{{ programmer.name|first|upper }}</span>
+      </span>
       <div>
         <h3>{{ programmer.name }}</h3>
         <p>{% tr 'official_link' %}</p>
       </div>
     </div>
-    <a class="developer-link" href="{{ programmer.url }}" target="_blank" rel="noopener">{{ programmer.url }}</a>
-  </article>
+    <span class="developer-open-mark" aria-hidden="true">↗</span>
+  </a>
   {% endfor %}
 </section>
 {% endblock %}
