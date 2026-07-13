@@ -5,38 +5,26 @@
 {% block page_title %}{% tr 'programmers' %}{% endblock %}
 
 {% block content %}
-<section class="glass-card task-hero">
+<section class="glass-card task-hero programmers-hero">
   <div>
     <p class="eyebrow">{% tr 'development_team' %}</p>
-    <h2>{% tr 'programmers' %}</h2>
-    <p>{% tr 'programmers_summary' %}</p>
+    <h2><span class="developer-emoji" aria-hidden="true">&#128104;&#8205;&#128187;</span>{% tr 'programmers_static_title' %}</h2>
+    <p>{% tr 'programmers_static_summary' %}</p>
   </div>
-  <a class="btn btn-primary" href="{% url 'developer_task_create' %}">{% tr 'create_task' %}</a>
 </section>
 
-<section class="programmer-grid">
+<section class="programmer-directory">
   {% for programmer in programmers %}
-  <article class="glass-card programmer-card">
+  <article class="glass-card programmer-card programmer-static-card">
     <div class="programmer-head">
-      {% if programmer.profile.avatar %}
-      <img src="{{ programmer.profile.avatar.url }}" alt="{{ programmer.username }}">
-      {% else %}
-      <span>{{ programmer.username|first|upper }}</span>
-      {% endif %}
+      <span>{{ programmer.name|first|upper }}</span>
       <div>
-        <h3>{{ programmer.get_full_name|default:programmer.username }}</h3>
-        <p>{% if programmer.email %}{{ programmer.email }}{% else %}{% tr 'email_not_specified' %}{% endif %}</p>
+        <h3>{{ programmer.name }}</h3>
+        <p>{% tr 'official_link' %}</p>
       </div>
     </div>
-    <div class="programmer-stats">
-      <span><strong>{{ programmer.assigned_tasks_count }}</strong>{% tr 'all_tasks' %}</span>
-      <span><strong>{{ programmer.active_tasks_count }}</strong>{% tr 'tasks_in_progress' %}</span>
-      <span><strong>{{ programmer.done_tasks_count }}</strong>{% tr 'tasks_done' %}</span>
-      <span><strong>{{ programmer.coexecutor_tasks_count }}</strong>{% tr 'coexecutor_short' %}</span>
-    </div>
+    <a class="developer-link" href="{{ programmer.url }}" target="_blank" rel="noopener">{{ programmer.url }}</a>
   </article>
-  {% empty %}
-  <div class="glass-card empty-state">{% tr 'users_not_found' %}</div>
   {% endfor %}
 </section>
 {% endblock %}
