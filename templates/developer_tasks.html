@@ -5,126 +5,141 @@
 {% block page_title %}{% tr 'tasks' %}{% endblock %}
 
 {% block content %}
-<section class="glass-card task-hero">
+<section class="glass-card task-hub-head">
   <div>
     <p class="eyebrow">{% tr 'task_control_center' %}</p>
     <h2>{% tr 'tasks' %}</h2>
     <p>{% tr 'task_page_intro' %}</p>
   </div>
   {% if can_manage_tasks %}
-  <a class="btn btn-primary" href="{% url 'developer_task_create' %}">{% tr 'create_task' %}</a>
+  <a class="btn btn-primary task-create-button" href="{% url 'developer_task_create' %}">
+    <span aria-hidden="true">+</span>
+    {% tr 'create_task' %}
+  </a>
   {% endif %}
 </section>
 
-<section class="task-counter-grid">
+<section class="task-overview" aria-label="{% tr 'tasks' %}">
   {% for item in counters_main %}
-  <a class="glass-card task-counter {% if active_filter == item.key %}active{% endif %}" href="?status={{ item.key }}{% if query %}&q={{ query|urlencode }}{% endif %}">
+  <a class="glass-card task-overview-card task-overview-{{ item.key }} {% if active_filter == item.key %}active{% endif %}"
+     href="?status={{ item.key }}{% if query %}&q={{ query|urlencode }}{% endif %}">
     <span>{% tr item.label_key %}</span>
     <strong>{{ item.count }}</strong>
+    <i aria-hidden="true"></i>
   </a>
   {% endfor %}
 </section>
 
-<section class="glass-card task-other-panel">
-  <div>
+<section class="glass-card task-filter-panel">
+  <div class="task-filter-copy">
     <p class="eyebrow">{% tr 'task_other' %}</p>
-    <h2>{% tr 'task_extra_statuses' %}</h2>
+    <strong>{% tr 'task_extra_statuses' %}</strong>
   </div>
-  <div class="task-other-grid">
+  <div class="task-filter-scroll">
     {% for item in counters_other %}
-    <a class="task-other-link {% if active_filter == item.key %}active{% endif %}" href="?status={{ item.key }}{% if query %}&q={{ query|urlencode }}{% endif %}">
+    <a class="task-filter-chip {% if active_filter == item.key %}active{% endif %}"
+       href="?status={{ item.key }}{% if query %}&q={{ query|urlencode }}{% endif %}">
       <span>{% tr item.label_key %}</span>
-      <strong>{{ item.count }}</strong>
+      <b>{{ item.count }}</b>
     </a>
     {% endfor %}
   </div>
 </section>
 
-<section class="glass-card task-toolbar">
-  <form method="get">
-    <input type="hidden" name="status" value="{{ active_filter }}">
-    <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="{% tr 'task_search_placeholder' %}">
-    <button class="btn btn-outline" type="submit">{% tr 'search' %}</button>
-  </form>
-</section>
-
-<section class="glass-card task-list-card">
-  <div class="task-list-head">
-    <span>{% tr 'task_col_title' %}</span>
-    <span>{% tr 'task_col_status' %}</span>
-    <span>{% tr 'task_col_assignee' %}</span>
-    <span>{% tr 'task_col_due' %}</span>
-    <span>{% tr 'task_col_view' %}</span>
-    <span>{% tr 'task_col_actions' %}</span>
+<section class="glass-card task-workspace">
+  <div class="task-workspace-toolbar">
+    <form method="get" class="task-search-form">
+      <input type="hidden" name="status" value="{{ active_filter }}">
+      <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="{% tr 'task_search_placeholder' %}">
+      <button class="btn btn-outline" type="submit">{% tr 'search' %}</button>
+    </form>
+    <span class="task-result-count">{{ page_obj.paginator.count }}</span>
   </div>
-  {% for task in page_obj %}
-  <article class="task-row">
-    <div>
-      <strong>{{ task.title }}</strong>
-      <p>{% if task.description %}{{ task.description|truncatechars:120 }}{% else %}{% tr 'task_no_description' %}{% endif %}</p>
+
+  <div class="task-work-list">
+    {% for task in page_obj %}
+    <article class="task-work-item {% if not task.is_viewed %}is-unread{% endif %} {% if task.is_overdue %}is-overdue{% endif %}">
+      <div class="task-work-primary">
+        <div class="task-title-line">
+          {% if not task.is_viewed %}<span class="task-unread-dot" title="{% tr 'task_new' %}"></span>{% endif %}
+          <strong>{{ task.title }}</strong>
+          <span class="status-pill status-{{ task.status }}">{% tr task.status_label_key %}</span>
+        </div>
+        <p>{% if task.description %}{{ task.description|truncatechars:150 }}{% else %}{% tr 'task_no_description' %}{% endif %}</p>
+        <div class="task-meta-line">
+          <span>#{{ task.id }}</span>
+          <span>{{ task.created_at|date:"d.m.Y H:i" }}</span>
+          {% if task.created_by %}<span>{{ task.created_by.get_full_name|default:task.created_by.username }}</span>{% endif %}
+        </div>
+      </div>
+
+      <div class="task-work-people">
+        <span class="task-person-avatar" aria-hidden="true">
+          {% if task.assignee %}{{ task.assignee.first_name|default:task.assignee.username|first|upper }}{% else %}—{% endif %}
+        </span>
+        <div>
+          <small>{% tr 'task_col_assignee' %}</small>
+          <strong>{% if task.assignee %}{{ task.assignee.get_full_name|default:task.assignee.username }}{% else %}{% tr 'task_unassigned' %}{% endif %}</strong>
+          {% if task.coexecutor_count %}<span>{% tr 'task_counter_coexecutor' %}: {{ task.coexecutor_count }}</span>{% endif %}
+        </div>
+      </div>
+
+      <div class="task-work-due">
+        <small>{% tr 'task_col_due' %}</small>
+        <strong>{% if task.due_date %}{{ task.due_date|date:"d.m.Y" }}{% else %}{% tr 'task_no_due' %}{% endif %}</strong>
+      </div>
+
+      <div class="task-work-actions">
+        <a class="task-action-btn task-action-edit" href="{% url 'developer_task_edit' task.id %}">
+          <span aria-hidden="true">✎</span><span>{% tr 'edit' %}</span>
+        </a>
+        {% if not task.is_viewed %}
+        <form method="post" action="{% url 'developer_task_action' task.id %}">
+          {% csrf_token %}
+          <button class="task-action-btn task-action-view" name="action" value="view">
+            <span aria-hidden="true">✓</span><span>{% tr 'task_viewed' %}</span>
+          </button>
+        </form>
+        {% endif %}
+        {% if task.status != "in_progress" and task.status != "approval" and task.status != "done" and task.status != "done_late" %}
+        <form method="post" action="{% url 'developer_task_action' task.id %}">
+          {% csrf_token %}
+          <button class="task-action-btn task-action-take" name="action" value="take">
+            <span aria-hidden="true">▶</span><span>{% tr 'task_take' %}</span>
+          </button>
+        </form>
+        {% endif %}
+        {% if task.status == "in_progress" or task.status == "revision" or task.status == "resumed" %}
+        <form method="post" action="{% url 'developer_task_action' task.id %}">
+          {% csrf_token %}
+          <button class="task-action-btn task-action-complete" name="action" value="complete">
+            <span aria-hidden="true">✓</span><span>{% tr 'task_complete' %}</span>
+          </button>
+        </form>
+        {% endif %}
+        {% if can_manage_tasks and task.status == "approval" %}
+        <form method="post" action="{% url 'developer_task_action' task.id %}">
+          {% csrf_token %}
+          <button class="task-action-btn task-action-complete" name="action" value="approve">
+            <span aria-hidden="true">✓</span><span>{% tr 'task_approve' %}</span>
+          </button>
+        </form>
+        <form method="post" action="{% url 'developer_task_action' task.id %}">
+          {% csrf_token %}
+          <button class="task-action-btn task-action-danger" name="action" value="revision">
+            <span aria-hidden="true">↺</span><span>{% tr 'task_revision' %}</span>
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </article>
+    {% empty %}
+    <div class="task-work-empty">
+      <span aria-hidden="true">✓</span>
+      <strong>{% tr 'task_empty' %}</strong>
     </div>
-    <span class="status-pill status-{{ task.status }}">{% tr task.status_label_key %}</span>
-    <span>{% if task.assignee %}{{ task.assignee.get_full_name|default:task.assignee.username }}{% else %}{% tr 'task_unassigned' %}{% endif %}</span>
-    <span>{% if task.due_date %}{{ task.due_date|date:"d.m.Y" }}{% else %}{% tr 'task_no_due' %}{% endif %}</span>
-    <span>{% if task.is_viewed %}{% tr 'task_viewed' %}{% else %}{% tr 'task_new' %}{% endif %}</span>
-    <div class="task-row-actions">
-      <a class="task-action-btn task-action-edit" href="{% url 'developer_task_edit' task.id %}">
-        <span class="task-action-icon">↗</span>
-        <span>{% tr 'edit' %}</span>
-      </a>
-      {% if not task.is_viewed %}
-      <form method="post" action="{% url 'developer_task_action' task.id %}">
-        {% csrf_token %}
-        <button class="task-action-btn task-action-view" name="action" value="view">
-          <span class="task-action-icon">✓</span>
-          <span>{% tr 'task_viewed' %}</span>
-        </button>
-      </form>
-      {% else %}
-      <span class="task-action-state">
-        <span class="task-action-icon">✓</span>
-        <span>{% tr 'task_viewed' %}</span>
-      </span>
-      {% endif %}
-      {% if task.status != "in_progress" and task.status != "approval" and task.status != "done" and task.status != "done_late" %}
-      <form method="post" action="{% url 'developer_task_action' task.id %}">
-        {% csrf_token %}
-        <button class="task-action-btn task-action-take" name="action" value="take">
-          <span class="task-action-icon">▶</span>
-          <span>{% tr 'task_take' %}</span>
-        </button>
-      </form>
-      {% endif %}
-      {% if task.status == "in_progress" or task.status == "revision" or task.status == "resumed" %}
-      <form method="post" action="{% url 'developer_task_action' task.id %}">
-        {% csrf_token %}
-        <button class="task-action-btn task-action-complete" name="action" value="complete">
-          <span class="task-action-icon">✓</span>
-          <span>{% tr 'task_complete' %}</span>
-        </button>
-      </form>
-      {% endif %}
-      {% if can_manage_tasks and task.status == "approval" %}
-      <form method="post" action="{% url 'developer_task_action' task.id %}">
-        {% csrf_token %}
-        <button class="task-action-btn task-action-complete" name="action" value="approve">
-          <span class="task-action-icon">✓</span>
-          <span>{% tr 'task_approve' %}</span>
-        </button>
-      </form>
-      <form method="post" action="{% url 'developer_task_action' task.id %}">
-        {% csrf_token %}
-        <button class="task-action-btn task-action-danger" name="action" value="revision">
-          <span class="task-action-icon">!</span>
-          <span>{% tr 'task_revision' %}</span>
-        </button>
-      </form>
-      {% endif %}
-    </div>
-  </article>
-  {% empty %}
-  <div class="empty-state">{% tr 'task_empty' %}</div>
-  {% endfor %}
+    {% endfor %}
+  </div>
 </section>
 
 {% if page_obj.has_other_pages %}

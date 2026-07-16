@@ -109,7 +109,13 @@
 {% block scripts %}
 <script>
 const thread = document.getElementById('telegramThread');
-if (thread) thread.scrollTop = thread.scrollHeight;
+if (thread) {
+  const scrollToLatestMessage = () => {
+    thread.scrollTop = thread.scrollHeight;
+  };
+  requestAnimationFrame(scrollToLatestMessage);
+  window.addEventListener('load', scrollToLatestMessage, {once: true});
+}
 const compose = document.getElementById('telegramCompose');
 const typeInput = document.getElementById('messageType');
 const emojiButton = document.getElementById('emojiButton');

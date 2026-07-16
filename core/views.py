@@ -1703,15 +1703,15 @@ def developer_tasks_view(request):
     counters_main = [
         ("all", "task_counter_all"),
         ("new", "task_counter_new"),
+        ("in_progress", "task_counter_in_progress"),
+        ("approval", "task_counter_approval"),
         ("done", "task_counter_done"),
         ("failed", "task_counter_failed"),
-        ("in_progress", "task_counter_in_progress"),
-        ("done_late", "task_counter_done_late"),
-        ("approval", "task_counter_approval"),
-        ("unviewed", "task_counter_unviewed"),
-        ("coexecutor", "task_counter_coexecutor"),
     ]
     counters_other = [
+        ("done_late", "task_counter_done_late"),
+        ("unviewed", "task_counter_unviewed"),
+        ("coexecutor", "task_counter_coexecutor"),
         ("revision", "task_counter_revision"),
         ("resumed", "task_counter_resumed"),
         ("familiarized", "task_counter_familiarized"),
@@ -1720,8 +1720,12 @@ def developer_tasks_view(request):
     counters_other = [{"key": key, "label_key": label_key, "count": counts.get(key, 0)} for key, label_key in counters_other]
     paginator = Paginator(tasks, 20)
     page_obj = paginator.get_page(request.GET.get("page"))
+    today = timezone.localdate()
+    completed_statuses = {DeveloperTask.Status.DONE, DeveloperTask.Status.DONE_LATE}
     for task in page_obj.object_list:
         task.status_label_key = f"task_status_{task.status}"
+        task.coexecutor_count = len(task.coexecutors.all())
+        task.is_overdue = bool(task.due_date and task.due_date < today and task.status not in completed_statuses)
     return render(request, "developer_tasks.html", {
         "page_obj": page_obj,
         "counts": counts,
@@ -1738,12 +1742,14 @@ def developer_tasks_view(request):
 def developer_task_create(request):
     form = DeveloperTaskForm(request.POST or None)
     if form.is_valid():
+        executors = list(form.cleaned_data["executors"])
         task = form.save(commit=False)
         task.created_by = request.user
+        task.assignee = executors[0]
         if task.status in {DeveloperTask.Status.DONE, DeveloperTask.Status.DONE_LATE} and not task.completed_at:
             task.completed_at = timezone.now()
         task.save()
-        form.save_m2m()
+        task.coexecutors.set(executors[1:])
         messages.success(request, "Задание создано.")
         return redirect("developer_tasks")
     return render(request, "developer_task_form.html", {"form": form, "task": None})
@@ -1758,16 +1764,19 @@ def developer_task_edit(request, pk):
 
     form = DeveloperTaskForm(request.POST or None, instance=task)
     if not user_can_tasks(request.user):
-        for field in ("assignee", "coexecutors", "priority"):
-            form.fields.pop(field, None)
+        form.fields.pop("executors", None)
     if form.is_valid():
+        executors = list(form.cleaned_data["executors"]) if "executors" in form.cleaned_data else None
         task = form.save(commit=False)
+        if executors is not None:
+            task.assignee = executors[0]
         if task.status in {DeveloperTask.Status.DONE, DeveloperTask.Status.DONE_LATE} and not task.completed_at:
             task.completed_at = timezone.now()
         if task.status not in {DeveloperTask.Status.DONE, DeveloperTask.Status.DONE_LATE}:
             task.completed_at = None
         task.save()
-        form.save_m2m()
+        if executors is not None:
+            task.coexecutors.set(executors[1:])
         messages.success(request, "Задание сохранено.")
         return redirect("developer_tasks")
     return render(request, "developer_task_form.html", {"form": form, "task": task})
