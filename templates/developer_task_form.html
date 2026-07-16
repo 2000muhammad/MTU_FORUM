@@ -18,15 +18,15 @@
   {% csrf_token %}
   <label>{% tr 'task_field_title' %}{{ form.title }}</label>
   <label>{% tr 'task_field_status' %}{{ form.status }}</label>
-  <label>{% tr 'task_field_assignee' %}{{ form.assignee }}</label>
+  {% if form.executors %}
   <label class="task-person-picker-field">
-    {% tr 'task_field_coexecutors' %}
+    {% tr 'task_field_assignee' %}
     <span class="task-person-picker" data-person-picker data-placeholder="{% tr 'task_coexecutors_search' %}" data-empty="{% tr 'task_coexecutors_empty' %}" data-selected-label="{% tr 'task_coexecutors_selected' %}">
-      {{ form.coexecutors }}
+      {{ form.executors }}
     </span>
   </label>
+  {% endif %}
   <label>{% tr 'task_field_due_date' %}{{ form.due_date }}</label>
-  <label>{% tr 'task_field_priority' %}{{ form.priority }}</label>
   <label class="task-checkbox">{{ form.is_viewed }} <span>{% tr 'task_field_is_viewed' %}</span></label>
   <label class="task-form-wide">{% tr 'task_field_description' %}{{ form.description }}</label>
   {% if form.errors %}

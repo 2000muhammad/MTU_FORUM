@@ -272,37 +272,40 @@ class SiteIntakeForm(forms.Form):
 
 
 class DeveloperTaskForm(forms.ModelForm):
+    executors = forms.ModelMultipleChoiceField(
+        queryset=User.objects.none(),
+        required=True,
+        label="Исполнители",
+        widget=forms.SelectMultiple(attrs={"class": "form-select", "size": 8}),
+    )
+
     class Meta:
         model = DeveloperTask
-        fields = ("title", "description", "status", "assignee", "coexecutors", "due_date", "priority", "is_viewed")
+        fields = ("title", "description", "status", "due_date", "is_viewed")
         widgets = {
             "title": forms.TextInput(attrs={"class": "form-control", "placeholder": "Название задания"}),
             "description": forms.Textarea(attrs={"class": "form-control", "rows": 4, "placeholder": "Описание, детали, ссылки"}),
             "status": forms.Select(attrs={"class": "form-select"}),
-            "assignee": forms.Select(attrs={"class": "form-select"}),
-            "coexecutors": forms.SelectMultiple(attrs={"class": "form-select", "size": 5}),
             "due_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
-            "priority": forms.NumberInput(attrs={"class": "form-control", "min": 1, "max": 5}),
             "is_viewed": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
         labels = {
             "title": "Название",
             "description": "Описание",
             "status": "Статус",
-            "assignee": "Исполнитель",
-            "coexecutors": "Соисполнители",
             "due_date": "Срок",
-            "priority": "Приоритет",
             "is_viewed": "Просмотрено",
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         users = User.objects.filter(is_active=True).order_by("first_name", "last_name", "username")
-        self.fields["assignee"].queryset = users
-        self.fields["coexecutors"].queryset = users
-        self.fields["assignee"].required = False
-        self.fields["coexecutors"].required = False
+        self.fields["executors"].queryset = users
+        if self.instance and self.instance.pk:
+            executor_ids = list(self.instance.coexecutors.values_list("pk", flat=True))
+            if self.instance.assignee_id:
+                executor_ids.insert(0, self.instance.assignee_id)
+            self.initial["executors"] = list(dict.fromkeys(executor_ids))
 
 
 class AdminStyledModelForm(forms.ModelForm):

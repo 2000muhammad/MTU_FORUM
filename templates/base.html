@@ -31,10 +31,11 @@
     })();
   </script>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260609-task-other-fix">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260715-task-workspace">
+  <link rel="stylesheet" href="{% static 'css/tasks.css' %}?v=20260715-task-workspace">
   <link rel="stylesheet" href="{% static 'css/accessibility-panel.css' %}?v=20260602-premium">
   <link rel="stylesheet" href="{% static 'css/accessibility-compact.css' %}?v=20260611-access-content-scale">
-  <link rel="stylesheet" href="{% static 'css/telegram-compose.css' %}?v=20260527-telegram-attach-left">
+  <link rel="stylesheet" href="{% static 'css/telegram-compose.css' %}?v=20260714-chat-scroll-fix">
   <link rel="stylesheet" href="{% static 'css/internal-messages.css' %}?v=20260609-light-readable">
   <link rel="stylesheet" href="{% static 'css/manager-fixes.css' %}?v=20260608-manager-split">
 </head>
@@ -60,7 +61,7 @@
       <a class="nav-link {% if current_url == 'admin_chat_list' or current_url == 'admin_chat_detail' or current_url == 'admin_chat_thread_detail' %}active{% endif %}" href="{% url 'admin_chat_list' %}" {% if current_url == 'admin_chat_list' or current_url == 'admin_chat_detail' or current_url == 'admin_chat_thread_detail' %}aria-current="page"{% endif %}>{% tr 'chats' %}</a>
       {% endif %}
       {% if ui_can_tasks %}
-      <a class="nav-link {% if current_url == 'developer_tasks' or current_url == 'developer_task_create' %}active{% endif %}" href="{% url 'developer_tasks' %}" {% if current_url == 'developer_tasks' or current_url == 'developer_task_create' %}aria-current="page"{% endif %}>{% tr 'tasks' %}</a>
+      <a class="nav-link {% if current_url == 'developer_tasks' or current_url == 'developer_task_create' or current_url == 'developer_task_edit' %}active{% endif %}" href="{% url 'developer_tasks' %}" {% if current_url == 'developer_tasks' or current_url == 'developer_task_create' or current_url == 'developer_task_edit' %}aria-current="page"{% endif %}>{% tr 'tasks' %}</a>
       {% endif %}
       {% if ui_user_can_manage_people %}
       <a class="nav-link {% if current_url == 'users' %}active{% endif %}" href="{% url 'users' %}" {% if current_url == 'users' %}aria-current="page"{% endif %}>{% tr 'users' %}</a>

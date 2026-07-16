@@ -2006,7 +2006,7 @@ UI["en"].update({
 })
 
 UI["ru"].update({
-    "task_coexecutors_search": "Поиск соисполнителя",
+    "task_coexecutors_search": "Поиск исполнителей",
     "task_coexecutors_empty": "Сотрудники не найдены",
     "task_coexecutors_selected": "Выбрано",
     "database_tools": "Экспорт и импорт БД",
@@ -2022,7 +2022,7 @@ UI["ru"].update({
 })
 
 UI["uz"].update({
-    "task_coexecutors_search": "Hamijrochini qidirish",
+    "task_coexecutors_search": "Ijrochilarni qidirish",
     "task_coexecutors_empty": "Xodimlar topilmadi",
     "task_coexecutors_selected": "Tanlangan",
     "database_tools": "MB eksport va import",
@@ -2038,7 +2038,7 @@ UI["uz"].update({
 })
 
 UI["uz-cyrl"].update({
-    "task_coexecutors_search": "Ҳамижрочини қидириш",
+    "task_coexecutors_search": "Ижрочиларни қидириш",
     "task_coexecutors_empty": "Ходимлар топилмади",
     "task_coexecutors_selected": "Танланган",
     "database_tools": "МБ экспорт ва импорт",
@@ -2054,7 +2054,7 @@ UI["uz-cyrl"].update({
 })
 
 UI["en"].update({
-    "task_coexecutors_search": "Search co-executor",
+    "task_coexecutors_search": "Search executors",
     "task_coexecutors_empty": "No employees found",
     "task_coexecutors_selected": "Selected",
     "database_tools": "Database export and import",
