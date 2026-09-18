@@ -2098,6 +2098,109 @@ UI["en"].update({
 })
   
   
+
+
+# Loading screen uses the same language selection as the rest of the UI.
+UI["ru"].update({
+    "loader_initializing": "Подготовка",
+    "loader_assets": "Загрузка ресурсов",
+    "loader_almost_ready": "Почти готово",
+    "loader_welcome": "Добро пожаловать",
+    "loader_page_loading": "Страница загружается"
+})
+
+UI["uz"].update({
+    "loader_initializing": "Tayyorlanmoqda",
+    "loader_assets": "Resurslar yuklanmoqda",
+    "loader_almost_ready": "Deyarli tayyor",
+    "loader_welcome": "Xush kelibsiz",
+    "loader_page_loading": "Sahifa yuklanmoqda"
+})
+
+UI["uz-cyrl"].update({
+    "loader_initializing": "Тайёрланмоқда",
+    "loader_assets": "Ресурслар юкланмоқда",
+    "loader_almost_ready": "Деярли тайёр",
+    "loader_welcome": "Хуш келибсиз",
+    "loader_page_loading": "Саҳифа юкланмоқда"
+})
+
+UI["en"].update({
+    "loader_initializing": "Initializing",
+    "loader_assets": "Loading assets",
+    "loader_almost_ready": "Almost ready",
+    "loader_welcome": "Welcome",
+    "loader_page_loading": "Page is loading"
+})
+
+UI["ru"].update({
+    "solar_auto": "Авто",
+    "solar_title": "Тема по солнцу",
+    "solar_description": "Автоматически по восходу и закату",
+    "solar_enable": "Включить по местоположению",
+    "solar_privacy": "Для расчёта приблизительные координаты передаются Sunrise-Sunset.org.",
+    "solar_loading": "Определяем время восхода и заката…",
+    "solar_error": "Не удалось получить данные. Текущая тема сохранена. Нажмите, чтобы повторить.",
+    "solar_rise": "Восход",
+    "solar_set": "Закат",
+    "solar_off": "Выключено",
+    "solar_close": "Закрыть"
+})
+UI["uz"].update({
+    "solar_auto": "Avto",
+    "solar_title": "Quyosh bo‘yicha mavzu",
+    "solar_description": "Quyosh chiqishi va botishi bo‘yicha avtomatik",
+    "solar_enable": "Joylashuv bo‘yicha yoqish",
+    "solar_privacy": "Hisoblash uchun taxminiy koordinatalar Sunrise-Sunset.org xizmatiga yuboriladi.",
+    "solar_loading": "Quyosh chiqishi va botishi aniqlanmoqda…",
+    "solar_error": "Ma’lumot olinmadi. Joriy mavzu saqlandi. Qayta urinib ko‘ring.",
+    "solar_rise": "Quyosh chiqishi",
+    "solar_set": "Quyosh botishi",
+    "solar_off": "O‘chirilgan",
+    "solar_close": "Yopish"
+})
+UI["uz-cyrl"].update({
+    "solar_auto": "Авто",
+    "solar_title": "Қуёш бўйича мавзу",
+    "solar_description": "Қуёш чиқиши ва ботиши бўйича автоматик",
+    "solar_enable": "Жойлашув бўйича ёқиш",
+    "solar_privacy": "Ҳисоблаш учун тахминий координаталар Sunrise-Sunset.org хизматига юборилади.",
+    "solar_loading": "Қуёш чиқиши ва ботиши аниқланмоқда…",
+    "solar_error": "Маълумот олинмади. Жорий мавзу сақланди. Қайта уриниб кўринг.",
+    "solar_rise": "Қуёш чиқиши",
+    "solar_set": "Қуёш ботиши",
+    "solar_off": "Ўчирилган",
+    "solar_close": "Ёпиш"
+})
+UI["en"].update({
+    "solar_auto": "Auto",
+    "solar_title": "Sun-based theme",
+    "solar_description": "Automatic at sunrise and sunset",
+    "solar_enable": "Enable using location",
+    "solar_privacy": "Approximate coordinates are sent to Sunrise-Sunset.org to calculate sun times.",
+    "solar_loading": "Checking sunrise and sunset…",
+    "solar_error": "Could not get data. Your current theme is unchanged. Click to retry.",
+    "solar_rise": "Sunrise",
+    "solar_set": "Sunset",
+    "solar_off": "Off",
+    "solar_close": "Close"
+})
+
+UI["ru"].update({"loader_branch": "Филиал «Ташкентский региональный железнодорожный узел»", "loader_department": "Отдел цифровизации"})
+UI["uz"].update({"loader_branch": "“Toshkent mintaqaviy temir yo‘l uzeli” filiali", "loader_department": "Raqamlashtirish bo‘limi"})
+UI["uz-cyrl"].update({"loader_branch": "«Тошкент минтақавий темир йўл узели» филиали", "loader_department": "Рақамлаштириш бўлими"})
+UI["en"].update({"loader_branch": "Tashkent Regional Railway Junction Branch", "loader_department": "Digitalization Department"})
+
+UI["ru"].update({"solar_cycle_auto": "Авто: восход и закат", "solar_cycle_system": "Тема системы", "solar_cycle_opposite": "Противоположная теме системы", "solar_fallback": "Временно используется тема системы"})
+UI["uz"].update({"solar_cycle_auto": "Avto: quyosh chiqishi va botishi", "solar_cycle_system": "Tizim mavzusi", "solar_cycle_opposite": "Tizimga teskari mavzu", "solar_fallback": "Vaqtincha tizim mavzusi ishlatilmoqda"})
+UI["uz-cyrl"].update({"solar_cycle_auto": "Авто: қуёш чиқиши ва ботиши", "solar_cycle_system": "Тизим мавзуси", "solar_cycle_opposite": "Тизимга тескари мавзу", "solar_fallback": "Вақтинча тизим мавзуси ишлатилмоқда"})
+UI["en"].update({"solar_cycle_auto": "Auto: sunrise and sunset", "solar_cycle_system": "System theme", "solar_cycle_opposite": "Opposite of system theme", "solar_fallback": "Using system theme temporarily"})
+
+UI["ru"].update({"permission_title": "Разрешения", "permission_location": "Геолокация для восхода и заката", "permission_sound": "Включить звук", "permission_hint": "Камера запрашивается при входе по Face ID. Для расчёта восхода и заката округлённые координаты передаются Sunrise-Sunset.org.", "permission_location_ok": "Геолокация разрешена", "permission_sound_ok": "Звук включён", "permission_error": "Доступ запрещён или недоступен. Проверьте разрешения сайта в браузере и повторите.", "permission_waiting": "Ожидание разрешения…"})
+UI["en"].update({"permission_title": "Permissions", "permission_location": "Location for sunrise and sunset", "permission_sound": "Enable sound", "permission_hint": "Camera access is requested when signing in with Face ID. Rounded coordinates are sent to Sunrise-Sunset.org to calculate sun times.", "permission_location_ok": "Location allowed", "permission_sound_ok": "Sound enabled", "permission_error": "Access denied or unavailable. Check the site permissions in your browser and retry.", "permission_waiting": "Waiting for permission…"})
+UI["uz"].update({"permission_title": "Ruxsatlar", "permission_location": "Quyosh vaqtlari uchun joylashuv", "permission_sound": "Ovozni yoqish", "permission_hint": "Kamera Face ID orqali kirishda so‘raladi. Quyosh vaqtlarini hisoblash uchun yaxlitlangan koordinatalar Sunrise-Sunset.org xizmatiga yuboriladi.", "permission_location_ok": "Joylashuvga ruxsat berildi", "permission_sound_ok": "Ovoz yoqildi", "permission_error": "Ruxsat rad etildi yoki xizmat mavjud emas. Brauzerdagi sayt ruxsatlarini tekshirib, qayta urinib ko‘ring.", "permission_waiting": "Ruxsat kutilmoqda…"})
+UI["uz-cyrl"].update({"permission_title": "Рухсатлар", "permission_location": "Қуёш вақтлари учун жойлашув", "permission_sound": "Овозни ёқиш", "permission_hint": "Камера Face ID орқали киришда сўралади. Қуёш вақтларини ҳисоблаш учун яхлитланган координаталар Sunrise-Sunset.org хизматига юборилади.", "permission_location_ok": "Жойлашувга рухсат берилди", "permission_sound_ok": "Овоз ёқилди", "permission_error": "Рухсат рад этилди ёки хизмат мавжуд эмас. Браузердаги сайт рухсатларини текшириб, қайта уриниб кўринг.", "permission_waiting": "Рухсат кутилмоқда…"})
+
 def _lang(context=None):
     request = context.get("request") if context else None
     path = getattr(request, "path", "") or ""

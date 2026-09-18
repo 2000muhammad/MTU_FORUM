@@ -225,6 +225,7 @@ class SiteIntakeForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         self.lang_code = kwargs.pop("lang_code", "ru")
+        self.user = kwargs.pop("user", None)
         self.texts = public_intake_texts(self.lang_code)
         super().__init__(*args, **kwargs)
         self.fields["platform"].label = self.texts["platform"]
@@ -238,9 +239,23 @@ class SiteIntakeForm(forms.Form):
         self.fields["full_name"].widget.attrs["placeholder"] = self.texts["full_name_placeholder"]
         self.fields["pnfl"].widget.attrs["placeholder"] = self.texts["pnfl_placeholder"]
         self.fields["cause"].widget.attrs["placeholder"] = self.texts["cause_placeholder"]
-        self.fields["platform"].choices = [("", self.texts["select_platform"])] + [(item.name, item.name) for item in Platform.objects.filter(is_active=True)]
-        self.fields["company"].choices = [("", self.texts["select_company"])] + [(item.name, item.name) for item in Station.objects.filter(is_active=True)]
-        self.fields["position"].choices = [("", self.texts["select_position"])] + [(item.name, item.name) for item in Position.objects.filter(is_active=True)]
+        platforms = Platform.objects.filter(is_active=True)
+        if self.user and self.user.is_authenticated and not self.user.is_superuser:
+            platforms = platforms.filter(allowed_users__user=self.user)
+        self.fields["platform"].choices = [("", self.texts["select_platform"])] + [(item.name, item.name) for item in platforms]
+        stations = Station.objects.filter(is_active=True)
+        positions = Position.objects.filter(is_active=True)
+        profile = getattr(self.user, "profile", None) if self.user and self.user.is_authenticated else None
+        branch_name = getattr(profile, "branch", "") if profile else ""
+        organization_name = getattr(profile, "organization", "") if profile else ""
+        if branch_name and not self.user.is_superuser:
+            stations = stations.filter(branch__name=branch_name)
+            positions = positions.filter(branch__name=branch_name)
+        if organization_name and not self.user.is_superuser:
+            stations = stations.filter(organization__name=organization_name)
+            positions = positions.filter(organization__name=organization_name)
+        self.fields["company"].choices = [("", self.texts["select_company"])] + [(item.name, item.name) for item in stations]
+        self.fields["position"].choices = [("", self.texts["select_position"])] + [(item.name, item.name) for item in positions]
 
     def clean_full_name(self):
         value = re.sub(r"\s+", " ", self.cleaned_data["full_name"]).strip()
@@ -330,11 +345,29 @@ class AdminStyledModelForm(forms.ModelForm):
 
 class StationForm(AdminStyledModelForm):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["branch"].queryset = Branch.objects.filter(is_active=True).order_by("sort_order", "name")
+        self.fields["branch"].empty_label = "Выберите филиал"
+        self.fields["branch"].required = True
+        self.fields["branch"].widget.attrs["class"] = "form-select"
+        self.fields["organization"].queryset = Organization.objects.filter(is_active=True, branch__is_active=True).select_related("branch")
+        self.fields["organization"].empty_label = "Выберите организацию"
+        self.fields["organization"].required = True
+        self.fields["organization"].widget.attrs["class"] = "form-select"
+
+    def clean(self):
+        cleaned = super().clean()
+        branch, organization = cleaned.get("branch"), cleaned.get("organization")
+        if branch and organization and organization.branch_id != branch.pk:
+            self.add_error("organization", "Организация не относится к выбранному филиалу.")
+        return cleaned
+
     class Meta:
 
         model = Station
 
-        fields = ["name", "is_active", "sort_order"]
+        fields = ["branch", "organization", "name", "is_active", "sort_order"]
 
 
 
@@ -342,11 +375,29 @@ class StationForm(AdminStyledModelForm):
 
 class PositionForm(AdminStyledModelForm):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["branch"].queryset = Branch.objects.filter(is_active=True).order_by("sort_order", "name")
+        self.fields["branch"].empty_label = "Выберите филиал"
+        self.fields["branch"].required = True
+        self.fields["branch"].widget.attrs["class"] = "form-select"
+        self.fields["organization"].queryset = Organization.objects.filter(is_active=True, branch__is_active=True).select_related("branch")
+        self.fields["organization"].empty_label = "Выберите организацию"
+        self.fields["organization"].required = True
+        self.fields["organization"].widget.attrs["class"] = "form-select"
+
+    def clean(self):
+        cleaned = super().clean()
+        branch, organization = cleaned.get("branch"), cleaned.get("organization")
+        if branch and organization and organization.branch_id != branch.pk:
+            self.add_error("organization", "Организация не относится к выбранному филиалу.")
+        return cleaned
+
     class Meta:
 
         model = Position
 
-        fields = ["name", "is_active", "sort_order"]
+        fields = ["branch", "organization", "name", "is_active", "sort_order"]
 
 
 
@@ -606,6 +657,12 @@ class UserForm(AdminStyledModelForm):
         required=False,
         widget=SingleRoleRadioSelect,
     )
+    allowed_platforms = forms.ModelMultipleChoiceField(
+        queryset=Platform.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label="Доступ к платформам",
+    )
     password = forms.CharField(required=False, widget=forms.PasswordInput(render_value=False))
     pnfl = forms.CharField(required=False, max_length=32)
     middle_name = forms.CharField(required=False, max_length=120)
@@ -637,6 +694,7 @@ class UserForm(AdminStyledModelForm):
             organizations_qs = organizations_qs.filter(branch__name=actor_branch)
             self.fields["branch"].initial = actor_branch
         self.fields["roles"].queryset = roles
+        self.fields["allowed_platforms"].queryset = Platform.objects.filter(is_active=True).order_by("sort_order", "name")
         branch_names = list(branches_qs.values_list("name", flat=True))
         organization_names = list(organizations_qs.values_list("name", flat=True))
         user = self.instance if getattr(self.instance, "pk", None) else None
@@ -649,6 +707,7 @@ class UserForm(AdminStyledModelForm):
                     organization_names.append(profile.organization)
                 selected_role = profile.roles.filter(is_active=True).order_by("sort_order", "name").first()
                 self.fields["roles"].initial = [selected_role.pk] if selected_role else []
+                self.fields["allowed_platforms"].initial = profile.allowed_platforms.values_list("pk", flat=True)
                 for field in USER_PROFILE_FORM_FIELDS:
                     if field == "avatar":
                         continue
@@ -687,6 +746,7 @@ class UserForm(AdminStyledModelForm):
               "last_name",
               "email",
               "roles",
+              "allowed_platforms",
               "is_staff",
             "is_superuser",
             "is_active",
