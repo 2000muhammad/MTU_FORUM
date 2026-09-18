@@ -1,0 +1,9 @@
+.theme-mode-btn.solar-auto-active{position:relative}.theme-mode-btn.solar-auto-active::after{content:"";position:absolute;right:5px;bottom:5px;width:6px;height:6px;border-radius:50%;background:var(--brand)}.solar-theme-sources{position:fixed;bottom:5px;right:12px;font-size:10px;z-index:5;color:var(--muted)}.solar-theme-sources a{color:inherit;text-decoration:none}.solar-theme-sources a:hover{text-decoration:underline}
+
+html[data-theme="dark"] .theme-mode-btn .theme-icon-sun{display:none}html[data-theme="dark"] .theme-mode-btn .theme-icon-moon{display:grid}html[data-theme="light"] .theme-mode-btn .theme-icon-sun{display:grid}html[data-theme="light"] .theme-mode-btn .theme-icon-moon{display:none}
+
+.theme-mode-btn .theme-icon-sunrise{display:none}
+html[data-theme] .theme-mode-btn.solar-auto-active .theme-icon-sun,
+html[data-theme] .theme-mode-btn.solar-auto-active .theme-icon-moon{display:none}
+html[data-theme] .theme-mode-btn.solar-auto-active .theme-icon-sunrise{display:grid}
+.theme-mode-btn.solar-auto-active::after{display:none}

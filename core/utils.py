@@ -143,4 +143,4 @@ def user_can_manage_manager_accounts(user):
 
 
 def user_can_manage_organizations(user):
-    return user_can_directories(user) or user_is_branch_manager(user)
+    return user_can_directories(user) or user_is_branch_manager(user) or user_is_organization_manager(user)

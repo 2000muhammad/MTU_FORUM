@@ -6,13 +6,13 @@
   <div class="settings-folder-nav" data-folder-nav>
     <button class="settings-folder-arrow settings-folder-arrow-left" type="button" data-folder-scroll="-1" aria-label="{% tr 'scroll_left' %}">‹</button>
     <nav class="settings-folders glass-card" aria-label="{% tr 'directories' %}" data-folder-track>
-    {% if not ui_user_is_branch_manager %}
     <a class="folder-tab {% if active_section == 'stations' %}active{% endif %}" href="{% url 'settings_section' 'stations' %}">
       <span class="folder-tab-title"><em>01</em><strong>{% tr 'stations' %}</strong></span><span class="folder-tab-count">{{ stations|length }}</span>
     </a>
     <a class="folder-tab {% if active_section == 'positions' %}active{% endif %}" href="{% url 'settings_section' 'positions' %}">
       <span class="folder-tab-title"><em>02</em><strong>{% tr 'positions' %}</strong></span><span class="folder-tab-count">{{ positions|length }}</span>
     </a>
+    {% if not ui_user_is_branch_manager and not ui_user_is_organization_manager %}
     <a class="folder-tab {% if active_section == 'platforms' %}active{% endif %}" href="{% url 'settings_section' 'platforms' %}">
       <span class="folder-tab-title"><em>03</em><strong>{% tr 'platforms' %}</strong></span><span class="folder-tab-count">{{ platforms|length }}</span>
     </a>
@@ -26,10 +26,10 @@
       <span class="folder-tab-title"><em>06</em><strong>{% tr 'branches' %}</strong></span><span class="folder-tab-count">{{ branches|length }}</span>
     </a>
     {% endif %}
-    <a class="folder-tab {% if active_section == 'organizations' %}active{% endif %}" href="{% url 'settings_section' 'organizations' %}">
-      <span class="folder-tab-title"><em>{% if ui_user_is_branch_manager %}01{% else %}07{% endif %}</em><strong>{% tr 'organizations' %}</strong></span><span class="folder-tab-count">{{ organizations|length }}</span>
-    </a>
-    {% if not ui_user_is_branch_manager %}
+    {% if not ui_user_is_organization_manager %}<a class="folder-tab {% if active_section == 'organizations' %}active{% endif %}" href="{% url 'settings_section' 'organizations' %}">
+      <span class="folder-tab-title"><em>{% if ui_user_is_branch_manager %}03{% else %}07{% endif %}</em><strong>{% tr 'organizations' %}</strong></span><span class="folder-tab-count">{{ organizations|length }}</span>
+    </a>{% endif %}
+    {% if not ui_user_is_branch_manager and not ui_user_is_organization_manager %}
     <a class="folder-tab {% if active_section == 'roles' %}active{% endif %}" href="{% url 'settings_section' 'roles' %}">
       <span class="folder-tab-title"><em>08</em><strong>{% tr 'role_creation' %}</strong></span><span class="folder-tab-count">{{ roles|length }}</span>
     </a>
@@ -51,15 +51,19 @@
           <a class="btn btn-outline-warning btn-sm" href="{% url 'dictionary_excel' 'stations' 'sample' %}">{% tr 'sample' %}</a>
         </div>
       </div>
-      <form method="post" class="crud-form add-form">
+      <form method="post" class="crud-form add-form branch-station-add">
         {% csrf_token %}<input type="hidden" name="section" value="station"><input type="hidden" name="action" value="save">
+        {% if not ui_user_is_branch_manager and not ui_user_is_organization_manager %}<label>{% tr 'branch' %}{{ station_form.branch }}</label>{% endif %}
+        {% if not ui_user_is_organization_manager %}<label>{% tr 'organization' %}{{ station_form.organization }}</label>{% endif %}
         <label>{% tr 'name' %}{{ station_form.name }}</label><span class="auto-code-note">{% tr 'code' %}: создаётся автоматически</span><label>{% tr 'sort_order' %}{{ station_form.sort_order }}</label>
         <label class="check-line">{{ station_form.is_active }} {% tr 'active' %}</label><button class="btn btn-primary">{% tr 'add' %}</button>
       </form>
       <div class="crud-list">
         {% for item in stations %}
-        <form method="post" class="crud-row">
+        <form method="post" class="crud-row branch-station-row">
           {% csrf_token %}<input type="hidden" name="section" value="station"><input type="hidden" name="id" value="{{ item.id }}">
+          {% if not ui_user_is_branch_manager and not ui_user_is_organization_manager %}<select class="form-select" name="branch" required><option value="">Выберите филиал</option>{% for branch in branches %}<option value="{{ branch.id }}" {% if item.branch_id == branch.id %}selected{% endif %}>{{ branch.name }}</option>{% endfor %}</select>{% endif %}
+          {% if not ui_user_is_organization_manager %}<select class="form-select" name="organization" required><option value="">Выберите организацию</option>{% for organization in organizations %}<option value="{{ organization.id }}" {% if item.organization_id == organization.id %}selected{% endif %}>{{ organization.name }}</option>{% endfor %}</select>{% endif %}
           <input class="form-control" name="name" value="{{ item.name }}" placeholder="{% tr 'name' %}"><span class="auto-code-value">{{ item.code }}</span>
           <input class="form-control small-input" type="number" name="sort_order" value="{{ item.sort_order }}">
           <label class="check-line"><input class="form-check-input" type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> {% tr 'active' %}</label>
@@ -82,15 +86,19 @@
           <a class="btn btn-outline-warning btn-sm" href="{% url 'dictionary_excel' 'positions' 'sample' %}">{% tr 'sample' %}</a>
         </div>
       </div>
-      <form method="post" class="crud-form add-form">
+      <form method="post" class="crud-form add-form branch-position-add">
         {% csrf_token %}<input type="hidden" name="section" value="position"><input type="hidden" name="action" value="save">
+        {% if not ui_user_is_branch_manager and not ui_user_is_organization_manager %}<label>{% tr 'branch' %}{{ position_form.branch }}</label>{% endif %}
+        {% if not ui_user_is_organization_manager %}<label>{% tr 'organization' %}{{ position_form.organization }}</label>{% endif %}
         <label>{% tr 'name' %}{{ position_form.name }}</label><label>{% tr 'sort_order' %}{{ position_form.sort_order }}</label>
         <label class="check-line">{{ position_form.is_active }} {% tr 'active' %}</label><button class="btn btn-primary">{% tr 'add' %}</button>
       </form>
       <div class="crud-list">
         {% for item in positions %}
-        <form method="post" class="crud-row position-row">
+        <form method="post" class="crud-row position-row branch-position-row">
           {% csrf_token %}<input type="hidden" name="section" value="position"><input type="hidden" name="id" value="{{ item.id }}">
+          {% if not ui_user_is_branch_manager and not ui_user_is_organization_manager %}<select class="form-select" name="branch" required><option value="">Выберите филиал</option>{% for branch in branches %}<option value="{{ branch.id }}" {% if item.branch_id == branch.id %}selected{% endif %}>{{ branch.name }}</option>{% endfor %}</select>{% endif %}
+          {% if not ui_user_is_organization_manager %}<select class="form-select" name="organization" required><option value="">Выберите организацию</option>{% for organization in organizations %}<option value="{{ organization.id }}" {% if item.organization_id == organization.id %}selected{% endif %}>{{ organization.name }}</option>{% endfor %}</select>{% endif %}
           <input class="form-control" name="name" value="{{ item.name }}" placeholder="{% tr 'name' %}">
           <input class="form-control small-input" type="number" name="sort_order" value="{{ item.sort_order }}">
           <label class="check-line"><input class="form-check-input" type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> {% tr 'active' %}</label>

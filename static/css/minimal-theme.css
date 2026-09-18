@@ -1,0 +1,446 @@
+/* Restrained site palette: neutral surfaces with one teal accent. */
+:root {
+  --bg: #0c1218;
+  --panel: #131b23;
+  --panel-2: #18222c;
+  --line: rgba(196, 210, 221, .14);
+  --text: #eef2f5;
+  --muted: #96a3ae;
+  --brand: #65c9b3;
+  --accent: #65c9b3;
+  --radius: 18px;
+  --liquid-surface: #131b23;
+  --liquid-border: rgba(196, 210, 221, .14);
+  --liquid-edge: rgba(255, 255, 255, .08);
+  --liquid-text: #eef2f5;
+}
+
+html[data-theme="light"] {
+  --bg: #f4f6f7;
+  --panel: #ffffff;
+  --panel-2: #eef1f3;
+  --line: rgba(38, 53, 65, .13);
+  --text: #172129;
+  --muted: #66747f;
+  --brand: #247f6f;
+  --accent: #247f6f;
+  --liquid-surface: #ffffff;
+  --liquid-border: rgba(38, 53, 65, .13);
+  --liquid-edge: rgba(255, 255, 255, .75);
+  --liquid-text: #172129;
+}
+
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) body {
+  background: var(--bg) !important;
+}
+
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .glass-card,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .sidebar,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .public-request-card,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .public-web-platforms,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .accessibility-panel,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .site-permissions-body,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .language-picker-options,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .dropdown-menu {
+  background: var(--panel) !important;
+  border-color: var(--line) !important;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .16) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html[data-theme="light"]:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .glass-card,
+html[data-theme="light"]:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .sidebar,
+html[data-theme="light"]:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .public-request-card,
+html[data-theme="light"]:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .public-web-platforms {
+  box-shadow: 0 10px 28px rgba(38, 53, 65, .08) !important;
+}
+
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .public-index-header,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .topbar {
+  background: var(--bg) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.public-index-header {
+  top: 12px;
+  width: min(1680px, calc(100% - 24px));
+  min-width: 0;
+  margin: 12px auto 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: visible;
+}
+
+.public-index-header > * {
+  min-width: 0;
+}
+
+.public-index-header .public-index-brand {
+  flex: 0 1 auto;
+}
+
+.public-index-header .public-header-tools,
+.public-index-header .public-index-actions {
+  flex-shrink: 0;
+}
+
+@media (max-width: 760px) {
+  .public-index-header {
+    top: 8px;
+    width: calc(100% - 16px);
+    margin-top: 8px;
+    padding: 12px;
+  }
+}
+
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .form-control,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .form-select,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) textarea,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) input {
+  background: var(--panel-2) !important;
+  border-color: var(--line) !important;
+  box-shadow: none !important;
+  color: var(--text) !important;
+}
+
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) input::placeholder,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) textarea::placeholder,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .form-control::placeholder {
+  color: #8998a5 !important;
+  opacity: 1 !important;
+}
+
+html[data-theme="light"]:not(.accessibility-mode):not(.access-black-white):not(.access-invert) input::placeholder,
+html[data-theme="light"]:not(.accessibility-mode):not(.access-black-white):not(.access-invert) textarea::placeholder,
+html[data-theme="light"]:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .form-control::placeholder {
+  color: #71808b !important;
+}
+
+.platform-access-picker {
+  grid-column: 1 / -1;
+  margin: 4px 0;
+  padding: 15px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.platform-access-picker legend {
+  float: none;
+  width: auto;
+  margin: 0 0 3px;
+  padding: 0 6px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.platform-access-picker p {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.platform-access-picker ul,
+.platform-access-options,
+.platform-access-picker > .form-control {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.platform-access-picker li label,
+.platform-access-options label,
+.platform-access-picker > .form-control > div > label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
+  margin: 0;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255,255,255,.025);
+  color: var(--text);
+}
+
+.platform-access-picker > .form-control {
+  width: 100%;
+  height: auto;
+  border: 0;
+  background: transparent;
+}
+
+.platform-access-picker input[type="checkbox"] {
+  flex: 0 0 18px;
+  width: 18px !important;
+  height: 18px !important;
+  min-height: 18px !important;
+  margin: 0;
+  padding: 0;
+}
+
+/* Keep every regular form checkbox visible and clickable in both themes. */
+.form-check-input[type="checkbox"],
+.check-line input[type="checkbox"],
+.platform-access-picker input[type="checkbox"],
+.task-checkbox input[type="checkbox"] {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  display: inline-grid !important;
+  place-content: center;
+  flex: 0 0 19px;
+  width: 19px !important;
+  height: 19px !important;
+  min-width: 19px !important;
+  min-height: 19px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 1px solid rgba(184, 202, 215, .38) !important;
+  border-radius: 5px !important;
+  background: var(--panel-2) !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+  position: static !important;
+  pointer-events: auto !important;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+.form-check-input[type="checkbox"]::before,
+.check-line input[type="checkbox"]::before,
+.platform-access-picker input[type="checkbox"]::before,
+.task-checkbox input[type="checkbox"]::before {
+  content: "";
+  width: 10px;
+  height: 6px;
+  margin-top: -2px;
+  border: solid #071611;
+  border-width: 0 0 2px 2px;
+  opacity: 0;
+  transform: rotate(-45deg) scale(.6);
+  transition: opacity .12s ease, transform .12s ease;
+}
+
+.form-check-input[type="checkbox"]:checked,
+.check-line input[type="checkbox"]:checked,
+.platform-access-picker input[type="checkbox"]:checked,
+.task-checkbox input[type="checkbox"]:checked {
+  border-color: var(--brand) !important;
+  background: var(--brand) !important;
+}
+
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) body .form-check-input[type="checkbox"]:checked,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) body .check-line input[type="checkbox"]:checked,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) body .platform-access-picker input[type="checkbox"]:checked,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) body .task-checkbox input[type="checkbox"]:checked {
+  border-color: var(--brand) !important;
+  background-color: var(--brand) !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23071511' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M3 8.5 6.4 12 13 4.5'/%3E%3C/svg%3E") !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 14px 14px !important;
+}
+
+.form-check-input[type="checkbox"]:checked::before,
+.check-line input[type="checkbox"]:checked::before,
+.platform-access-picker input[type="checkbox"]:checked::before,
+.task-checkbox input[type="checkbox"]:checked::before {
+  opacity: 1;
+  transform: rotate(-45deg) scale(1);
+}
+
+.form-check-input[type="checkbox"]:focus-visible,
+.check-line input[type="checkbox"]:focus-visible,
+.platform-access-picker input[type="checkbox"]:focus-visible,
+.task-checkbox input[type="checkbox"]:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--brand) 32%, transparent) !important;
+  outline-offset: 2px;
+}
+
+.check-line,
+.platform-access-picker label,
+.task-checkbox label {
+  cursor: pointer;
+}
+
+.user-platform-access {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.user-platform-access small { color: var(--muted); }
+.user-platform-access span {
+  padding: 3px 8px;
+  border: 1px solid rgba(74, 200, 178, .25);
+  border-radius: 999px;
+  color: #8fe0d1;
+  font-size: 11px;
+}
+.user-platform-access .is-empty { color: var(--muted); border-color: var(--line); }
+html[data-theme="light"] .user-platform-access span { color: #167866; }
+
+.branch-station-add {
+  grid-template-columns: minmax(170px,1fr) minmax(180px,1fr) minmax(190px,1.15fr) minmax(130px,.7fr) 90px 95px 105px !important;
+}
+.branch-position-add {
+  grid-template-columns: minmax(170px,1fr) minmax(180px,1fr) minmax(210px,1.2fr) 90px 95px 105px !important;
+}
+.branch-station-row {
+  grid-template-columns: minmax(150px,1fr) minmax(160px,1fr) minmax(170px,1.1fr) 70px 68px 92px 96px 96px !important;
+}
+.branch-position-row {
+  grid-template-columns: minmax(150px,1fr) minmax(160px,1fr) minmax(190px,1.15fr) 68px 92px 96px 96px !important;
+}
+
+@media (max-width: 1250px) {
+  .branch-station-add,
+  .branch-position-add,
+  .branch-station-row,
+  .branch-position-row { grid-template-columns: 1fr 1fr !important; }
+}
+
+/* Keep authenticated pages inside the viewport at narrow widths and browser zoom. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.app-shell {
+  width: calc(100% - 276px);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.topbar,
+.topbar > div:first-child,
+.topbar-actions,
+.control-deck,
+.request-directory-panel,
+.request-card-list,
+.request-card,
+.request-card-main,
+.request-card-body,
+.request-card-secrets,
+.request-card-actions {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  width: 100%;
+  min-height: 84px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: visible;
+}
+
+.topbar > div:first-child {
+  width: 100%;
+  overflow: hidden;
+}
+
+.topbar-actions {
+  width: max-content;
+  justify-self: end;
+  flex-wrap: nowrap;
+}
+
+.topbar h1,
+.topbar .eyebrow {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.topbar h1 {
+  line-height: 1.15;
+}
+
+.request-card {
+  overflow: hidden;
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    width: 100%;
+    margin-left: 0;
+  }
+  .topbar-actions {
+    justify-self: stretch;
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .topbar {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 14px;
+  }
+}
+
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .btn-primary {
+  background: var(--brand) !important;
+  border-color: var(--brand) !important;
+  color: #07120f !important;
+  box-shadow: none !important;
+}
+
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .login-face-button,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .login-sso-button,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .ui-mode-btn,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .language-picker summary,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .login-back-link,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .site-permissions summary {
+  background: transparent !important;
+  border-color: var(--line) !important;
+  box-shadow: none !important;
+  color: var(--text) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .login-face-button:hover,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .login-sso-button:hover,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .ui-mode-btn:hover,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .language-picker summary:hover,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .login-back-link:hover {
+  background: var(--panel-2) !important;
+  border-color: color-mix(in srgb, var(--brand) 55%, var(--line)) !important;
+  transform: none !important;
+}
+
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .brand-mark,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .login-sso-mark {
+  background: color-mix(in srgb, var(--brand) 16%, transparent) !important;
+  color: var(--brand) !important;
+  box-shadow: none !important;
+}
+
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .metric-link:hover,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .glass-card:hover {
+  border-color: color-mix(in srgb, var(--brand) 36%, var(--line)) !important;
+}
+
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .public-index-page::before,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .public-index-page::after,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .login-panel::before,
+html:not(.accessibility-mode):not(.access-black-white):not(.access-invert) .login-panel::after {
+  opacity: .15 !important;
+}

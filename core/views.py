@@ -70,6 +70,7 @@ from .utils import (
     user_can_site_settings,
     user_can_tasks,
     user_is_branch_manager,
+    user_is_organization_manager,
 )
 
 
@@ -112,6 +113,16 @@ def _url_language(request):
     return code if code in {"ru", "uz", "uz-cyrl", "en"} else getattr(request, "LANGUAGE_CODE", "ru")
 
 
+def _public_web_platform_context():
+    platforms = list(WebPlatform.objects.filter(is_active=True).order_by("sort_order", "name"))
+    split_at = (len(platforms) + 1) // 2
+    return {
+        "web_platforms": platforms,
+        "web_platforms_lane_one": platforms[:split_at],
+        "web_platforms_lane_two": platforms[split_at:],
+    }
+
+
 
 
 
@@ -133,7 +144,7 @@ class LoginView(DjangoLoginView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["web_platforms"] = WebPlatform.objects.filter(is_active=True).order_by("sort_order", "name")
+        context.update(_public_web_platform_context())
         return context
 
 
@@ -143,7 +154,7 @@ class LoginView(DjangoLoginView):
 # EN: The OneID/E-IMZO block below handles external login through the government SSO.
 def index(request):
     lang_code = _url_language(request)
-    form = SiteIntakeForm(request.POST or None, lang_code=lang_code)
+    form = SiteIntakeForm(request.POST or None, lang_code=lang_code, user=request.user)
 
     if request.method == "POST":
         if form.is_valid():
@@ -171,8 +182,7 @@ def index(request):
             messages.success(request, form.texts["success"])
             return redirect("index")
 
-    web_platforms = WebPlatform.objects.filter(is_active=True).order_by("sort_order", "name")
-    return render(request, "index.html", {"form": form, "web_platforms": web_platforms})
+    return render(request, "index.html", {"form": form, **_public_web_platform_context()})
 
 
 def _merge_query(url, params):
@@ -1944,6 +1954,8 @@ def _save_user_profile_from_form(user, form):
         user.is_staff = bool(roles.filter(is_active=True, is_staff_role=True).exists())
         user.is_superuser = bool(roles.filter(is_active=True, is_admin_role=True).exists())
         user.save(update_fields=["is_staff", "is_superuser"])
+    if "allowed_platforms" in form.cleaned_data:
+        profile.allowed_platforms.set(form.cleaned_data.get("allowed_platforms"))
     return profile
 
 
@@ -2033,6 +2045,11 @@ def _actor_branch_name(user):
     return getattr(profile, "branch", "") if profile else ""
 
 
+def _actor_organization_name(user):
+    profile = getattr(user, "profile", None)
+    return getattr(profile, "organization", "") if profile else ""
+
+
 def _scope_users_for_actor(users, actor):
     if user_is_branch_manager(actor):
         branch_name = _actor_branch_name(actor)
@@ -2041,10 +2058,27 @@ def _scope_users_for_actor(users, actor):
 
 
 def _scope_organizations_for_actor(organizations, actor):
+    if user_is_organization_manager(actor):
+        organization_name = _actor_organization_name(actor)
+        branch_name = _actor_branch_name(actor)
+        return organizations.filter(name=organization_name, branch__name=branch_name) if organization_name else organizations.none()
     if user_is_branch_manager(actor):
         branch_name = _actor_branch_name(actor)
         return organizations.filter(branch__name=branch_name) if branch_name else organizations.none()
     return organizations
+
+
+def _scope_branch_directory_for_actor(queryset, actor):
+    if user_is_organization_manager(actor):
+        organization_name = _actor_organization_name(actor)
+        branch_name = _actor_branch_name(actor)
+        if not organization_name:
+            return queryset.none()
+        return queryset.filter(organization__name=organization_name, organization__branch__name=branch_name)
+    if user_is_branch_manager(actor):
+        branch_name = _actor_branch_name(actor)
+        return queryset.filter(branch__name=branch_name) if branch_name else queryset.none()
+    return queryset
 
 
 @login_required
@@ -2136,7 +2170,7 @@ def users_view(request):
             user_form = form if instance is None else UserForm(actor=request.user)
             messages.error(request, "Проверьте поля пользователя.")
 
-    users = list(_scope_users_for_actor(_users_queryset(query), request.user))
+    users = list(_scope_users_for_actor(_users_queryset(query).prefetch_related("profile__allowed_platforms"), request.user))
     for user in users:
         profile = _ensure_user_profile(user)
         selected_role = profile.roles.filter(is_active=True).order_by("sort_order", "name").first()
@@ -2146,6 +2180,7 @@ def users_view(request):
         "user_form": user_form,
         "query": query,
         "roles": user_form.fields["roles"].queryset,
+        "platforms": Platform.objects.filter(is_active=True).order_by("sort_order", "name"),
         "branches": Branch.objects.filter(
             is_active=True,
             **({"name": _actor_branch_name(request.user)} if user_is_branch_manager(request.user) else {}),
@@ -2440,8 +2475,11 @@ def site_logs_view(request):
 @user_passes_test(user_can_manage_organizations)
 def settings_view(request, section="stations"):
     sections = {"stations", "positions", "platforms", "web-platforms", "channels", "branches", "organizations", "roles"}
-    if user_is_branch_manager(request.user) and section != "organizations":
+    branch_manager_sections = {"stations", "positions", "organizations"}
+    if user_is_branch_manager(request.user) and section not in branch_manager_sections:
         return redirect("settings_section", section="organizations")
+    if user_is_organization_manager(request.user) and section not in {"stations", "positions"}:
+        return redirect("settings_section", section="stations")
     if section not in sections:
         return redirect("settings_section", section="stations")
 
@@ -2466,11 +2504,16 @@ def settings_view(request, section="stations"):
         if not model:
             messages.error(request, "Неизвестный справочник.")
             return redirect("settings_section", section="stations")
-        if user_is_branch_manager(request.user) and form_section != "organization":
-            messages.error(request, "У вас есть доступ только к организациям своего филиала.")
+        if user_is_branch_manager(request.user) and form_section not in {"station", "position", "organization"}:
+            messages.error(request, "У вас есть доступ только к справочникам своего филиала.")
             return redirect("settings_section", section="organizations")
+        if user_is_organization_manager(request.user) and form_section not in {"station", "position"}:
+            messages.error(request, "У вас есть доступ только к справочникам своей организации.")
+            return redirect("settings_section", section="stations")
         instance_qs = model.objects.all()
-        if user_is_branch_manager(request.user) and form_section == "organization":
+        if (user_is_branch_manager(request.user) or user_is_organization_manager(request.user)) and form_section in {"station", "position"}:
+            instance_qs = _scope_branch_directory_for_actor(instance_qs, request.user)
+        elif user_is_branch_manager(request.user) and form_section == "organization":
             instance_qs = _scope_organizations_for_actor(instance_qs, request.user)
         instance = get_object_or_404(instance_qs, pk=request.POST.get("id")) if request.POST.get("id") else None
 
@@ -2486,12 +2529,23 @@ def settings_view(request, section="stations"):
             messages.success(request, f"{label.capitalize()} удалена.")
             return redirect("settings_section", section=redirect_section)
         post_data = request.POST.copy()
-        if user_is_branch_manager(request.user) and form_section == "organization":
+        if user_is_branch_manager(request.user) and form_section in {"station", "position", "organization"}:
             branch = Branch.objects.filter(name=_actor_branch_name(request.user), is_active=True).first()
             if not branch:
                 messages.error(request, "Филиал менеджера не найден.")
                 return redirect("settings_section", section="organizations")
             post_data["branch"] = str(branch.pk)
+        if user_is_organization_manager(request.user) and form_section in {"station", "position"}:
+            organization = Organization.objects.filter(
+                name=_actor_organization_name(request.user),
+                branch__name=_actor_branch_name(request.user),
+                is_active=True,
+            ).select_related("branch").first()
+            if not organization:
+                messages.error(request, "Организация менеджера не найдена.")
+                return redirect("settings_section", section="stations")
+            post_data["branch"] = str(organization.branch_id)
+            post_data["organization"] = str(organization.pk)
         form = form_class(post_data, instance=instance)
 
         if form.is_valid():
@@ -2527,9 +2581,14 @@ def settings_view(request, section="stations"):
     if organization_branch:
         organization_rows = organization_rows.filter(branch_id=organization_branch)
 
+    station_form = StationForm()
+    position_form = PositionForm()
+    station_form.fields["organization"].queryset = organizations.filter(is_active=True)
+    position_form.fields["organization"].queryset = organizations.filter(is_active=True)
+
     return render(request, "settings.html", {
-        "stations": Station.objects.all(),
-        "positions": Position.objects.all(),
+        "stations": _scope_branch_directory_for_actor(Station.objects.select_related("branch").all(), request.user),
+        "positions": _scope_branch_directory_for_actor(Position.objects.select_related("branch").all(), request.user),
         "platforms": Platform.objects.all(),
         "web_platforms": WebPlatform.objects.all(),
         "channels": BotSubscriptionChannel.objects.all(),
@@ -2542,9 +2601,9 @@ def settings_view(request, section="stations"):
         "organization_branch": organization_branch,
         "roles": SiteRole.objects.all(),
         "active_section": section,
-        "station_form": StationForm(),
+        "station_form": station_form,
 
-        "position_form": PositionForm(),
+        "position_form": position_form,
 
         "platform_form": PlatformForm(),
 
@@ -2594,12 +2653,12 @@ def _xlsx_response(section, mode, headers, rows):
 def dictionary_excel_view(request, section, mode):
     configs = {
         "stations": {
-            "headers": ["id", "name", "code", "is_active", "sort_order"],
-            "sample": [["", "Станция Ахангаран", "AG", "1", "10"]],
+            "headers": ["id", "branch", "organization", "name", "code", "is_active", "sort_order"],
+            "sample": [["", "Toshkent filiali", "Axborot texnologiyalari markazi", "Станция Ахангаран", "AG", "1", "10"]],
         },
         "positions": {
-            "headers": ["id", "name", "is_active", "sort_order"],
-            "sample": [["", "Начальник станции", "1", "1"]],
+            "headers": ["id", "branch", "organization", "name", "is_active", "sort_order"],
+            "sample": [["", "Toshkent filiali", "Axborot texnologiyalari markazi", "Начальник станции", "1", "1"]],
         },
         "platforms": {
             "headers": ["id", "name", "code", "is_active", "sort_order"],
@@ -2625,9 +2684,12 @@ def dictionary_excel_view(request, section, mode):
     if section not in configs or mode not in {"export", "sample", "import"}:
         messages.error(request, "Неизвестный Excel запрос.")
         return redirect("settings")
-    if user_is_branch_manager(request.user) and section != "organizations":
-        messages.error(request, "У вас есть доступ только к организациям своего филиала.")
+    if user_is_branch_manager(request.user) and section not in {"stations", "positions", "organizations"}:
+        messages.error(request, "У вас есть доступ только к справочникам своего филиала.")
         return redirect("settings_section", section="organizations")
+    if user_is_organization_manager(request.user) and section not in {"stations", "positions"}:
+        messages.error(request, "У вас есть доступ только к справочникам своей организации.")
+        return redirect("settings_section", section="stations")
 
     config = configs[section]
     headers = config["headers"]
@@ -2658,9 +2720,11 @@ def dictionary_excel_view(request, section, mode):
 
     if mode == "export":
         if section == "stations":
-            rows = [[item.id, item.name, item.code, int(item.is_active), item.sort_order] for item in Station.objects.all()]
+            items = _scope_branch_directory_for_actor(Station.objects.select_related("branch").all(), request.user)
+            rows = [[item.id, item.branch.name if item.branch else "", item.organization.name if item.organization else "", item.name, item.code, int(item.is_active), item.sort_order] for item in items]
         elif section == "positions":
-            rows = [[item.id, item.name, int(item.is_active), item.sort_order] for item in Position.objects.all()]
+            items = _scope_branch_directory_for_actor(Position.objects.select_related("branch").all(), request.user)
+            rows = [[item.id, item.branch.name if item.branch else "", item.organization.name if item.organization else "", item.name, int(item.is_active), item.sort_order] for item in items]
         elif section == "platforms":
             rows = [[item.id, item.name, item.code, int(item.is_active), item.sort_order] for item in Platform.objects.all()]
         elif section == "web-platforms":
@@ -2706,16 +2770,46 @@ def dictionary_excel_view(request, section, mode):
                 continue
 
             if section == "stations":
-                instance = Station.objects.filter(pk=row_id).first() if row_id else Station.objects.filter(name=name).first()
+                branch_value = (row.get("branch") or "").strip()
+                branch = Branch.objects.filter(Q(name__iexact=branch_value) | Q(code__iexact=branch_value)).first()
+                if user_is_branch_manager(request.user):
+                    branch = Branch.objects.filter(name=_actor_branch_name(request.user), is_active=True).first()
+                if not branch:
+                    continue
+                organization_value = (row.get("organization") or "").strip()
+                organization = Organization.objects.filter(branch=branch).filter(Q(name__iexact=organization_value) | Q(code__iexact=organization_value)).first()
+                if user_is_organization_manager(request.user):
+                    organization = Organization.objects.filter(branch=branch, name=_actor_organization_name(request.user), is_active=True).first()
+                if not organization:
+                    continue
+                scoped = _scope_branch_directory_for_actor(Station.objects.all(), request.user)
+                instance = scoped.filter(pk=row_id).first() if row_id else scoped.filter(branch=branch, name=name).first()
                 instance = instance or Station()
+                instance.branch = branch
+                instance.organization = organization
                 instance.name = name
                 instance.code = (row.get("code") or "").strip()
                 instance.is_active = truthy(row.get("is_active", "1"))
                 instance.sort_order = _int_or_zero(row.get("sort_order"))
                 instance.save()
             elif section == "positions":
-                instance = Position.objects.filter(pk=row_id).first() if row_id else Position.objects.filter(name=name).first()
+                branch_value = (row.get("branch") or "").strip()
+                branch = Branch.objects.filter(Q(name__iexact=branch_value) | Q(code__iexact=branch_value)).first()
+                if user_is_branch_manager(request.user):
+                    branch = Branch.objects.filter(name=_actor_branch_name(request.user), is_active=True).first()
+                if not branch:
+                    continue
+                organization_value = (row.get("organization") or "").strip()
+                organization = Organization.objects.filter(branch=branch).filter(Q(name__iexact=organization_value) | Q(code__iexact=organization_value)).first()
+                if user_is_organization_manager(request.user):
+                    organization = Organization.objects.filter(branch=branch, name=_actor_organization_name(request.user), is_active=True).first()
+                if not organization:
+                    continue
+                scoped = _scope_branch_directory_for_actor(Position.objects.all(), request.user)
+                instance = scoped.filter(pk=row_id).first() if row_id else scoped.filter(branch=branch, name=name).first()
                 instance = instance or Position()
+                instance.branch = branch
+                instance.organization = organization
                 instance.name = name
                 instance.is_active = truthy(row.get("is_active", "1"))
                 instance.sort_order = _int_or_zero(row.get("sort_order"))
@@ -3116,8 +3210,15 @@ def telegram_intake_summary_api(request):
 @require_GET
 
 def public_stations_api(request):
-
-    return JsonResponse({"results": list(Station.objects.filter(is_active=True).values("id", "name", "code"))})
+    items = Station.objects.filter(is_active=True)
+    if request.user.is_authenticated and not request.user.is_superuser:
+        branch_name = getattr(getattr(request.user, "profile", None), "branch", "")
+        organization_name = getattr(getattr(request.user, "profile", None), "organization", "")
+        if branch_name:
+            items = items.filter(branch__name=branch_name)
+        if organization_name:
+            items = items.filter(organization__name=organization_name)
+    return JsonResponse({"results": list(items.values("id", "name", "code"))})
 
 
 
@@ -3126,8 +3227,15 @@ def public_stations_api(request):
 @require_GET
 
 def public_positions_api(request):
-
-    return JsonResponse({"results": list(Position.objects.filter(is_active=True).values("id", "name"))})
+    items = Position.objects.filter(is_active=True)
+    if request.user.is_authenticated and not request.user.is_superuser:
+        branch_name = getattr(getattr(request.user, "profile", None), "branch", "")
+        organization_name = getattr(getattr(request.user, "profile", None), "organization", "")
+        if branch_name:
+            items = items.filter(branch__name=branch_name)
+        if organization_name:
+            items = items.filter(organization__name=organization_name)
+    return JsonResponse({"results": list(items.values("id", "name"))})
 
 
 

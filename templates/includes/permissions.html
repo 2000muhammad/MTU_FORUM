@@ -1,0 +1,9 @@
+{% load ui_i18n %}
+<details class="site-permissions" data-site-permissions data-location-ok="{% tr 'permission_location_ok' %}" data-sound-ok="{% tr 'permission_sound_ok' %}" data-error="{% tr 'permission_error' %}" data-waiting="{% tr 'permission_waiting' %}">
+<summary>{% tr 'permission_title' %}</summary>
+<div class="site-permissions-body">
+<p>{% tr 'permission_hint' %}</p>
+<button type="button" data-permission-location>{% tr 'permission_location' %}</button>
+<button type="button" data-permission-sound>{% tr 'permission_sound' %}</button>
+<p role="status" data-permission-status></p>
+</div></details>

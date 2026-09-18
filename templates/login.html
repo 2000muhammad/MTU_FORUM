@@ -69,12 +69,7 @@
         </div>
       </section>
     </div>
-    <div class="lang-switch public-lang-switch">
-      <a href="{% lang_url 'ru' %}">RU</a>
-      <a href="{% lang_url 'uz' %}">UZ</a>
-      <a href="{% lang_url 'uz-cyrl' %}">ЎЗ</a>
-      <a href="{% lang_url 'en' %}">EN</a>
-    </div>
+    {% include 'includes/language_switch.html' %}
   </div>
 </header>
 <section class="login-panel">
@@ -216,24 +211,10 @@
   <div class="public-web-platforms-head">
     <span>{% tr 'web_platforms' %}</span>
   </div>
-  <div class="public-web-marquee">
-    <div class="public-web-track">
-      {% for platform in web_platforms %}
+  <div class="public-web-marquee public-web-marquee-first">
+    <div class="public-web-track public-web-track-forward">
+      {% for platform in web_platforms_lane_one %}
       <a class="public-web-item" href="{{ platform.url|default:'#' }}" {% if platform.url %}target="_blank" rel="noopener"{% endif %}>
-        <span class="public-web-icon">
-          {% if platform.image_url %}
-          <img src="{{ platform.image_url }}" alt="">
-          {% elif platform.url %}
-          <img src="https://www.google.com/s2/favicons?domain_url={{ platform.url|urlencode }}&sz=64" alt="">
-          {% else %}
-          <span>{{ platform.name|first }}</span>
-          {% endif %}
-        </span>
-        <span class="public-web-name">{{ platform.name }}</span>
-      </a>
-      {% endfor %}
-      {% for platform in web_platforms %}
-      <a class="public-web-item" href="{{ platform.url|default:'#' }}" {% if platform.url %}target="_blank" rel="noopener"{% endif %} aria-hidden="true" tabindex="-1">
         <span class="public-web-icon">
           {% if platform.image_url %}
           <img src="{{ platform.image_url }}" alt="">
@@ -248,6 +229,26 @@
       {% endfor %}
     </div>
   </div>
+  {% if web_platforms_lane_two %}
+  <div class="public-web-marquee public-web-marquee-second">
+    <div class="public-web-track public-web-track-reverse">
+      {% for platform in web_platforms_lane_two %}
+      <a class="public-web-item" href="{{ platform.url|default:'#' }}" {% if platform.url %}target="_blank" rel="noopener"{% endif %}>
+        <span class="public-web-icon">
+          {% if platform.image_url %}
+          <img src="{{ platform.image_url }}" alt="">
+          {% elif platform.url %}
+          <img src="https://www.google.com/s2/favicons?domain_url={{ platform.url|urlencode }}&sz=64" alt="">
+          {% else %}
+          <span>{{ platform.name|first }}</span>
+          {% endif %}
+        </span>
+        <span class="public-web-name">{{ platform.name }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 </section>
 {% endif %}
 {% endblock %}

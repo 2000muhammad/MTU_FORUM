@@ -1,0 +1,373 @@
+.mtu-loader,
+.mtu-loader * {
+  box-sizing: border-box;
+}
+
+.mtu-loader {
+  --loader-label: var(--muted, #8fa4b8);
+  --loader-label-strong: var(--text, #edf6ff);
+  --loader-line: var(--line, rgba(169, 194, 215, .16));
+  --loader-orbit: color-mix(in srgb, var(--brand, #44d7b6) 32%, transparent);
+  --loader-logo-top: var(--brand, #44d7b6);
+  --loader-logo-mid: var(--accent, #7fb7ff);
+  --loader-glow: color-mix(in srgb, var(--brand, #44d7b6) 24%, transparent);
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: inherit;
+  background-color: var(--bg, #071018);
+  opacity: 1;
+  visibility: visible;
+  transition: opacity .72s cubic-bezier(.65, 0, .35, 1), visibility .72s;
+}
+
+html.mtu-loader-active {
+  overflow: hidden;
+}
+
+.mtu-loader[hidden] {
+  display: none;
+}
+
+.mtu-loader.is-leaving {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.mtu-loader.is-leaving .mtu-loader__stage {
+  transform: scale(1.035);
+  filter: blur(7px);
+}
+
+.mtu-loader::before,
+.mtu-loader::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.mtu-loader::before {
+  inset: 18px;
+  border: 1px solid var(--loader-line);
+  border-radius: var(--radius, 22px);
+}
+
+.mtu-loader::after {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: linear-gradient(transparent, var(--loader-orbit), transparent);
+  transform: scaleY(0);
+  animation: mtu-loader-line 1.4s .1s cubic-bezier(.76, 0, .24, 1) forwards;
+}
+
+.mtu-loader__stage {
+  position: relative;
+  width: min(1080px, calc(100vw - 64px));
+  height: min(520px, 70vh);
+  display: grid;
+  place-items: center;
+  transition: transform .72s cubic-bezier(.65, 0, .35, 1), filter .72s;
+}
+
+.mtu-loader__orbit {
+  position: absolute;
+  width: min(46vw, 500px);
+  aspect-ratio: 1;
+  border: 1px solid var(--loader-line);
+  border-radius: 50%;
+  transform: scale(.72);
+  opacity: 0;
+  animation: mtu-loader-orbit-in 1.5s .25s cubic-bezier(.16, 1, .3, 1) forwards;
+}
+
+.mtu-loader__orbit::before {
+  content: "";
+  position: absolute;
+  inset: 13%;
+  border: 1px solid var(--loader-line);
+  border-radius: inherit;
+  opacity: .65;
+}
+
+.mtu-loader__orbit i {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  border-top: 1px solid var(--loader-orbit);
+  border-right: 1px solid transparent;
+  animation: mtu-loader-spin 5s linear infinite;
+}
+
+.mtu-loader__orbit i:nth-child(2) {
+  inset: 13%;
+  animation-duration: 7s;
+  animation-direction: reverse;
+  opacity: .55;
+}
+
+.mtu-loader__orbit i:nth-child(3) {
+  inset: 28%;
+  animation-duration: 3.6s;
+  opacity: .35;
+}
+
+.mtu-loader__content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+}
+
+.mtu-loader__emblem {
+  display: block;
+  width: clamp(88px, 14vw, 164px);
+  height: auto;
+  max-height: 23vh;
+  object-fit: contain;
+  margin: 0 auto 24px;
+  filter: drop-shadow(0 8px 24px var(--loader-glow));
+  opacity: 0;
+  transform: translateY(12px) scale(.88);
+  animation: mtu-loader-emblem-in .8s .1s cubic-bezier(.16, 1, .3, 1) forwards,
+    mtu-loader-emblem-pulse 2.4s .9s ease-in-out infinite;
+}
+
+.mtu-loader__kicker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  margin: 0 0 22px;
+  color: var(--loader-label);
+  font: 600 13px/1.5 Inter, "Segoe UI", Arial, sans-serif;
+  letter-spacing: .12em;
+  text-shadow: none;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: mtu-loader-rise .7s .45s ease forwards;
+}
+
+.mtu-loader__kicker > i {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 1px;
+  background: var(--brand);
+  box-shadow: 0 0 12px var(--loader-glow);
+}
+
+.mtu-loader__kicker > span {
+  display: grid;
+  gap: 5px;
+  text-align: left;
+}
+
+.mtu-loader__kicker strong {
+  display: block;
+  color: var(--loader-label-strong);
+  font-size: 1em;
+  font-weight: 800;
+  letter-spacing: .2em;
+  text-align: center;
+}
+
+.mtu-loader__logo {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: min(920px, calc(100vw - 80px));
+  margin-inline: auto;
+  padding: .18em .3em .24em;
+  overflow: visible;
+  color: transparent;
+  font: 900 clamp(34px, 9vw, 128px)/1 Inter, "Segoe UI", Arial, sans-serif;
+  letter-spacing: -.065em;
+  word-spacing: .22em;
+  white-space: nowrap;
+  user-select: none;
+  filter: drop-shadow(0 18px 36px var(--loader-glow));
+}
+
+.mtu-loader__logo::after {
+  content: "";
+  position: absolute;
+  top: -35%;
+  bottom: -35%;
+  left: -18%;
+  width: 11%;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text) 35%, transparent), transparent);
+  filter: blur(7px);
+  transform: skewX(-14deg);
+  animation: mtu-loader-scan 2.4s 1.05s cubic-bezier(.3, .8, .3, 1) infinite;
+  pointer-events: none;
+}
+
+.mtu-loader__logo span {
+  display: block;
+  padding-inline: .08em;
+  background: linear-gradient(135deg, var(--loader-logo-top), var(--loader-logo-mid));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  opacity: 0;
+  filter: blur(10px);
+  transform: translateY(18px) scale(.94);
+  animation: mtu-loader-logo .9s .3s cubic-bezier(.16, 1, .3, 1) forwards;
+}
+
+.mtu-loader__progress {
+  width: min(520px, 76vw);
+  margin: 42px auto 0;
+}
+
+.mtu-loader__meta {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 11px;
+  color: var(--loader-label);
+  font: 600 9px/1 Inter, "Segoe UI", Arial, sans-serif;
+  letter-spacing: .26em;
+  text-shadow: none;
+}
+
+.mtu-loader__meta strong {
+  color: var(--loader-label-strong);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .08em;
+}
+
+.mtu-loader__meta small {
+  margin-left: 2px;
+  font-size: 7px;
+  font-weight: 500;
+}
+
+.mtu-loader__track {
+  position: relative;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--loader-line);
+}
+
+.mtu-loader__track > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--loader-progress, 0%);
+  background: linear-gradient(90deg, var(--brand), var(--accent));
+  border-radius: inherit;
+  box-shadow: 0 0 14px var(--loader-glow);
+  transition: width .24s cubic-bezier(.33, 1, .68, 1);
+}
+
+.mtu-loader__track > span::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--loader-glow);
+}
+
+.mtu-loader__corner {
+  position: absolute;
+  right: 39px;
+  bottom: 36px;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 12px;
+}
+
+.mtu-loader__corner i {
+  display: block;
+  width: 2px;
+  height: 4px;
+  background: var(--brand);
+  animation: mtu-loader-meter .8s ease-in-out infinite alternate;
+}
+
+.mtu-loader__corner i:nth-child(2) { height: 8px; animation-delay: -.25s; }
+.mtu-loader__corner i:nth-child(3) { height: 12px; animation-delay: -.5s; }
+
+@keyframes mtu-loader-emblem-in {
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes mtu-loader-emblem-pulse {
+  0%, 100% { transform: translateY(0) scale(1); filter: drop-shadow(0 8px 18px var(--loader-glow)); }
+  50% { transform: translateY(-4px) scale(1.035); filter: drop-shadow(0 12px 30px var(--loader-glow)); }
+}
+
+@keyframes mtu-loader-logo {
+  to { opacity: 1; filter: blur(0); transform: translateY(0) scale(1); }
+}
+
+@keyframes mtu-loader-rise {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes mtu-loader-line {
+  50% { transform: scaleY(1); opacity: 1; }
+  100% { transform: scaleY(1); opacity: 0; }
+}
+
+@keyframes mtu-loader-scan {
+  0%, 18% { left: -18%; }
+  72%, 100% { left: 112%; }
+}
+
+@keyframes mtu-loader-spin { to { transform: rotate(360deg); } }
+@keyframes mtu-loader-orbit-in { to { opacity: 1; transform: scale(1); } }
+@keyframes mtu-loader-meter { to { opacity: .3; transform: scaleY(.45); } }
+
+@media (max-width: 640px) {
+  .mtu-loader::before { inset: 10px; }
+  .mtu-loader__stage { width: calc(100vw - 32px); }
+  .mtu-loader__logo { width: calc(100vw - 40px); padding-inline: 12px; font-size: 9vw; }
+  .mtu-loader__kicker { max-width: 86vw; margin: 0 auto 17px; font-size: 11px; letter-spacing: .04em; }
+  .mtu-loader__kicker > i { flex-basis: 14px; width: 14px; }
+  .mtu-loader__progress { margin-top: 30px; }
+  .mtu-loader__corner { right: 24px; bottom: 24px; }
+}
+
+@media (max-height: 420px) {
+  .mtu-loader__stage { height: 92vh; }
+  .mtu-loader__emblem { width: auto; height: 21vh; margin-bottom: 8px; }
+  .mtu-loader__logo { font-size: min(9vw, 22vh); }
+  .mtu-loader__kicker { display: none; }
+  .mtu-loader__progress { margin-top: 16px; }
+  .mtu-loader__orbit { width: min(42vw, 80vh); }
+  .mtu-loader__corner { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mtu-loader,
+  .mtu-loader__stage { transition: none; }
+  .mtu-loader *,
+  .mtu-loader::after { animation: none !important; }
+  .mtu-loader__emblem,
+  .mtu-loader__logo span,
+  .mtu-loader__kicker,
+  .mtu-loader__orbit { opacity: 1; filter: none; transform: none; }
+}
+
+html.access-reduce-motion .mtu-loader,
+html.access-reduce-motion .mtu-loader__stage { transition: none; }
+
+html.access-reduce-motion .mtu-loader *,
+html.access-reduce-motion .mtu-loader::after { animation: none !important; }
+
+html.access-reduce-motion .mtu-loader__emblem,
+html.access-reduce-motion .mtu-loader__logo span,
+html.access-reduce-motion .mtu-loader__kicker,
+html.access-reduce-motion .mtu-loader__orbit { opacity: 1; filter: none; transform: none; }

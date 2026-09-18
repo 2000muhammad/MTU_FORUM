@@ -18,6 +18,7 @@ from .utils import (
     user_can_site_settings,
     user_can_tasks,
     user_is_branch_manager,
+    user_is_organization_manager,
 )
 
 
@@ -47,4 +48,5 @@ def app_ui(request):
         "ui_user_can_manage_manager_accounts": user_can_manage_manager_accounts(user),
         "ui_user_can_manage_organizations": user_can_manage_organizations(user),
         "ui_user_is_branch_manager": user_is_branch_manager(user),
+        "ui_user_is_organization_manager": user_is_organization_manager(user),
     }

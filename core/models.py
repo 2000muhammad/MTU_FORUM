@@ -45,8 +45,9 @@ class AutomaticCodeMixin:
 
 
 class Station(AutomaticCodeMixin, models.Model):
-
-    name = models.CharField(max_length=180, unique=True)
+    branch = models.ForeignKey("Branch", null=True, blank=True, on_delete=models.PROTECT, related_name="stations")
+    organization = models.ForeignKey("Organization", null=True, blank=True, on_delete=models.PROTECT, related_name="stations")
+    name = models.CharField(max_length=180)
 
     code = models.CharField(max_length=32, blank=True)
 
@@ -57,8 +58,8 @@ class Station(AutomaticCodeMixin, models.Model):
 
 
     class Meta:
-
-        ordering = ["sort_order", "name"]
+        ordering = ["branch__sort_order", "branch__name", "sort_order", "name"]
+        constraints = [models.UniqueConstraint(fields=["branch", "name"], name="unique_station_name_per_branch")]
 
 
 
@@ -71,8 +72,9 @@ class Station(AutomaticCodeMixin, models.Model):
 
 
 class Position(models.Model):
-
-    name = models.CharField(max_length=180, unique=True)
+    branch = models.ForeignKey("Branch", null=True, blank=True, on_delete=models.PROTECT, related_name="positions")
+    organization = models.ForeignKey("Organization", null=True, blank=True, on_delete=models.PROTECT, related_name="positions")
+    name = models.CharField(max_length=180)
 
     is_active = models.BooleanField(default=True)
 
@@ -81,8 +83,8 @@ class Position(models.Model):
 
 
     class Meta:
-
-        ordering = ["sort_order", "name"]
+        ordering = ["branch__sort_order", "branch__name", "sort_order", "name"]
+        constraints = [models.UniqueConstraint(fields=["branch", "name"], name="unique_position_name_per_branch")]
 
 
 
@@ -531,6 +533,7 @@ class SiteLog(models.Model):
 class UserProfile(models.Model):
     user = models.OneToOneField(User, related_name="profile", on_delete=models.CASCADE)
     roles = models.ManyToManyField(SiteRole, blank=True, related_name="users")
+    allowed_platforms = models.ManyToManyField(Platform, blank=True, related_name="allowed_users")
     avatar = models.ImageField(upload_to="profile_avatars/%Y/%m/", blank=True)
     pnfl = models.CharField(max_length=32, blank=True, db_index=True)
     middle_name = models.CharField(max_length=120, blank=True)
