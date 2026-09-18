@@ -96,9 +96,10 @@
             {% if u.profile.employee_pinfl or u.profile.pnfl %}<span>ПИНФЛ: {{ u.profile.employee_pinfl|default:u.profile.pnfl }}</span>{% endif %}
           </div>
           <div class="user-role-row">
-            {% if u.is_superuser %}<span>Суперадмин</span>{% endif %}
             {% if u.is_staff %}<span>Сотрудник</span>{% endif %}
-            {% for role in u.profile.roles.all %}<span>{{ role.name }}</span>{% endfor %}
+            {% with assigned_roles=u.profile.roles.all %}
+              {% for role in assigned_roles %}<span>{{ role.name }}</span>{% empty %}{% if u.is_superuser %}<span>Суперадмин</span>{% endif %}{% endfor %}
+            {% endwith %}
             {% if u.profile.organization %}<span>{{ u.profile.organization }}</span>{% endif %}
           </div>
           <div class="user-platform-access">
