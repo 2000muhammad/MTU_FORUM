@@ -51,26 +51,75 @@
           <a class="btn btn-outline-warning btn-sm" href="{% url 'dictionary_excel' 'stations' 'sample' %}">{% tr 'sample' %}</a>
         </div>
       </div>
+      <form method="get" class="directory-search-bar directory-search-advanced">
+        <input class="form-control" name="station_q" value="{{ station_query }}" placeholder="Поиск по названию, коду, филиалу или организации">
+        <select class="form-select" name="station_branch" data-directory-branch>
+          <option value="">Все филиалы</option>
+          {% for branch in branches %}<option value="{{ branch.id }}" {% if station_branch == branch.id|stringformat:'s' %}selected{% endif %}>{{ branch.name }}</option>{% endfor %}
+        </select>
+        <select class="form-select" name="station_organization" data-directory-organization>
+          <option value="">Все организации</option>
+          {% for organization in organizations %}<option value="{{ organization.id }}" data-branch="{{ organization.branch_id }}" {% if station_organization == organization.id|stringformat:'s' %}selected{% endif %}>{{ organization.name }}</option>{% endfor %}
+        </select>
+        <select class="form-select" name="station_status">
+          <option value="">Любой статус</option>
+          <option value="active" {% if station_status == 'active' %}selected{% endif %}>Активные</option>
+          <option value="inactive" {% if station_status == 'inactive' %}selected{% endif %}>Неактивные</option>
+        </select>
+        <button class="btn btn-outline-info" type="submit">Найти</button>
+        {% if station_query or station_branch or station_organization or station_status %}<a class="btn btn-outline-light" href="{% url 'settings_section' 'stations' %}">Сбросить</a>{% endif %}
+      </form>
+      <div class="directory-results-meta">Показано {{ station_rows.start_index }}–{{ station_rows.end_index }} из {{ station_rows.paginator.count }}</div>
       <form method="post" class="crud-form add-form branch-station-add">
         {% csrf_token %}<input type="hidden" name="section" value="station"><input type="hidden" name="action" value="save">
-        {% if not ui_user_is_branch_manager and not ui_user_is_organization_manager %}<label>{% tr 'branch' %}{{ station_form.branch }}</label>{% endif %}
-        {% if not ui_user_is_organization_manager %}<label>{% tr 'organization' %}{{ station_form.organization }}</label>{% endif %}
+        {% if not ui_user_is_branch_manager and not ui_user_is_organization_manager %}<label>{% tr 'branch' %}<select class="form-select" name="branch" required data-directory-branch><option value="">Выберите филиал</option>{% for branch in branches %}<option value="{{ branch.id }}">{{ branch.name }}</option>{% endfor %}</select></label>{% endif %}
+        {% if not ui_user_is_organization_manager %}<label>{% tr 'organization' %}<select class="form-select" name="organization" required data-directory-organization><option value="">Выберите организацию</option>{% for organization in organizations %}<option value="{{ organization.id }}" data-branch="{{ organization.branch_id }}">{{ organization.name }}</option>{% endfor %}</select></label>{% endif %}
         <label>{% tr 'name' %}{{ station_form.name }}</label><span class="auto-code-note">{% tr 'code' %}: создаётся автоматически</span><label>{% tr 'sort_order' %}{{ station_form.sort_order }}</label>
         <label class="check-line">{{ station_form.is_active }} {% tr 'active' %}</label><button class="btn btn-primary">{% tr 'add' %}</button>
       </form>
-      <div class="crud-list">
-        {% for item in stations %}
-        <form method="post" class="crud-row branch-station-row">
-          {% csrf_token %}<input type="hidden" name="section" value="station"><input type="hidden" name="id" value="{{ item.id }}">
-          {% if not ui_user_is_branch_manager and not ui_user_is_organization_manager %}<select class="form-select" name="branch" required><option value="">Выберите филиал</option>{% for branch in branches %}<option value="{{ branch.id }}" {% if item.branch_id == branch.id %}selected{% endif %}>{{ branch.name }}</option>{% endfor %}</select>{% endif %}
-          {% if not ui_user_is_organization_manager %}<select class="form-select" name="organization" required><option value="">Выберите организацию</option>{% for organization in organizations %}<option value="{{ organization.id }}" {% if item.organization_id == organization.id %}selected{% endif %}>{{ organization.name }}</option>{% endfor %}</select>{% endif %}
-          <input class="form-control" name="name" value="{{ item.name }}" placeholder="{% tr 'name' %}"><span class="auto-code-value">{{ item.code }}</span>
-          <input class="form-control small-input" type="number" name="sort_order" value="{{ item.sort_order }}">
-          <label class="check-line"><input class="form-check-input" type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> {% tr 'active' %}</label>
-          <button class="btn btn-outline-info" name="action" value="save">{% tr 'save' %}</button><button class="btn btn-outline-danger" name="action" value="delete" onclick="return confirm('{% tr 'delete_station_confirm' %}')">{% tr 'delete' %}</button>
-        </form>
+      <form method="post" id="station-bulk-form" class="directory-bulk-toolbar">
+        {% csrf_token %}<input type="hidden" name="section" value="station_bulk">
+        <label class="check-line"><input class="form-check-input" type="checkbox" data-select-all="station-bulk-form"> Выбрать все</label>
+        <span class="directory-selected-count" data-selected-count="station-bulk-form">Выбрано: 0</span>
+        <button class="btn btn-outline-success btn-sm" name="action" value="bulk_activate">Включить</button>
+        <button class="btn btn-outline-warning btn-sm" name="action" value="bulk_deactivate">Отключить</button>
+        {% if not ui_user_is_organization_manager %}
+        <select class="form-select" name="bulk_organization" data-bulk-organization>
+          <option value="">Перенести в организацию…</option>
+          {% for organization in organizations %}<option value="{{ organization.id }}">{{ organization.name }} — {{ organization.branch.name }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-outline-info btn-sm" name="action" value="bulk_move" data-bulk-move>Перенести</button>
+        {% endif %}
+      </form>
+      <div class="crud-list directory-compact-list">
+        {% for item in station_rows %}
+        <div class="crud-row branch-station-row directory-compact-row">
+          <input class="form-check-input directory-row-check" type="checkbox" name="selected_ids" value="{{ item.id }}" form="station-bulk-form" aria-label="Выбрать {{ item.name }}">
+          <div class="directory-row-main"><strong>{{ item.name }}</strong><small>{{ item.code|default:'Без кода' }}</small></div>
+          <div class="directory-row-scope"><span>{{ item.branch.name|default:'Без филиала' }}</span><small>{{ item.organization.name|default:'Без организации' }}</small></div>
+          <span class="directory-status {% if item.is_active %}is-active{% else %}is-inactive{% endif %}">{% if item.is_active %}Активно{% else %}Отключено{% endif %}</span>
+          <span class="directory-order">№ {{ item.sort_order }}</span>
+          <button class="btn btn-outline-info btn-sm" type="button" data-directory-edit data-dialog="station-edit-dialog" data-id="{{ item.id }}" data-name="{{ item.name }}" data-branch="{{ item.branch_id|default:'' }}" data-organization="{{ item.organization_id|default:'' }}" data-order="{{ item.sort_order }}" data-active="{% if item.is_active %}1{% else %}0{% endif %}">Редактировать</button>
+        </div>
         {% empty %}<p class="text-secondary">{% tr 'no_records' %}</p>{% endfor %}
       </div>
+      {% if station_rows.paginator.num_pages > 1 %}<nav class="directory-pagination" aria-label="Страницы предприятий">
+        {% if station_rows.has_previous %}<a class="btn btn-outline-light btn-sm" href="?{% if station_page_query %}{{ station_page_query }}&{% endif %}station_page={{ station_rows.previous_page_number }}">← Назад</a>{% endif %}
+        <span>Страница {{ station_rows.number }} из {{ station_rows.paginator.num_pages }}</span>
+        {% if station_rows.has_next %}<a class="btn btn-outline-light btn-sm" href="?{% if station_page_query %}{{ station_page_query }}&{% endif %}station_page={{ station_rows.next_page_number }}">Далее →</a>{% endif %}
+      </nav>{% endif %}
+      <dialog class="directory-edit-dialog" id="station-edit-dialog">
+        <form method="post" class="directory-edit-form">
+          {% csrf_token %}<input type="hidden" name="section" value="station"><input type="text" name="record_id" hidden readonly>
+          <div class="directory-dialog-head"><div><small>Предприятие</small><h3>Редактирование</h3></div><button type="button" class="directory-dialog-close" data-dialog-close aria-label="Закрыть">×</button></div>
+          {% if not ui_user_is_branch_manager and not ui_user_is_organization_manager %}<label>Филиал<select class="form-select" name="branch" required data-directory-branch><option value="">Выберите филиал</option>{% for branch in branches %}<option value="{{ branch.id }}">{{ branch.name }}</option>{% endfor %}</select></label>{% endif %}
+          {% if not ui_user_is_organization_manager %}<label>Организация<select class="form-select" name="organization" required data-directory-organization><option value="">Выберите организацию</option>{% for organization in organizations %}<option value="{{ organization.id }}" data-branch="{{ organization.branch_id }}">{{ organization.name }}</option>{% endfor %}</select></label>{% endif %}
+          <label>Название<input class="form-control" name="name" required></label>
+          <label>Сортировка<input class="form-control" type="number" min="0" name="sort_order"></label>
+          <label class="check-line"><input class="form-check-input" type="checkbox" name="is_active"> Активно</label>
+          <div class="directory-dialog-actions"><button class="btn btn-outline-danger" name="action" value="delete" onclick="return confirm('{% tr 'delete_station_confirm' %}')">Удалить</button><span></span><button class="btn btn-outline-light" type="button" data-dialog-close>Отмена</button><button class="btn btn-primary" name="action" value="save">Сохранить</button></div>
+        </form>
+      </dialog>
     </section>
     {% endif %}
 
@@ -86,26 +135,75 @@
           <a class="btn btn-outline-warning btn-sm" href="{% url 'dictionary_excel' 'positions' 'sample' %}">{% tr 'sample' %}</a>
         </div>
       </div>
+      <form method="get" class="directory-search-bar directory-search-advanced">
+        <input class="form-control" name="position_q" value="{{ position_query }}" placeholder="Поиск по должности, филиалу или организации">
+        <select class="form-select" name="position_branch" data-directory-branch>
+          <option value="">Все филиалы</option>
+          {% for branch in branches %}<option value="{{ branch.id }}" {% if position_branch == branch.id|stringformat:'s' %}selected{% endif %}>{{ branch.name }}</option>{% endfor %}
+        </select>
+        <select class="form-select" name="position_organization" data-directory-organization>
+          <option value="">Все организации</option>
+          {% for organization in organizations %}<option value="{{ organization.id }}" data-branch="{{ organization.branch_id }}" {% if position_organization == organization.id|stringformat:'s' %}selected{% endif %}>{{ organization.name }}</option>{% endfor %}
+        </select>
+        <select class="form-select" name="position_status">
+          <option value="">Любой статус</option>
+          <option value="active" {% if position_status == 'active' %}selected{% endif %}>Активные</option>
+          <option value="inactive" {% if position_status == 'inactive' %}selected{% endif %}>Неактивные</option>
+        </select>
+        <button class="btn btn-outline-info" type="submit">Найти</button>
+        {% if position_query or position_branch or position_organization or position_status %}<a class="btn btn-outline-light" href="{% url 'settings_section' 'positions' %}">Сбросить</a>{% endif %}
+      </form>
+      <div class="directory-results-meta">Показано {{ position_rows.start_index }}–{{ position_rows.end_index }} из {{ position_rows.paginator.count }}</div>
       <form method="post" class="crud-form add-form branch-position-add">
         {% csrf_token %}<input type="hidden" name="section" value="position"><input type="hidden" name="action" value="save">
-        {% if not ui_user_is_branch_manager and not ui_user_is_organization_manager %}<label>{% tr 'branch' %}{{ position_form.branch }}</label>{% endif %}
-        {% if not ui_user_is_organization_manager %}<label>{% tr 'organization' %}{{ position_form.organization }}</label>{% endif %}
+        {% if not ui_user_is_branch_manager and not ui_user_is_organization_manager %}<label>{% tr 'branch' %}<select class="form-select" name="branch" required data-directory-branch><option value="">Выберите филиал</option>{% for branch in branches %}<option value="{{ branch.id }}">{{ branch.name }}</option>{% endfor %}</select></label>{% endif %}
+        {% if not ui_user_is_organization_manager %}<label>{% tr 'organization' %}<select class="form-select" name="organization" required data-directory-organization><option value="">Выберите организацию</option>{% for organization in organizations %}<option value="{{ organization.id }}" data-branch="{{ organization.branch_id }}">{{ organization.name }}</option>{% endfor %}</select></label>{% endif %}
         <label>{% tr 'name' %}{{ position_form.name }}</label><label>{% tr 'sort_order' %}{{ position_form.sort_order }}</label>
         <label class="check-line">{{ position_form.is_active }} {% tr 'active' %}</label><button class="btn btn-primary">{% tr 'add' %}</button>
       </form>
-      <div class="crud-list">
-        {% for item in positions %}
-        <form method="post" class="crud-row position-row branch-position-row">
-          {% csrf_token %}<input type="hidden" name="section" value="position"><input type="hidden" name="id" value="{{ item.id }}">
-          {% if not ui_user_is_branch_manager and not ui_user_is_organization_manager %}<select class="form-select" name="branch" required><option value="">Выберите филиал</option>{% for branch in branches %}<option value="{{ branch.id }}" {% if item.branch_id == branch.id %}selected{% endif %}>{{ branch.name }}</option>{% endfor %}</select>{% endif %}
-          {% if not ui_user_is_organization_manager %}<select class="form-select" name="organization" required><option value="">Выберите организацию</option>{% for organization in organizations %}<option value="{{ organization.id }}" {% if item.organization_id == organization.id %}selected{% endif %}>{{ organization.name }}</option>{% endfor %}</select>{% endif %}
-          <input class="form-control" name="name" value="{{ item.name }}" placeholder="{% tr 'name' %}">
-          <input class="form-control small-input" type="number" name="sort_order" value="{{ item.sort_order }}">
-          <label class="check-line"><input class="form-check-input" type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> {% tr 'active' %}</label>
-          <button class="btn btn-outline-info" name="action" value="save">{% tr 'save' %}</button><button class="btn btn-outline-danger" name="action" value="delete" onclick="return confirm('{% tr 'delete_position_confirm' %}')">{% tr 'delete' %}</button>
-        </form>
+      <form method="post" id="position-bulk-form" class="directory-bulk-toolbar">
+        {% csrf_token %}<input type="hidden" name="section" value="position_bulk">
+        <label class="check-line"><input class="form-check-input" type="checkbox" data-select-all="position-bulk-form"> Выбрать все</label>
+        <span class="directory-selected-count" data-selected-count="position-bulk-form">Выбрано: 0</span>
+        <button class="btn btn-outline-success btn-sm" name="action" value="bulk_activate">Включить</button>
+        <button class="btn btn-outline-warning btn-sm" name="action" value="bulk_deactivate">Отключить</button>
+        {% if not ui_user_is_organization_manager %}
+        <select class="form-select" name="bulk_organization" data-bulk-organization>
+          <option value="">Перенести в организацию…</option>
+          {% for organization in organizations %}<option value="{{ organization.id }}">{{ organization.name }} — {{ organization.branch.name }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-outline-info btn-sm" name="action" value="bulk_move" data-bulk-move>Перенести</button>
+        {% endif %}
+      </form>
+      <div class="crud-list directory-compact-list">
+        {% for item in position_rows %}
+        <div class="crud-row position-row branch-position-row directory-compact-row">
+          <input class="form-check-input directory-row-check" type="checkbox" name="selected_ids" value="{{ item.id }}" form="position-bulk-form" aria-label="Выбрать {{ item.name }}">
+          <div class="directory-row-main"><strong>{{ item.name }}</strong><small>Должность</small></div>
+          <div class="directory-row-scope"><span>{{ item.branch.name|default:'Без филиала' }}</span><small>{{ item.organization.name|default:'Без организации' }}</small></div>
+          <span class="directory-status {% if item.is_active %}is-active{% else %}is-inactive{% endif %}">{% if item.is_active %}Активно{% else %}Отключено{% endif %}</span>
+          <span class="directory-order">№ {{ item.sort_order }}</span>
+          <button class="btn btn-outline-info btn-sm" type="button" data-directory-edit data-dialog="position-edit-dialog" data-id="{{ item.id }}" data-name="{{ item.name }}" data-branch="{{ item.branch_id|default:'' }}" data-organization="{{ item.organization_id|default:'' }}" data-order="{{ item.sort_order }}" data-active="{% if item.is_active %}1{% else %}0{% endif %}">Редактировать</button>
+        </div>
         {% empty %}<p class="text-secondary">{% tr 'no_records' %}</p>{% endfor %}
       </div>
+      {% if position_rows.paginator.num_pages > 1 %}<nav class="directory-pagination" aria-label="Страницы должностей">
+        {% if position_rows.has_previous %}<a class="btn btn-outline-light btn-sm" href="?{% if position_page_query %}{{ position_page_query }}&{% endif %}position_page={{ position_rows.previous_page_number }}">← Назад</a>{% endif %}
+        <span>Страница {{ position_rows.number }} из {{ position_rows.paginator.num_pages }}</span>
+        {% if position_rows.has_next %}<a class="btn btn-outline-light btn-sm" href="?{% if position_page_query %}{{ position_page_query }}&{% endif %}position_page={{ position_rows.next_page_number }}">Далее →</a>{% endif %}
+      </nav>{% endif %}
+      <dialog class="directory-edit-dialog" id="position-edit-dialog">
+        <form method="post" class="directory-edit-form">
+          {% csrf_token %}<input type="hidden" name="section" value="position"><input type="text" name="record_id" hidden readonly>
+          <div class="directory-dialog-head"><div><small>Должность</small><h3>Редактирование</h3></div><button type="button" class="directory-dialog-close" data-dialog-close aria-label="Закрыть">×</button></div>
+          {% if not ui_user_is_branch_manager and not ui_user_is_organization_manager %}<label>Филиал<select class="form-select" name="branch" required data-directory-branch><option value="">Выберите филиал</option>{% for branch in branches %}<option value="{{ branch.id }}">{{ branch.name }}</option>{% endfor %}</select></label>{% endif %}
+          {% if not ui_user_is_organization_manager %}<label>Организация<select class="form-select" name="organization" required data-directory-organization><option value="">Выберите организацию</option>{% for organization in organizations %}<option value="{{ organization.id }}" data-branch="{{ organization.branch_id }}">{{ organization.name }}</option>{% endfor %}</select></label>{% endif %}
+          <label>Название<input class="form-control" name="name" required></label>
+          <label>Сортировка<input class="form-control" type="number" min="0" name="sort_order"></label>
+          <label class="check-line"><input class="form-check-input" type="checkbox" name="is_active"> Активно</label>
+          <div class="directory-dialog-actions"><button class="btn btn-outline-danger" name="action" value="delete" onclick="return confirm('{% tr 'delete_position_confirm' %}')">Удалить</button><span></span><button class="btn btn-outline-light" type="button" data-dialog-close>Отмена</button><button class="btn btn-primary" name="action" value="save">Сохранить</button></div>
+        </form>
+      </dialog>
     </section>
     {% endif %}
 
@@ -395,6 +493,44 @@
     border-radius:12px;background:rgba(12,31,43,.16)
   }
   .directory-search-with-filter{grid-template-columns:minmax(240px,1fr) minmax(220px,.45fr) auto auto}
+  .directory-search-advanced{grid-template-columns:minmax(260px,1.5fr) repeat(3,minmax(170px,.65fr)) auto auto}
+  .directory-results-meta{margin:-10px 0 14px;color:var(--muted);font-size:13px;text-align:right}
+  .directory-pagination{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:18px;color:var(--muted)}
+  .directory-bulk-toolbar{
+    display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:14px 0 10px;padding:10px 12px;
+    border:1px solid var(--border);border-radius:12px;background:rgba(68,215,182,.055)
+  }
+  .directory-bulk-toolbar .check-line{margin-right:2px;white-space:nowrap}
+  .directory-bulk-toolbar .form-select{width:min(330px,100%);margin-left:auto}
+  .directory-selected-count{min-width:88px;color:var(--muted);font-size:13px}
+  .directory-compact-list{gap:7px}
+  .directory-compact-row{
+    display:grid;grid-template-columns:24px minmax(190px,1.35fr) minmax(190px,1fr) 92px 64px auto;
+    align-items:center;gap:14px;min-height:62px;padding:9px 12px
+  }
+  .directory-row-check{margin:0}
+  .directory-row-main,.directory-row-scope{display:flex;min-width:0;flex-direction:column;gap:2px}
+  .directory-row-main strong,.directory-row-scope span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .directory-row-main small,.directory-row-scope small{overflow:hidden;color:var(--muted);font-size:12px;text-overflow:ellipsis;white-space:nowrap}
+  .directory-status{justify-self:start;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:700}
+  .directory-status.is-active{color:#61e8c9;background:rgba(68,215,182,.12);border:1px solid rgba(68,215,182,.25)}
+  .directory-status.is-inactive{color:#f0b573;background:rgba(240,181,115,.1);border:1px solid rgba(240,181,115,.22)}
+  .directory-order{color:var(--muted);font-size:12px;text-align:center}
+  .directory-edit-dialog{
+    width:min(560px,calc(100vw - 28px));max-height:calc(100vh - 40px);padding:0;border:1px solid rgba(68,215,182,.28);
+    border-radius:18px;background:#10232e;color:var(--text);box-shadow:0 30px 90px rgba(0,0,0,.55)
+  }
+  .directory-edit-dialog::backdrop{background:rgba(3,11,16,.7);backdrop-filter:blur(4px)}
+  .directory-edit-form{display:grid;gap:14px;padding:20px}
+  .directory-edit-form>label{display:grid;gap:6px;color:var(--muted);font-size:13px}
+  .directory-edit-form>label.check-line{display:flex;color:var(--text)}
+  .directory-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  .directory-dialog-head small{color:var(--brand);font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+  .directory-dialog-head h3{margin:3px 0 0;font-size:21px}
+  .directory-dialog-close{width:36px;height:36px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--muted);font-size:24px;line-height:1}
+  .directory-dialog-actions{display:grid;grid-template-columns:auto 1fr auto auto;gap:9px;padding-top:5px}
+  html[data-theme="light"] .directory-edit-dialog{background:#f5fbfc}
+  html[data-theme="light"] .directory-bulk-toolbar{background:rgba(28,160,145,.055)}
   html[data-theme="light"] .directory-search-bar{background:rgba(255,255,255,.42)}
   .auto-code-note,.auto-code-value{
     display:flex;align-items:center;min-height:40px;padding:8px 12px;border:1px dashed rgba(68,215,182,.38);
@@ -405,13 +541,24 @@
   .role-row-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px}
   @media (max-width:1280px){
     .organization-add-form,.organization-row{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+    .directory-compact-row{grid-template-columns:24px minmax(180px,1.2fr) minmax(170px,1fr) 88px auto}
+    .directory-order{display:none}
   }
   @media (max-width:720px){
     .organization-add-form,.organization-row{grid-template-columns:1fr!important}
     .role-row-actions{flex-direction:column}
-    .directory-search-bar,.directory-search-with-filter{grid-template-columns:1fr}
+    .directory-search-bar,.directory-search-with-filter,.directory-search-advanced{grid-template-columns:1fr}
+    .directory-results-meta{text-align:left}
     .settings-folder-arrow{width:38px;height:38px}
     .settings-folder-nav.has-overflow .settings-folders{padding-left:52px;padding-right:52px}
+    .directory-bulk-toolbar{align-items:stretch}
+    .directory-bulk-toolbar .form-select{width:100%;margin-left:0}
+    .directory-compact-row{grid-template-columns:24px 1fr auto;gap:8px 10px}
+    .directory-row-scope{grid-column:2/-1}
+    .directory-status{grid-column:2}
+    .directory-compact-row>.btn{grid-column:3;grid-row:1}
+    .directory-dialog-actions{grid-template-columns:1fr 1fr}
+    .directory-dialog-actions span{display:none}
   }
 </style>
 {% endblock %}
@@ -452,6 +599,98 @@
   requestAnimationFrame(() => {
     active?.scrollIntoView({behavior:'auto', block:'nearest', inline:'center'});
     updateArrows();
+  });
+})();
+
+(() => {
+  document.querySelectorAll('form').forEach((form) => {
+    const branch = form.querySelector('[data-directory-branch]');
+    const organization = form.querySelector('[data-directory-organization]');
+    if (!branch || !organization) return;
+
+    const syncOrganizations = (resetInvalid = false) => {
+      const branchId = branch.value;
+      const allowAll = !branchId && form.method.toLowerCase() === 'get';
+      let selectedIsVisible = !organization.value;
+
+      [...organization.options].forEach((option, index) => {
+        if (index === 0) return;
+        const visible = allowAll || Boolean(branchId && option.dataset.branch === branchId);
+        option.hidden = !visible;
+        option.disabled = !visible;
+        if (option.selected && visible) selectedIsVisible = true;
+      });
+
+      if (resetInvalid && !selectedIsVisible) organization.value = '';
+      organization.disabled = !allowAll && !branchId;
+    };
+
+    syncOrganizations();
+    branch.addEventListener('change', () => syncOrganizations(true));
+  });
+})();
+
+(() => {
+  const getRowChecks = (formId) => [...document.querySelectorAll(`input[name="selected_ids"][form="${formId}"]`)];
+
+  document.querySelectorAll('[data-select-all]').forEach((selectAll) => {
+    const formId = selectAll.dataset.selectAll;
+    const checks = getRowChecks(formId);
+    const count = document.querySelector(`[data-selected-count="${formId}"]`);
+    const update = () => {
+      const selected = checks.filter((check) => check.checked).length;
+      if (count) count.textContent = `Выбрано: ${selected}`;
+      selectAll.checked = checks.length > 0 && selected === checks.length;
+      selectAll.indeterminate = selected > 0 && selected < checks.length;
+    };
+    selectAll.addEventListener('change', () => {
+      checks.forEach((check) => { check.checked = selectAll.checked; });
+      update();
+    });
+    checks.forEach((check) => check.addEventListener('change', update));
+    update();
+  });
+
+  document.querySelectorAll('[data-bulk-move]').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      const form = button.form;
+      const organization = form?.querySelector('[data-bulk-organization]');
+      if (organization?.value) return;
+      event.preventDefault();
+      organization?.focus();
+      alert('Выберите организацию для переноса.');
+    });
+  });
+
+  document.querySelectorAll('[data-directory-edit]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const dialog = document.getElementById(button.dataset.dialog);
+      const form = dialog?.querySelector('form');
+      if (!dialog || !form) return;
+
+      const recordId = form.querySelector('input[name="record_id"]');
+      recordId.value = button.getAttribute('data-id') || '';
+      recordId.setAttribute('value', recordId.value);
+      form.elements.namedItem('name').value = button.dataset.name || '';
+      form.elements.namedItem('sort_order').value = button.dataset.order || '0';
+      form.elements.namedItem('is_active').checked = button.dataset.active === '1';
+
+      const branch = form.elements.namedItem('branch');
+      const organization = form.elements.namedItem('organization');
+      if (branch) {
+        branch.value = button.dataset.branch || '';
+        branch.dispatchEvent(new Event('change'));
+      }
+      if (organization) organization.value = button.dataset.organization || '';
+      dialog.showModal();
+    });
+  });
+
+  document.querySelectorAll('.directory-edit-dialog').forEach((dialog) => {
+    dialog.querySelectorAll('[data-dialog-close]').forEach((button) => button.addEventListener('click', () => dialog.close()));
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) dialog.close();
+    });
   });
 })();
 

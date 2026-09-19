@@ -7,6 +7,7 @@ from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 from django.contrib.auth.models import User
 
 from .models import ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, Organization, Platform, Position, SiteRole, SiteSettings, Station, UserProfile, WebPlatform
+from .utils import user_is_branch_manager, user_is_organization_manager
 
 
 PUBLIC_INTAKE_TEXTS = {
@@ -186,6 +187,55 @@ class UserInfoForm(forms.ModelForm):
 
 class IntakeRequestForm(forms.ModelForm):
 
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+
+    def clean_platform(self):
+        value = self.cleaned_data["platform"].strip()
+        if (
+            self.user
+            and self.user.is_authenticated
+            and not self.user.is_superuser
+            and not user_is_branch_manager(self.user)
+            and not user_is_organization_manager(self.user)
+        ):
+            allowed_values = set()
+            profile = getattr(self.user, "profile", None)
+            if profile:
+                for name, code in profile.allowed_platforms.values_list("name", "code"):
+                    if name:
+                        allowed_values.add(name)
+                    if code:
+                        allowed_values.add(code)
+            if value not in allowed_values:
+                raise forms.ValidationError("У вас нет доступа к этой платформе.")
+        return value
+
+    def clean_company(self):
+        value = self.cleaned_data["company"].strip()
+        if self.user and self.user.is_authenticated and not self.user.is_superuser:
+            allowed_values = set()
+            profile = getattr(self.user, "profile", None)
+            if profile:
+                stations = Station.objects.filter(is_active=True)
+                if user_is_organization_manager(self.user):
+                    stations = stations.filter(organization__name=profile.organization)
+                    if profile.branch:
+                        stations = stations.filter(branch__name=profile.branch)
+                elif user_is_branch_manager(self.user):
+                    stations = stations.filter(branch__name=profile.branch)
+                else:
+                    stations = profile.allowed_stations.all()
+                for name, code in stations.values_list("name", "code"):
+                    if name:
+                        allowed_values.add(name)
+                    if code:
+                        allowed_values.add(code)
+            if value not in allowed_values:
+                raise forms.ValidationError("У вас нет доступа к этому предприятию.")
+        return value
+
     class Meta:
 
         model = IntakeRequest
@@ -240,7 +290,13 @@ class SiteIntakeForm(forms.Form):
         self.fields["pnfl"].widget.attrs["placeholder"] = self.texts["pnfl_placeholder"]
         self.fields["cause"].widget.attrs["placeholder"] = self.texts["cause_placeholder"]
         platforms = Platform.objects.filter(is_active=True)
-        if self.user and self.user.is_authenticated and not self.user.is_superuser:
+        if (
+            self.user
+            and self.user.is_authenticated
+            and not self.user.is_superuser
+            and not user_is_branch_manager(self.user)
+            and not user_is_organization_manager(self.user)
+        ):
             platforms = platforms.filter(allowed_users__user=self.user)
         self.fields["platform"].choices = [("", self.texts["select_platform"])] + [(item.name, item.name) for item in platforms]
         stations = Station.objects.filter(is_active=True)
@@ -248,6 +304,13 @@ class SiteIntakeForm(forms.Form):
         profile = getattr(self.user, "profile", None) if self.user and self.user.is_authenticated else None
         branch_name = getattr(profile, "branch", "") if profile else ""
         organization_name = getattr(profile, "organization", "") if profile else ""
+        if self.user and self.user.is_authenticated and not self.user.is_superuser:
+            if user_is_organization_manager(self.user):
+                stations = stations.filter(organization__name=organization_name, branch__name=branch_name)
+            elif user_is_branch_manager(self.user):
+                stations = stations.filter(branch__name=branch_name)
+            else:
+                stations = stations.filter(allowed_users__user=self.user)
         if branch_name and not self.user.is_superuser:
             stations = stations.filter(branch__name=branch_name)
             positions = positions.filter(branch__name=branch_name)
@@ -663,6 +726,12 @@ class UserForm(AdminStyledModelForm):
         widget=forms.CheckboxSelectMultiple,
         label="Доступ к платформам",
     )
+    allowed_stations = forms.ModelMultipleChoiceField(
+        queryset=Station.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label="Доступ к предприятиям",
+    )
     password = forms.CharField(required=False, widget=forms.PasswordInput(render_value=False))
     pnfl = forms.CharField(required=False, max_length=32)
     middle_name = forms.CharField(required=False, max_length=120)
@@ -695,6 +764,10 @@ class UserForm(AdminStyledModelForm):
             self.fields["branch"].initial = actor_branch
         self.fields["roles"].queryset = roles
         self.fields["allowed_platforms"].queryset = Platform.objects.filter(is_active=True).order_by("sort_order", "name")
+        stations = Station.objects.filter(is_active=True).select_related("branch", "organization")
+        if actor_is_branch_manager and actor_branch:
+            stations = stations.filter(branch__name=actor_branch)
+        self.fields["allowed_stations"].queryset = stations.order_by("branch__sort_order", "branch__name", "sort_order", "name")
         branch_names = list(branches_qs.values_list("name", flat=True))
         organization_names = list(organizations_qs.values_list("name", flat=True))
         user = self.instance if getattr(self.instance, "pk", None) else None
@@ -708,6 +781,7 @@ class UserForm(AdminStyledModelForm):
                 selected_role = profile.roles.filter(is_active=True).order_by("sort_order", "name").first()
                 self.fields["roles"].initial = [selected_role.pk] if selected_role else []
                 self.fields["allowed_platforms"].initial = profile.allowed_platforms.values_list("pk", flat=True)
+                self.fields["allowed_stations"].initial = profile.allowed_stations.values_list("pk", flat=True)
                 for field in USER_PROFILE_FORM_FIELDS:
                     if field == "avatar":
                         continue
@@ -747,6 +821,7 @@ class UserForm(AdminStyledModelForm):
               "email",
               "roles",
               "allowed_platforms",
+              "allowed_stations",
               "is_staff",
             "is_superuser",
             "is_active",

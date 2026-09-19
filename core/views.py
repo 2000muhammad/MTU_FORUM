@@ -123,6 +123,78 @@ def _public_web_platform_context():
     }
 
 
+def _allowed_intake_platform_values(user):
+    """Return platform names/codes visible to a user, or None for a superuser."""
+    if user.is_superuser or user_is_branch_manager(user) or user_is_organization_manager(user):
+        return None
+    profile = getattr(user, "profile", None)
+    if not profile:
+        return set()
+    values = set()
+    for name, code in profile.allowed_platforms.values_list("name", "code"):
+        if name:
+            values.add(name)
+        if code:
+            values.add(code)
+    return values
+
+
+def _allowed_intake_company_values(user):
+    """Return enterprise names/codes visible to a user, or None for a superuser."""
+    if user.is_superuser:
+        return None
+    profile = getattr(user, "profile", None)
+    if not profile:
+        return set()
+    stations = Station.objects.filter(is_active=True)
+    if user_is_organization_manager(user):
+        if not profile.organization:
+            return set()
+        stations = stations.filter(organization__name=profile.organization)
+        if profile.branch:
+            stations = stations.filter(branch__name=profile.branch)
+        return {
+            value
+            for name, code in stations.values_list("name", "code")
+            for value in (name, code)
+            if value
+        }
+    if user_is_branch_manager(user):
+        if not profile.branch:
+            return set()
+        return {
+            value
+            for name, code in stations.filter(branch__name=profile.branch).values_list("name", "code")
+            for value in (name, code)
+            if value
+        }
+    values = set()
+    for name, code in profile.allowed_stations.values_list("name", "code"):
+        if name:
+            values.add(name)
+        if code:
+            values.add(code)
+    return values
+
+
+def _intake_requests_for_user(user):
+    queryset = IntakeRequest.objects.all()
+    allowed_platforms = _allowed_intake_platform_values(user)
+    allowed_companies = _allowed_intake_company_values(user)
+    if allowed_platforms is not None:
+        queryset = queryset.filter(platform__in=allowed_platforms)
+    if allowed_companies is not None:
+        queryset = queryset.filter(company__in=allowed_companies)
+    return queryset
+
+
+def _intake_platforms_for_user(user):
+    queryset = Platform.objects.filter(is_active=True)
+    if user.is_superuser or user_is_branch_manager(user) or user_is_organization_manager(user):
+        return queryset
+    return queryset.filter(allowed_users__user=user)
+
+
 
 
 
@@ -848,15 +920,23 @@ def dashboard(request):
 
     can_requests = user_can_requests(request.user)
     can_chats = user_can_chats(request.user)
+    visible_requests = _intake_requests_for_user(request.user)
+    allowed_platform_values = _allowed_intake_platform_values(request.user)
+    allowed_company_values = _allowed_intake_company_values(request.user)
     deleted_by_platform = defaultdict(int)
     platform_stats = []
     if can_requests:
         for meta in SiteLog.objects.filter(action="request_delete").values_list("meta", flat=True):
             if isinstance(meta, dict):
-                deleted_by_platform[meta.get("platform") or ""] += 1
+                platform_value = meta.get("platform") or ""
+                company_value = meta.get("company") or ""
+                platform_allowed = allowed_platform_values is None or platform_value in allowed_platform_values
+                company_allowed = allowed_company_values is None or company_value in allowed_company_values
+                if platform_allowed and company_allowed:
+                    deleted_by_platform[platform_value] += 1
 
         platform_counts = defaultdict(lambda: {"total": 0, "done": 0, "blocked": 0})
-        for row in IntakeRequest.objects.values("platform", "status").annotate(total=Count("id")):
+        for row in visible_requests.values("platform", "status").annotate(total=Count("id")):
             platform_name = row["platform"] or ""
             platform_counts[platform_name]["total"] += row["total"]
             if row["status"] == IntakeRequest.Status.DONE:
@@ -864,7 +944,7 @@ def dashboard(request):
             elif row["status"] == IntakeRequest.Status.BLOCKED:
                 platform_counts[platform_name]["blocked"] += row["total"]
 
-        for platform in Platform.objects.filter(is_active=True):
+        for platform in _intake_platforms_for_user(request.user):
             aliases = [platform.name]
             if platform.code and platform.code != platform.name:
                 aliases.append(platform.code)
@@ -879,11 +959,11 @@ def dashboard(request):
 
     stats = {
 
-        "new": IntakeRequest.objects.filter(status=IntakeRequest.Status.NEW).count() if can_requests else 0,
+        "new": visible_requests.filter(status=IntakeRequest.Status.NEW).count() if can_requests else 0,
 
-        "done": IntakeRequest.objects.filter(status=IntakeRequest.Status.DONE).count() if can_requests else 0,
+        "done": visible_requests.filter(status=IntakeRequest.Status.DONE).count() if can_requests else 0,
 
-        "blocked": IntakeRequest.objects.filter(status=IntakeRequest.Status.BLOCKED).count() if can_requests else 0,
+        "blocked": visible_requests.filter(status=IntakeRequest.Status.BLOCKED).count() if can_requests else 0,
 
         "chats": AdminChatMessage.objects.filter(direction=AdminChatMessage.Direction.IN, is_read=False).count() if can_chats else 0,
 
@@ -962,7 +1042,7 @@ def dashboard_requests_api(request):
 
     status = request.GET.get("status", "").strip()
 
-    qs = IntakeRequest.objects.all()
+    qs = _intake_requests_for_user(request.user)
 
     if query:
 
@@ -1036,7 +1116,7 @@ def dashboard_requests_api(request):
 
 def request_edit(request, pk):
 
-    item = get_object_or_404(IntakeRequest, pk=pk)
+    item = get_object_or_404(_intake_requests_for_user(request.user), pk=pk)
 
     if request.method == "POST":
 
@@ -1049,13 +1129,18 @@ def request_edit(request, pk):
                 source="requests",
                 action="request_delete",
                 message=f"Deleted intake request #{deleted_id}",
-                meta={"request_id": deleted_id, "telegram_id": item.telegram_id, "platform": item.platform},
+                meta={
+                    "request_id": deleted_id,
+                    "telegram_id": item.telegram_id,
+                    "platform": item.platform,
+                    "company": item.company,
+                },
             )
             item.delete()
             messages.success(request, "Заявка удалена.")
             return redirect("requests")
 
-        form = IntakeRequestForm(request.POST, instance=item)
+        form = IntakeRequestForm(request.POST, instance=item, user=request.user)
 
         if form.is_valid():
 
@@ -1121,7 +1206,7 @@ def request_edit(request, pk):
 
     else:
 
-        form = IntakeRequestForm(instance=item)
+        form = IntakeRequestForm(instance=item, user=request.user)
 
     plain_generated_password = _get_plain_request_password(request, item)
 
@@ -1956,6 +2041,8 @@ def _save_user_profile_from_form(user, form):
         user.save(update_fields=["is_staff", "is_superuser"])
     if "allowed_platforms" in form.cleaned_data:
         profile.allowed_platforms.set(form.cleaned_data.get("allowed_platforms"))
+    if "allowed_stations" in form.cleaned_data:
+        profile.allowed_stations.set(form.cleaned_data.get("allowed_stations"))
     return profile
 
 
@@ -2170,7 +2257,10 @@ def users_view(request):
             user_form = form if instance is None else UserForm(actor=request.user)
             messages.error(request, "Проверьте поля пользователя.")
 
-    users = list(_scope_users_for_actor(_users_queryset(query).prefetch_related("profile__allowed_platforms"), request.user))
+    users = list(_scope_users_for_actor(
+        _users_queryset(query).prefetch_related("profile__allowed_platforms", "profile__allowed_stations"),
+        request.user,
+    ))
     for user in users:
         profile = _ensure_user_profile(user)
         selected_role = profile.roles.filter(is_active=True).order_by("sort_order", "name").first()
@@ -2181,6 +2271,10 @@ def users_view(request):
         "query": query,
         "roles": user_form.fields["roles"].queryset,
         "platforms": Platform.objects.filter(is_active=True).order_by("sort_order", "name"),
+        "stations": _scope_branch_directory_for_actor(
+            Station.objects.filter(is_active=True).select_related("branch", "organization"),
+            request.user,
+        ),
         "branches": Branch.objects.filter(
             is_active=True,
             **({"name": _actor_branch_name(request.user)} if user_is_branch_manager(request.user) else {}),
@@ -2500,6 +2594,40 @@ def settings_view(request, section="stations"):
 
         action = request.POST.get("action")
 
+        if form_section in {"station_bulk", "position_bulk"}:
+            model = Station if form_section == "station_bulk" else Position
+            redirect_section = "stations" if model is Station else "positions"
+            selected_ids = [value for value in request.POST.getlist("selected_ids") if value.isdigit()]
+            queryset = _scope_branch_directory_for_actor(model.objects.all(), request.user).filter(pk__in=selected_ids)
+            selected_count = queryset.count()
+            if not selected_count:
+                messages.warning(request, "Выберите хотя бы одну запись.")
+                return redirect("settings_section", section=redirect_section)
+
+            if action in {"bulk_activate", "bulk_deactivate"}:
+                is_active = action == "bulk_activate"
+                updated = queryset.update(is_active=is_active)
+                state_label = "активированы" if is_active else "отключены"
+                messages.success(request, f"Записи {state_label}: {updated}.")
+                return redirect("settings_section", section=redirect_section)
+
+            if action == "bulk_move":
+                if user_is_organization_manager(request.user):
+                    messages.error(request, "Менеджер организации не может переносить записи.")
+                    return redirect("settings_section", section=redirect_section)
+                organization_id = request.POST.get("bulk_organization", "")
+                if not organization_id.isdigit():
+                    messages.warning(request, "Выберите организацию для переноса.")
+                    return redirect("settings_section", section=redirect_section)
+                organizations = _scope_organizations_for_actor(Organization.objects.select_related("branch"), request.user)
+                organization = get_object_or_404(organizations, pk=organization_id)
+                updated = queryset.update(branch=organization.branch, organization=organization)
+                messages.success(request, f"Перенесено в «{organization.name}»: {updated}.")
+                return redirect("settings_section", section=redirect_section)
+
+            messages.error(request, "Неизвестное массовое действие.")
+            return redirect("settings_section", section=redirect_section)
+
         model, form_class, label, redirect_section = registry.get(form_section, (None, None, None, "stations"))
         if not model:
             messages.error(request, "Неизвестный справочник.")
@@ -2515,7 +2643,8 @@ def settings_view(request, section="stations"):
             instance_qs = _scope_branch_directory_for_actor(instance_qs, request.user)
         elif user_is_branch_manager(request.user) and form_section == "organization":
             instance_qs = _scope_organizations_for_actor(instance_qs, request.user)
-        instance = get_object_or_404(instance_qs, pk=request.POST.get("id")) if request.POST.get("id") else None
+        instance_id = request.POST.get("record_id") or request.POST.get("id")
+        instance = get_object_or_404(instance_qs, pk=instance_id) if instance_id else None
 
         if action == "delete" and instance:
             if isinstance(instance, SiteRole) and instance.is_builtin:
@@ -2558,6 +2687,14 @@ def settings_view(request, section="stations"):
     branch_query = request.GET.get("branch_q", "").strip()
     organization_query = request.GET.get("organization_q", "").strip()
     organization_branch = request.GET.get("organization_branch", "").strip()
+    station_query = request.GET.get("station_q", "").strip()
+    station_branch = request.GET.get("station_branch", "").strip()
+    station_organization = request.GET.get("station_organization", "").strip()
+    station_status = request.GET.get("station_status", "").strip()
+    position_query = request.GET.get("position_q", "").strip()
+    position_branch = request.GET.get("position_branch", "").strip()
+    position_organization = request.GET.get("position_organization", "").strip()
+    position_status = request.GET.get("position_status", "").strip()
 
     branches = Branch.objects.all()
     if user_is_branch_manager(request.user):
@@ -2581,14 +2718,86 @@ def settings_view(request, section="stations"):
     if organization_branch:
         organization_rows = organization_rows.filter(branch_id=organization_branch)
 
+    stations = _scope_branch_directory_for_actor(
+        Station.objects.select_related("branch", "organization").all(),
+        request.user,
+    )
+    station_rows = stations
+    if station_query:
+        station_rows = station_rows.filter(
+            Q(name__icontains=station_query)
+            | Q(code__icontains=station_query)
+            | Q(branch__name__icontains=station_query)
+            | Q(organization__name__icontains=station_query)
+        )
+    if station_branch:
+        station_rows = station_rows.filter(branch_id=station_branch)
+    if station_organization:
+        station_rows = station_rows.filter(organization_id=station_organization)
+    if station_status in {"active", "inactive"}:
+        station_rows = station_rows.filter(is_active=station_status == "active")
+
+    positions = _scope_branch_directory_for_actor(
+        Position.objects.select_related("branch", "organization").all(),
+        request.user,
+    )
+    position_rows = positions
+    if position_query:
+        position_rows = position_rows.filter(
+            Q(name__icontains=position_query)
+            | Q(branch__name__icontains=position_query)
+            | Q(organization__name__icontains=position_query)
+        )
+    if position_branch:
+        position_rows = position_rows.filter(branch_id=position_branch)
+    if position_organization:
+        position_rows = position_rows.filter(organization_id=position_organization)
+    if position_status in {"active", "inactive"}:
+        position_rows = position_rows.filter(is_active=position_status == "active")
+
+    station_page = Paginator(station_rows, 40).get_page(request.GET.get("station_page"))
+    position_page = Paginator(position_rows, 40).get_page(request.GET.get("position_page"))
+    station_page_query = urlencode({
+        key: value
+        for key, value in {
+            "station_q": station_query,
+            "station_branch": station_branch,
+            "station_organization": station_organization,
+            "station_status": station_status,
+        }.items()
+        if value
+    })
+    position_page_query = urlencode({
+        key: value
+        for key, value in {
+            "position_q": position_query,
+            "position_branch": position_branch,
+            "position_organization": position_organization,
+            "position_status": position_status,
+        }.items()
+        if value
+    })
+
     station_form = StationForm()
     position_form = PositionForm()
     station_form.fields["organization"].queryset = organizations.filter(is_active=True)
     position_form.fields["organization"].queryset = organizations.filter(is_active=True)
 
     return render(request, "settings.html", {
-        "stations": _scope_branch_directory_for_actor(Station.objects.select_related("branch").all(), request.user),
-        "positions": _scope_branch_directory_for_actor(Position.objects.select_related("branch").all(), request.user),
+        "stations": stations,
+        "station_rows": station_page,
+        "station_query": station_query,
+        "station_branch": station_branch,
+        "station_organization": station_organization,
+        "station_status": station_status,
+        "station_page_query": station_page_query,
+        "positions": positions,
+        "position_rows": position_page,
+        "position_query": position_query,
+        "position_branch": position_branch,
+        "position_organization": position_organization,
+        "position_status": position_status,
+        "position_page_query": position_page_query,
         "platforms": Platform.objects.all(),
         "web_platforms": WebPlatform.objects.all(),
         "channels": BotSubscriptionChannel.objects.all(),
@@ -2938,13 +3147,16 @@ def api_settings_view(request):
 @require_GET
 def notification_state_api(request):
     can_manage = user_can_manage(request.user)
+    can_requests = user_can_requests(request.user)
+    can_chats = user_can_chats(request.user)
     settings_obj = SiteSettings.load()
     last_request_id = 0
     last_chat_id = 0
     unread_chats = 0
 
-    if can_manage:
-        last_request_id = IntakeRequest.objects.order_by("-id").values_list("id", flat=True).first() or 0
+    if can_requests:
+        last_request_id = _intake_requests_for_user(request.user).order_by("-id").values_list("id", flat=True).first() or 0
+    if can_chats:
         last_chat_id = AdminChatMessage.objects.filter(direction=AdminChatMessage.Direction.IN).order_by("-id").values_list("id", flat=True).first() or 0
         unread_chats = AdminChatMessage.objects.filter(direction=AdminChatMessage.Direction.IN, is_read=False).count()
 
