@@ -534,6 +534,7 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, related_name="profile", on_delete=models.CASCADE)
     roles = models.ManyToManyField(SiteRole, blank=True, related_name="users")
     allowed_platforms = models.ManyToManyField(Platform, blank=True, related_name="allowed_users")
+    allowed_stations = models.ManyToManyField(Station, blank=True, related_name="allowed_users")
     avatar = models.ImageField(upload_to="profile_avatars/%Y/%m/", blank=True)
     pnfl = models.CharField(max_length=32, blank=True, db_index=True)
     middle_name = models.CharField(max_length=120, blank=True)

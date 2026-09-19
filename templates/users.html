@@ -53,6 +53,11 @@
       <p>Пользователь увидит в заявке только отмеченные платформы.</p>
       {{ user_form.allowed_platforms }}
     </fieldset>
+    <fieldset class="platform-access-picker">
+      <legend>Доступ к предприятиям</legend>
+      <p>Пользователь увидит заявки только отмеченных предприятий.</p>
+      {{ user_form.allowed_stations }}
+    </fieldset>
     <label class="check-line">{{ user_form.is_active }} {% tr 'active' %}</label>
     <div class="user-create-actions">
       <button class="btn btn-primary" name="action" value="save">{% tr 'add' %}</button>
@@ -108,6 +113,14 @@
               <span>Все</span>
             {% else %}
               {% for platform in u.profile.allowed_platforms.all %}<span>{{ platform.name }}</span>{% empty %}<span class="is-empty">Нет доступа</span>{% endfor %}
+            {% endif %}
+          </div>
+          <div class="user-platform-access">
+            <small>Предприятия:</small>
+            {% if u.is_superuser %}
+              <span>Все</span>
+            {% else %}
+              {% for station in u.profile.allowed_stations.all %}<span>{{ station.name }}</span>{% empty %}<span class="is-empty">Нет доступа</span>{% endfor %}
             {% endif %}
           </div>
         </div>
@@ -212,6 +225,20 @@
               </label>
               {% empty %}
               <span>Сначала добавьте платформы в справочнике.</span>
+              {% endfor %}
+            </div>
+          </fieldset>
+          <fieldset class="platform-access-picker user-modal-platforms">
+            <legend>Доступ к предприятиям</legend>
+            <p>Заявки каких предприятий доступны пользователю.</p>
+            <div class="platform-access-options">
+              {% for station in stations %}
+              <label>
+                <input class="form-check-input" type="checkbox" name="allowed_stations" value="{{ station.id }}" {% if station in u.profile.allowed_stations.all %}checked{% endif %}>
+                <span>{{ station.name }}{% if station.organization %} — {{ station.organization.name }}{% endif %}</span>
+              </label>
+              {% empty %}
+              <span>Сначала добавьте предприятия в справочнике.</span>
               {% endfor %}
             </div>
           </fieldset>

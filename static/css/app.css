@@ -339,3 +339,20 @@ html[data-theme="light"] .task-action-icon{background:rgba(20,48,70,.08)}
 .login-card .login-sso-actions{margin-top:14px}
 .programmer-head .developer-avatar{display:grid;place-items:center;width:58px;height:58px;min-width:58px;border-radius:18px;border:1px solid rgba(68,215,182,.36);background:linear-gradient(145deg,rgba(68,215,182,.28),rgba(127,183,255,.18));overflow:hidden}.programmer-head .developer-avatar img{width:100%;height:100%;object-fit:cover;border:0;border-radius:0;background:transparent}.programmer-head .developer-avatar span{display:grid;place-items:center;width:100%;height:100%;color:#fff;font-size:24px;font-weight:950}
 .programmer-static-card{position:relative;display:block;min-height:138px;color:var(--text);text-decoration:none;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease,background .18s ease}.programmer-static-card:hover{color:var(--text);text-decoration:none;transform:translateY(-3px);border-color:rgba(68,215,182,.56)!important;box-shadow:0 24px 62px rgba(0,0,0,.32),0 0 0 1px rgba(68,215,182,.1) inset}.programmer-static-card .programmer-head{margin-bottom:0}.programmer-static-card h3{padding-right:36px}.programmer-static-card p{font-weight:700}.developer-open-mark{position:absolute;right:18px;bottom:16px;display:grid;place-items:center;width:32px;height:32px;border-radius:12px;border:1px solid rgba(169,194,215,.18);background:rgba(255,255,255,.06);color:#8fc7ff;font-weight:900}.programmer-head .developer-avatar img.is-site-icon{padding:12px;object-fit:contain;background:rgba(255,255,255,.92)}html[data-theme="light"] .programmer-static-card{color:#0b1722}html[data-theme="light"] .programmer-static-card:hover{color:#0b1722}html[data-theme="light"] .developer-open-mark{background:rgba(255,255,255,.74);color:#1768b8}
+
+/* Sidebar scrolls vertically only; horizontal wheel/scrollbar is intentionally disabled. */
+.sidebar{overflow:hidden}
+.sidebar .nav{
+  min-width:0;
+  max-width:100%;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior-x:none;
+  touch-action:pan-y;
+  scrollbar-gutter:stable;
+}
+.sidebar .nav::-webkit-scrollbar:horizontal{height:0}
+.sidebar .nav-group,.sidebar .nav-link,.sidebar .nav-submenu,.sidebar .nav-sub-link{min-width:0;max-width:100%}
+.sidebar .nav-link,.sidebar .nav-sub-link{overflow:hidden;text-overflow:ellipsis}
+.sidebar .nav-submenu{width:calc(100% - 10px)}
+@media (max-width:760px){.sidebar{overflow:visible}.sidebar .nav{overflow:visible!important;touch-action:auto}}
