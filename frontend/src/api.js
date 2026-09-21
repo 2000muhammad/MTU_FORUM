@@ -11,7 +11,8 @@ export async function api(path, options = {}) {
     headers.set("X-CSRFToken", decodeURIComponent(cookie("csrftoken")));
   }
   headers.set("Accept", "application/json");
-  const response = await fetch(path, {...options, headers, credentials: "same-origin"});
+  const requestPath = path.startsWith("/api/") ? `/app/backend${path}` : path;
+  const response = await fetch(requestPath, {...options, headers, credentials: "same-origin"});
   const type = response.headers.get("content-type") || "";
   const payload = type.includes("application/json") ? await response.json() : await response.text();
   if (!response.ok) {

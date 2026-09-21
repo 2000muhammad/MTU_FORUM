@@ -115,11 +115,6 @@ export function useSolarTheme(language = "ru") {
     document.documentElement.dataset.reactTheme = next;
     save("mtu-theme", next);
     save("mtu-react-theme", next);
-    document.querySelectorAll(".module-page iframe").forEach((frame) => {
-      try {
-        frame.contentDocument.documentElement.dataset.theme = next;
-      } catch {}
-    });
   }, []);
 
   useEffect(() => {

@@ -63,12 +63,12 @@ class RequestPlatformAccessTests(TestCase):
         self.assertEqual([row["id"] for row in payload["rows"]], [self.alpha_request.id])
 
     def test_unassigned_request_cannot_be_opened_directly(self):
-        response = self.client.get(reverse("request_edit", kwargs={"pk": self.beta_request.pk}))
+        response = self.client.get(reverse("react_request_api", kwargs={"pk": self.beta_request.pk}))
 
         self.assertEqual(response.status_code, 404)
 
     def test_unassigned_enterprise_request_cannot_be_opened_directly(self):
-        response = self.client.get(reverse("request_edit", kwargs={"pk": self.denied_company_request.pk}))
+        response = self.client.get(reverse("react_request_api", kwargs={"pk": self.denied_company_request.pk}))
 
         self.assertEqual(response.status_code, 404)
 
@@ -212,7 +212,7 @@ class ManagerRequestScopeTests(TestCase):
             {row["id"] for row in response.json()["rows"]},
             {self.organization_request.id, self.sibling_request.id},
         )
-        denied = self.client.get(reverse("request_edit", kwargs={"pk": self.outside_request.pk}))
+        denied = self.client.get(reverse("react_request_api", kwargs={"pk": self.outside_request.pk}))
         self.assertEqual(denied.status_code, 404)
         notifications = self.client.get(reverse("notification_state_api")).json()
         self.assertEqual(notifications["last_chat_id"], 0)
@@ -228,5 +228,5 @@ class ManagerRequestScopeTests(TestCase):
             [row["id"] for row in response.json()["rows"]],
             [self.organization_request.id],
         )
-        denied = self.client.get(reverse("request_edit", kwargs={"pk": self.sibling_request.pk}))
+        denied = self.client.get(reverse("react_request_api", kwargs={"pk": self.sibling_request.pk}))
         self.assertEqual(denied.status_code, 404)
