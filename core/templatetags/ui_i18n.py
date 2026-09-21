@@ -1670,13 +1670,13 @@ UI["ru"].update({
     "organization_manager": "Менеджер организации",
     "branch_manager_hint": "Доступ по выбранному филиалу",
     "organization_manager_hint": "Доступ по выбранной организации",
-    "password_default_hint": "Если пароль пустой, будет установлен 1234567.",
+    "password_default_hint": "Если пароль пустой, система создаст случайный пароль.",
     "leave_blank_keep_password": "Оставьте пустым, если пароль не меняется",
     "edit_manager_account": "Редактирование менеджера",
     "manager_edit_action": "Редактировать",
     "manager_reset_password_action": "Сброс пароля",
     "manager_delete_action": "Удалить",
-    "reset_manager_password_confirm": "Вы точно хотите сбросить пароль на 1234567?",
+    "reset_manager_password_confirm": "Создать новый случайный пароль?",
     "delete_manager_confirm": "Вы точно хотите удалить менеджера?",
 })
 
@@ -1685,13 +1685,13 @@ UI["uz"].update({
     "organization_manager": "Tashkilot menejeri",
     "branch_manager_hint": "Tanlangan filial bo'yicha kirish",
     "organization_manager_hint": "Tanlangan tashkilot bo'yicha kirish",
-    "password_default_hint": "Parol bo'sh bo'lsa, 1234567 o'rnatiladi.",
+    "password_default_hint": "Parol bo'sh bo'lsa, tizim tasodifiy parol yaratadi.",
     "leave_blank_keep_password": "Parol o'zgarmasa, bo'sh qoldiring",
     "edit_manager_account": "Menejerni tahrirlash",
     "manager_edit_action": "Tahrirlash",
     "manager_reset_password_action": "Parolni tiklash",
     "manager_delete_action": "O‘chirish",
-    "reset_manager_password_confirm": "Parolni 1234567 ga tiklashni tasdiqlaysizmi?",
+    "reset_manager_password_confirm": "Yangi tasodifiy parol yaratilsinmi?",
     "delete_manager_confirm": "Menejerni o'chirishni tasdiqlaysizmi?",
 })
 
@@ -1700,13 +1700,13 @@ UI["uz-cyrl"].update({
     "organization_manager": "Ташкилот менежери",
     "branch_manager_hint": "Танланган филиал бўйича кириш",
     "organization_manager_hint": "Танланган ташкилот бўйича кириш",
-    "password_default_hint": "Парол бўш бўлса, 1234567 ўрнатилади.",
+    "password_default_hint": "Парол бўш бўлса, тизим тасодифий парол яратади.",
     "leave_blank_keep_password": "Парол ўзгармаса, бўш қолдиринг",
     "edit_manager_account": "Менежерни таҳрирлаш",
     "manager_edit_action": "Таҳрирлаш",
     "manager_reset_password_action": "Паролни тиклаш",
     "manager_delete_action": "Ўчириш",
-    "reset_manager_password_confirm": "Паролни 1234567 га тиклашни тасдиқлайсизми?",
+    "reset_manager_password_confirm": "Янги тасодифий парол яратилсинми?",
     "delete_manager_confirm": "Менежерни ўчиришни тасдиқлайсизми?",
 })
 
@@ -1715,13 +1715,13 @@ UI["en"].update({
     "organization_manager": "Organization manager",
     "branch_manager_hint": "Access limited to the selected branch",
     "organization_manager_hint": "Access limited to the selected organization",
-    "password_default_hint": "If password is empty, 1234567 will be used.",
+    "password_default_hint": "If the password is empty, a random password will be generated.",
     "leave_blank_keep_password": "Leave blank to keep current password",
     "edit_manager_account": "Edit manager",
     "manager_edit_action": "Edit",
     "manager_reset_password_action": "Reset password",
     "manager_delete_action": "Delete",
-    "reset_manager_password_confirm": "Reset password to 1234567?",
+    "reset_manager_password_confirm": "Generate a new random password?",
     "delete_manager_confirm": "Delete this manager?",
 })
   

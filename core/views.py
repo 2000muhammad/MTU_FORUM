@@ -2215,9 +2215,10 @@ def users_view(request):
             return redirect("users")
 
         if action == "reset_password" and instance:
-            instance.set_password("1234567")
+            new_password = generate_password()
+            instance.set_password(new_password)
             instance.save(update_fields=["password"])
-            messages.success(request, f"Пароль пользователя {instance.username} сброшен на 1234567.")
+            messages.success(request, f"Новый пароль пользователя {instance.username}: {new_password}")
             return redirect("users")
 
         if action in {"hrm_lookup", "hrm_sync"}:
@@ -2274,10 +2275,14 @@ def users_view(request):
                 if password:
                     user.set_password(password)
                 elif instance is None:
-                    user.set_password("1234567")
+                    password = generate_password()
+                    user.set_password(password)
                 user.save()
                 _save_user_profile_from_form(user, form)
-                messages.success(request, "Пользователь сохранен.")
+                if instance is None and password:
+                    messages.success(request, f"Пользователь сохранен. Пароль: {password}")
+                else:
+                    messages.success(request, "Пользователь сохранен.")
                 return redirect("users")
             user_form = form if instance is None else UserForm(actor=request.user)
             messages.error(request, "Проверьте поля пользователя.")
@@ -2413,9 +2418,10 @@ def manager_accounts_view(request):
             return redirect("manager_accounts")
 
         if action == "reset_password" and instance:
-            instance.set_password("1234567")
+            new_password = generate_password()
+            instance.set_password(new_password)
             instance.save(update_fields=["password"])
-            messages.success(request, f"Пароль менеджера {instance.username} сброшен на 1234567.")
+            messages.success(request, f"Новый пароль менеджера {instance.username}: {new_password}")
             return redirect("manager_accounts")
 
         form = ManagerAccountForm(request.POST, instance=instance, actor=request.user)
@@ -2425,7 +2431,8 @@ def manager_accounts_view(request):
             if password:
                 user.set_password(password)
             elif instance is None:
-                user.set_password("1234567")
+                password = generate_password()
+                user.set_password(password)
             role = _manager_role(form.cleaned_data["manager_type"])
             user.is_staff = True
             user.is_superuser = role.is_admin_role
@@ -2439,7 +2446,10 @@ def manager_accounts_view(request):
             profile.position = role.name
             profile.save()
             profile.roles.set([role])
-            messages.success(request, "Аккаунт менеджера создан.")
+            if instance is None and password:
+                messages.success(request, f"Аккаунт менеджера создан. Пароль: {password}")
+            else:
+                messages.success(request, "Аккаунт менеджера сохранён.")
             return redirect("manager_accounts")
         messages.error(request, "Проверьте данные менеджера.")
 
