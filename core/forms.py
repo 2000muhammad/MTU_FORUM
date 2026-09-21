@@ -881,7 +881,7 @@ class ManagerAccountForm(AdminStyledModelForm):
         self.fields["organization"].empty_label = "Выберите организацию"
         self.fields["branch"].widget.attrs["class"] = "form-select"
         self.fields["organization"].widget.attrs["class"] = "form-select"
-        self.fields["password"].widget.attrs["placeholder"] = "1234567"
+        self.fields["password"].widget.attrs["placeholder"] = "Оставьте пустым для случайного пароля"
 
     def clean(self):
         cleaned_data = super().clean()
