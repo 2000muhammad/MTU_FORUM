@@ -505,8 +505,16 @@
   .directory-selected-count{min-width:88px;color:var(--muted);font-size:13px}
   .directory-compact-list{gap:7px}
   .directory-compact-row{
-    display:grid;grid-template-columns:24px minmax(190px,1.35fr) minmax(190px,1fr) 92px 64px auto;
+    display:grid;grid-template-columns:24px minmax(190px,1.35fr) minmax(190px,1fr) 92px 64px 140px;
     align-items:center;gap:14px;min-height:62px;padding:9px 12px
+  }
+  .directory-compact-row.branch-station-row,
+  .directory-compact-row.branch-position-row{
+    grid-template-columns:24px minmax(190px,1.35fr) minmax(190px,1fr) 92px 64px 140px!important
+  }
+  .directory-compact-row>[data-directory-edit]{
+    display:inline-flex;align-items:center;justify-content:center;justify-self:end;
+    width:140px!important;min-width:140px;max-width:none;white-space:nowrap;line-height:1.2
   }
   .directory-row-check{margin:0}
   .directory-row-main,.directory-row-scope{display:flex;min-width:0;flex-direction:column;gap:2px}
@@ -541,7 +549,11 @@
   .role-row-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px}
   @media (max-width:1280px){
     .organization-add-form,.organization-row{grid-template-columns:repeat(2,minmax(0,1fr))!important}
-    .directory-compact-row{grid-template-columns:24px minmax(180px,1.2fr) minmax(170px,1fr) 88px auto}
+    .directory-compact-row,
+    .directory-compact-row.branch-station-row,
+    .directory-compact-row.branch-position-row{
+      grid-template-columns:24px minmax(180px,1.2fr) minmax(170px,1fr) 88px 140px!important
+    }
     .directory-order{display:none}
   }
   @media (max-width:720px){
@@ -553,7 +565,11 @@
     .settings-folder-nav.has-overflow .settings-folders{padding-left:52px;padding-right:52px}
     .directory-bulk-toolbar{align-items:stretch}
     .directory-bulk-toolbar .form-select{width:100%;margin-left:0}
-    .directory-compact-row{grid-template-columns:24px 1fr auto;gap:8px 10px}
+    .directory-compact-row,
+    .directory-compact-row.branch-station-row,
+    .directory-compact-row.branch-position-row{
+      grid-template-columns:24px minmax(0,1fr) 140px!important;gap:8px 10px
+    }
     .directory-row-scope{grid-column:2/-1}
     .directory-status{grid-column:2}
     .directory-compact-row>.btn{grid-column:3;grid-row:1}

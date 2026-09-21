@@ -39,7 +39,7 @@ from django.utils.dateparse import parse_date
 
 from django.utils.decorators import method_decorator
 
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 
 from django.views.decorators.http import require_GET, require_POST
 
@@ -51,6 +51,7 @@ from .forms import ApiConfigurationForm, BotSubscriptionChannelForm, BranchForm,
 from .excel_utils import build_xlsx, parse_xlsx, truthy
 from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, Platform, Position, SiteLog, SiteRole, SiteSettings, Station, UserProfile, WebPlatform, WebPlatformFavorite
 from .site_logs import write_site_log
+from .middleware import get_platform_version
 from .telegram import get_telegram_profile_photo, send_telegram_media, send_telegram_message
 from .utils import (
     generate_login,
@@ -59,6 +60,8 @@ from .utils import (
     user_can_api_settings,
     user_can_administer,
     user_can_chats,
+    user_can_dashboard,
+    user_can_directories,
     user_can_logs,
     user_can_manage,
     user_can_manage_manager_accounts,
@@ -206,6 +209,22 @@ class LoginView(DjangoLoginView):
 
     redirect_authenticated_user = True
 
+    def get(self, request, *args, **kwargs):
+        if request.GET.get("legacy") == "1" or get_platform_version(request) == "legacy":
+            return super().get(request, *args, **kwargs)
+        if request.user.is_authenticated:
+            return redirect("react_app_global")
+        lang_code = _url_language(request)
+        query = {"lang": lang_code}
+        if request.GET.get("next"):
+            query["next"] = request.GET["next"]
+        return redirect(f"/app/login/?{urlencode(query)}")
+
+    def get_success_url(self):
+        if get_platform_version(self.request) == "legacy":
+            return reverse("dashboard")
+        return super().get_success_url()
+
     def form_valid(self, form):
         response = super().form_valid(form)
         if form.cleaned_data.get("remember_me"):
@@ -226,6 +245,12 @@ class LoginView(DjangoLoginView):
 # EN: The OneID/E-IMZO block below handles external login through the government SSO.
 def index(request):
     lang_code = _url_language(request)
+    if (
+        request.method == "GET"
+        and request.GET.get("legacy") != "1"
+        and get_platform_version(request) != "legacy"
+    ):
+        return redirect(f"/app/public/?{urlencode({'lang': lang_code})}")
     form = SiteIntakeForm(request.POST or None, lang_code=lang_code, user=request.user)
 
     if request.method == "POST":
@@ -465,7 +490,7 @@ def _oneid_start(request, *, method):
 
     state = secrets.token_urlsafe(24)
     request.session["oneid_state"] = state
-    request.session["oneid_next"] = request.GET.get("next") or reverse("dashboard")
+    request.session["oneid_next"] = request.GET.get("next") or reverse("react_app_global")
     request.session["oneid_method"] = method
     auth_url = _merge_query(
         config.oneid_authorize_url,
@@ -596,7 +621,7 @@ def oneid_callback(request):
     _oneid_apply_profile(user, oneid_data)
     auth_login(request, user, backend=settings.AUTHENTICATION_BACKENDS[0])
     write_site_log(request, source="oneid", action="login", message=f"OneID login: {user.username}")
-    return redirect(request.session.pop("oneid_next", reverse("dashboard")))
+    return redirect(request.session.pop("oneid_next", reverse("react_app_global")))
 
 
 
@@ -883,7 +908,7 @@ def face_login_view(request):
     if api_user:
         api_user.backend = settings.AUTHENTICATION_BACKENDS[0]
         auth_login(request, api_user)
-        return JsonResponse({"ok": True, "redirect": reverse("dashboard"), "source": "api"})
+        return JsonResponse({"ok": True, "redirect": reverse("react_app_global"), "source": "api"})
 
     try:
         local_user, local_error, similarity = _local_face_login_user(image_data, username=username)
@@ -896,7 +921,7 @@ def face_login_view(request):
 
     local_user.backend = settings.AUTHENTICATION_BACKENDS[0]
     auth_login(request, local_user)
-    return JsonResponse({"ok": True, "redirect": reverse("dashboard"), "score": round(similarity, 3), "source": "local"})
+    return JsonResponse({"ok": True, "redirect": reverse("react_app_global"), "score": round(similarity, 3), "source": "local"})
 
 
 
@@ -3487,6 +3512,332 @@ def public_subscription_channels_api(request):
     qs = BotSubscriptionChannel.objects.filter(is_active=True, is_required=True).values("name", "url", "telegram_chat_id")
 
     return JsonResponse({"results": list(qs)})
+
+
+@ensure_csrf_cookie
+def react_app_view(request, path=""):
+    """Serve the exported Next.js app while Django keeps authentication and APIs."""
+    first_segment = (request.path.strip("/").split("/") or [""])[0]
+    if first_segment in {"ru", "uz", "uz-cyrl", "en"}:
+        target = f"/app/{path.strip('/')}" if path else "/app/"
+        response = redirect(target)
+        response.set_cookie(settings.LANGUAGE_COOKIE_NAME, first_segment, max_age=60 * 60 * 24 * 365)
+        return response
+    export_root = settings.BASE_DIR / "static" / "next"
+    safe_parts = [part for part in path.strip("/").split("/") if part and part not in {".", ".."}]
+    index_path = export_root.joinpath(*safe_parts, "index.html") if safe_parts else export_root / "index.html"
+    if not index_path.exists():
+        index_path = export_root / "index.html"
+    if index_path.exists():
+        return HttpResponse(index_path.read_text(encoding="utf-8"), content_type="text/html; charset=utf-8")
+    return render(request, "react_app.html", {"react_path": path})
+
+
+@ensure_csrf_cookie
+def react_public_api(request):
+    """Public data and validated request submission for the React landing page."""
+    if request.method not in {"GET", "POST"}:
+        return JsonResponse({"detail": "Method not allowed."}, status=405)
+    payload = {}
+    if request.method == "POST":
+        try:
+            payload = json.loads(request.body or "{}")
+        except (TypeError, ValueError):
+            return JsonResponse({"detail": "Invalid JSON."}, status=400)
+    lang_code = (payload.get("lang") if payload else request.GET.get("lang")) or "ru"
+    if lang_code not in {"ru", "uz", "uz-cyrl", "en"}:
+        lang_code = "ru"
+    form = SiteIntakeForm(payload if request.method == "POST" else None, lang_code=lang_code, user=request.user)
+    if request.method == "POST":
+        if not form.is_valid():
+            return JsonResponse({"ok": False, "errors": form.errors.get_json_data()}, status=400)
+        data = form.cleaned_data
+        item = IntakeRequest.objects.create(
+            platform=data["platform"], cause=data["cause"], pnfl=data["pnfl"],
+            company=data["company"], position=data["position"], full_name=data["full_name"],
+            passport=data["passport"], phone=data["phone"], telegram_id=0, lang=lang_code,
+            hrm_payload={"found": False, "message": "HRM integration disabled.", "raw": {"disabled": True}},
+        )
+        write_site_log(
+            request, source="site", action="site_intake_create",
+            message=f"Created site intake request #{item.id}",
+            meta={"request_id": item.id, "pnfl": data["pnfl"], "platform": data["platform"]},
+        )
+        return JsonResponse({"ok": True, "request_id": item.id, "message": form.texts["success"]})
+
+    settings_obj = SiteSettings.load()
+    web_platforms = [
+        {"id": item.id, "name": item.name, "url": item.url, "image_url": item.image_url or _favicon_url(item.url)}
+        for item in WebPlatform.objects.filter(is_active=True).order_by("sort_order", "name")
+    ]
+    return JsonResponse({
+        "site": {"name": settings_obj.site_name or "MTU FORUM", "description": settings_obj.site_description or ""},
+        "language": lang_code,
+        "texts": form.texts,
+        "choices": {
+            "platforms": [{"value": value, "label": label} for value, label in form.fields["platform"].choices],
+            "companies": [{"value": value, "label": label} for value, label in form.fields["company"].choices],
+            "positions": [{"value": value, "label": label} for value, label in form.fields["position"].choices],
+        },
+        "web_platforms": web_platforms,
+        "links": {
+            "legacy_public": f"/{lang_code}/?legacy=1",
+            "legacy_login": f"/{lang_code}/login/?legacy=1",
+            "oneid": f"/{lang_code}/login/oneid/",
+            "eimzo": f"/{lang_code}/login/eimzo/",
+        },
+    })
+
+
+_REACT_LOGIN_CAPTCHA_KEY = "react_login_captcha"
+_REACT_LOGIN_CAPTCHA_MAX_AGE = 10 * 60
+
+
+@require_GET
+@ensure_csrf_cookie
+def react_captcha_api(request):
+    """Create a short-lived, one-use arithmetic challenge for React login."""
+    operator = secrets.choice(("+", "−", "×"))
+    if operator == "+":
+        left = secrets.randbelow(12) + 2
+        right = secrets.randbelow(10) + 1
+        answer = left + right
+    elif operator == "−":
+        right = secrets.randbelow(9) + 1
+        left = right + secrets.randbelow(10) + 1
+        answer = left - right
+    else:
+        left = secrets.randbelow(7) + 2
+        right = secrets.randbelow(7) + 2
+        answer = left * right
+    request.session[_REACT_LOGIN_CAPTCHA_KEY] = {
+        "answer": answer,
+        "issued_at": timezone.now().timestamp(),
+    }
+    return JsonResponse({"question": f"{left} {operator} {right}"})
+
+
+@require_POST
+@ensure_csrf_cookie
+def react_login_api(request):
+    """Authenticate the React login page using Django's standard login form."""
+    try:
+        payload = json.loads(request.body or "{}")
+    except (TypeError, ValueError):
+        return JsonResponse({"detail": "Invalid JSON."}, status=400)
+    challenge = request.session.pop(_REACT_LOGIN_CAPTCHA_KEY, None)
+    request.session.modified = True
+    captcha_answer = str(payload.pop("captcha_answer", "")).strip()
+    captcha_valid = False
+    if challenge and captcha_answer:
+        try:
+            age = timezone.now().timestamp() - float(challenge.get("issued_at", 0))
+            captcha_valid = (
+                0 <= age <= _REACT_LOGIN_CAPTCHA_MAX_AGE
+                and secrets.compare_digest(
+                    captcha_answer,
+                    str(int(challenge.get("answer"))),
+                )
+            )
+        except (TypeError, ValueError):
+            captcha_valid = False
+    if not captcha_valid:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error_code": "captcha_invalid",
+                "captcha_refresh": True,
+            },
+            status=400,
+        )
+    form = LoginForm(request, data=payload)
+    if not form.is_valid():
+        return JsonResponse(
+            {
+                "ok": False,
+                "errors": form.errors.get_json_data(),
+                "captcha_refresh": True,
+            },
+            status=400,
+        )
+    auth_login(request, form.get_user())
+    if form.cleaned_data.get("remember_me"):
+        request.session.set_expiry(getattr(settings, "REMEMBER_ME_COOKIE_AGE", 60 * 60 * 24 * 30))
+    else:
+        request.session.set_expiry(getattr(settings, "SESSION_COOKIE_AGE", 3600))
+    write_site_log(request, source="site", action="login", message=f"React login: {form.get_user().username}")
+    return JsonResponse({"ok": True, "redirect": reverse("react_app_global")})
+
+
+def _react_dashboard_payload(user):
+    can_requests = user_can_requests(user)
+    can_chats = user_can_chats(user)
+    visible_requests = _intake_requests_for_user(user)
+    allowed_platform_values = _allowed_intake_platform_values(user)
+    allowed_company_values = _allowed_intake_company_values(user)
+    deleted_by_platform = defaultdict(int)
+    platform_rows = []
+
+    if can_requests:
+        for meta in SiteLog.objects.filter(action="request_delete").values_list("meta", flat=True):
+            if not isinstance(meta, dict):
+                continue
+            platform_value = meta.get("platform") or ""
+            company_value = meta.get("company") or ""
+            if (
+                (allowed_platform_values is None or platform_value in allowed_platform_values)
+                and (allowed_company_values is None or company_value in allowed_company_values)
+            ):
+                deleted_by_platform[platform_value] += 1
+
+        counts = defaultdict(lambda: {"total": 0, "done": 0, "blocked": 0})
+        for row in visible_requests.values("platform", "status").annotate(total=Count("id")):
+            platform_name = row["platform"] or ""
+            counts[platform_name]["total"] += row["total"]
+            if row["status"] == IntakeRequest.Status.DONE:
+                counts[platform_name]["done"] += row["total"]
+            elif row["status"] == IntakeRequest.Status.BLOCKED:
+                counts[platform_name]["blocked"] += row["total"]
+
+        for platform in _intake_platforms_for_user(user):
+            aliases = [platform.name] + ([platform.code] if platform.code and platform.code != platform.name else [])
+            platform_rows.append({
+                "name": platform.name,
+                "total": sum(counts[value]["total"] for value in aliases),
+                "done": sum(counts[value]["done"] for value in aliases),
+                "blocked": sum(counts[value]["blocked"] for value in aliases),
+                "deleted": sum(deleted_by_platform[value] for value in aliases),
+            })
+
+    favorite_ids = set(WebPlatformFavorite.objects.filter(user=user).values_list("platform_id", flat=True))
+    web_platforms = [
+        {
+            "id": item.id,
+            "name": item.name,
+            "open_url": str(reverse_lazy("open_web_platform", kwargs={"pk": item.pk})),
+            "image_url": item.image_url or _favicon_url(item.url),
+            "favorite": item.id in favorite_ids,
+            "uses": item.usage_count,
+        }
+        for item in WebPlatform.objects.filter(is_active=True).annotate(favorite_count=Count("favorites"))
+    ]
+    return {
+        "stats": {
+            "new": visible_requests.filter(status=IntakeRequest.Status.NEW).count() if can_requests else 0,
+            "done": visible_requests.filter(status=IntakeRequest.Status.DONE).count() if can_requests else 0,
+            "blocked": visible_requests.filter(status=IntakeRequest.Status.BLOCKED).count() if can_requests else 0,
+            "chats": AdminChatMessage.objects.filter(direction=AdminChatMessage.Direction.IN, is_read=False).count() if can_chats else 0,
+        },
+        "platforms": platform_rows,
+        "web_platforms": web_platforms,
+    }
+
+
+@require_GET
+def react_bootstrap_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"detail": "Authentication required.", "login_url": "/app/login/"}, status=401)
+    user = request.user
+    profile = getattr(user, "profile", None)
+    settings_obj = SiteSettings.load()
+    permissions = {
+        "dashboard": user_can_dashboard(user),
+        "requests": user_can_requests(user),
+        "directories": user_can_manage_organizations(user),
+        "messages": user_can_messages(user),
+        "chats": user_can_chats(user),
+        "tasks": user_can_tasks(user),
+        "users": user_can_manage_people(user),
+        "managers": user_can_manage_manager_accounts(user),
+        "logs": user_can_logs(user),
+        "api_settings": user_can_api_settings(user),
+        "site_settings": user_can_site_settings(user),
+        "programmers": user_can_programmers(user),
+    }
+    legacy_links = {"profile": reverse("profile"), "logout": reverse("logout")}
+    optional_links = {
+        "messages": (permissions["messages"], "internal_messages"),
+        "chats": (permissions["chats"], "admin_chat_list"),
+        "tasks": (permissions["tasks"], "developer_tasks"),
+        "users": (permissions["users"], "users"),
+        "managers": (permissions["managers"], "manager_accounts"),
+        "logs": (permissions["logs"], "site_logs"),
+        "settings": (permissions["directories"], "settings"),
+        "api_settings": (permissions["api_settings"], "api_settings"),
+        "site_settings": (permissions["site_settings"], "site_settings"),
+        "programmers": (permissions["programmers"], "programmers"),
+    }
+    for key, (allowed, route_name) in optional_links.items():
+        if allowed:
+            legacy_links[key] = reverse(route_name)
+
+    return JsonResponse({
+        "site": {"name": settings_obj.site_name or "MTU FORUM"},
+        "language": getattr(request, "LANGUAGE_CODE", "ru"),
+        "page_title": "MTU FORUM",
+        "user": {
+            "username": user.username,
+            "first_name": user.first_name,
+            "initial": (user.first_name or user.username or "U")[:1].upper(),
+            "role": "Суперадминистратор" if user.is_superuser else "Пользователь",
+            "is_superuser": user.is_superuser,
+            "is_branch_manager": user_is_branch_manager(user),
+            "is_organization_manager": user_is_organization_manager(user),
+            "branch": getattr(profile, "branch", "") if profile else "",
+            "organization": getattr(profile, "organization", "") if profile else "",
+        },
+        "permissions": permissions,
+        "legacy_links": legacy_links,
+        "version_links": {
+            "old": _merge_query(reverse("dashboard"), {"legacy": "1"}),
+            "new": reverse("react_app_global"),
+        },
+        "legacy_directories": reverse("settings"),
+        "dashboard": _react_dashboard_payload(user),
+    })
+
+
+@login_required
+@user_passes_test(user_can_manage_organizations)
+@require_GET
+def react_directory_api(request, section):
+    if section not in {"stations", "positions"}:
+        return JsonResponse({"error": "unknown directory"}, status=404)
+    model = Station if section == "stations" else Position
+    rows = _scope_branch_directory_for_actor(
+        model.objects.select_related("branch", "organization"),
+        request.user,
+    )
+    branches = Branch.objects.all()
+    if user_is_branch_manager(request.user) or user_is_organization_manager(request.user):
+        branch_name = _actor_branch_name(request.user)
+        branches = branches.filter(name=branch_name) if branch_name else branches.none()
+    organizations = _scope_organizations_for_actor(
+        Organization.objects.select_related("branch"),
+        request.user,
+    )
+    return JsonResponse({
+        "rows": [
+            {
+                "id": item.id,
+                "name": item.name,
+                "code": getattr(item, "code", ""),
+                "branch_id": item.branch_id or "",
+                "branch_name": item.branch.name if item.branch else "",
+                "organization_id": item.organization_id or "",
+                "organization_name": item.organization.name if item.organization else "",
+                "sort_order": item.sort_order,
+                "is_active": item.is_active,
+            }
+            for item in rows[:1000]
+        ],
+        "branches": list(branches.values("id", "name")),
+        "organizations": [
+            {"id": item.id, "name": item.name, "branch_id": item.branch_id, "branch_name": item.branch.name}
+            for item in organizations
+        ],
+        "post_url": reverse("settings_section", kwargs={"section": section}),
+    })
 
 
 

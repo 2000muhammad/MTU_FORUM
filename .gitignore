@@ -10,6 +10,12 @@ db.sqlite3
 .venv/
 venv/
 env/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+static/react/
+static/remix/
 
 # Secrets and local config
 .env

@@ -21,6 +21,11 @@
     <span>{{ site_settings.site_name|default:'MTU FORUM' }}</span>
   </a>
   <div class="public-header-tools login-header-tools">
+    <div class="version-toggle is-old" data-version-switch role="group" aria-label="{% tr 'version_label' %}">
+      <span class="version-toggle-thumb" aria-hidden="true"></span>
+      <span class="version-toggle-current" aria-current="page">{% tr 'old_version' %}</span>
+      <a href="/app/login/?lang={{ LANGUAGE_CODE|default:'ru' }}" data-version-target="new">{% tr 'new_version' %}</a>
+    </div>
     <button class="ui-mode-btn theme-mode-btn" type="button" data-theme-toggle title="{% tr 'theme_toggle' %}" aria-label="{% tr 'theme_toggle' %}">
       <span class="theme-icon theme-icon-sun" aria-hidden="true">
         <svg class="mode-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.3"/><path d="M12 2.8v2.1M12 19.1v2.1M4.2 4.2l1.5 1.5M18.3 18.3l1.5 1.5M2.8 12h2.1M19.1 12h2.1M4.2 19.8l1.5-1.5M18.3 5.7l1.5-1.5"/></svg>

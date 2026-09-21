@@ -16,6 +16,9 @@ urlpatterns = [
 
     path("api/", include("core.api_urls")),
 
+    path("app/", views.react_app_view, name="react_app_global"),
+    path("app/<path:path>/", views.react_app_view, name="react_app_global_path"),
+
 ]
 
 
@@ -63,6 +66,9 @@ urlpatterns += i18n_patterns(
     path("chats/thread/<int:thread_id>/", views.admin_chat_thread_detail, name="admin_chat_thread_detail"),
     path("chats/<int:telegram_id>/photo/", views.telegram_profile_photo, name="telegram_profile_photo"),
     path("chats/<int:telegram_id>/", views.admin_chat_detail, name="admin_chat_detail"),
+
+    path("app/", views.react_app_view, name="react_app"),
+    path("app/<path:path>/", views.react_app_view, name="react_app_path"),
 
 )
 
