@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% load static ui_i18n %}
+{% block page_title %}{% tr 'requests' %}{% endblock %}
+{% block content %}
+<section class="glass-card control-deck">
+  <div>
+    <h2>{% tr 'telegram_requests' %}</h2>
+    <p class="text-secondary mb-0">{% tr 'auto_refresh' %}</p>
+  </div>
+  <div class="filters">
+    <input id="searchInput" class="form-control" placeholder="{% tr 'search_requests' %}">
+    <select id="statusFilter" class="form-select">
+      <option value="">{% tr 'all_statuses' %}</option>
+      {% for value,label in statuses %}
+      <option value="{{ value }}">{% if value == 'new' %}{% tr 'new' %}{% elif value == 'done' %}{% tr 'done' %}{% elif value == 'blocked' %}{% tr 'blocked' %}{% else %}{{ label }}{% endif %}</option>
+      {% endfor %}
+    </select>
+  </div>
+</section>
+
+<section class="glass-card request-directory-panel">
+  <div id="requestRows" class="request-card-list"></div>
+</section>
+{% endblock %}
+{% block scripts %}
+{% tr 'show' as ui_show %}
+{% tr 'hide' as ui_hide %}
+{% tr 'editor' as ui_editor %}
+{% tr 'block_unblock' as ui_block_unblock %}
+{% tr 'delete' as ui_delete %}
+{% tr 'no_requests' as ui_no_requests %}
+{% tr 'new' as ui_new %}
+{% tr 'done' as ui_done %}
+{% tr 'blocked' as ui_blocked %}
+<script>
+window.UI_TEXTS = {
+  show: "{{ ui_show|escapejs }}", hide: "{{ ui_hide|escapejs }}", editor: "{{ ui_editor|escapejs }}",
+  block_unblock: "{{ ui_block_unblock|escapejs }}", delete: "{{ ui_delete|escapejs }}", no_requests: "{{ ui_no_requests|escapejs }}",
+  new: "{{ ui_new|escapejs }}", done: "{{ ui_done|escapejs }}", blocked: "{{ ui_blocked|escapejs }}"
+};
+</script>
+<script src="{% static 'js/dashboard.js' %}?v=20260603-request-cards"></script>
+{% endblock %}

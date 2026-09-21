@@ -36,9 +36,10 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
-import { api } from "./api";
+import { api, postLegacyForm } from "./api";
 import { createTranslator } from "./i18n";
 import { useSolarTheme } from "./useSolarTheme";
+import { VersionSwitch } from "./VersionSwitch";
 import { AccessibilityControl } from "./AccessibilityControl";
 
 const statusLabels = {
@@ -191,7 +192,19 @@ function Layout({ boot, config, children }) {
       sidebarCollapsed ? "on" : "off",
     );
   }, [sidebarCollapsed]);
-  const renderModuleLinks = () => null;
+  const legacy = boot.legacy_links;
+  const renderModuleLinks = (keys) =>
+    keys
+      .filter((key) => legacy[key])
+      .map((key) => {
+        const Icon = moduleMeta[key].icon;
+        return (
+          <NavLink key={key} to={`/modules/${key}`}>
+            <Icon />
+            {tr(moduleMeta[key].title)}
+          </NavLink>
+        );
+      });
   const categoryMeta = {
     work: { label: tr("Работа"), icon: BarChart3 },
     communication: { label: tr("Общение"), icon: MessagesSquare },
@@ -306,17 +319,10 @@ function Layout({ boot, config, children }) {
             <small>{tr(boot.user.role)}</small>
           </div>
         </div>
-        <button
-          type="button"
-          className="logout"
-          onClick={async () => {
-            const result = await api("/api/react/logout/", { method: "POST" });
-            window.location.assign(result.redirect || "/app/login/");
-          }}
-        >
+        <a className="logout" href={legacy.logout}>
           <LogOut />
           {tr("Выйти")}
-        </button>
+        </a>
       </aside>
       <div className="workspace">
         <header>
@@ -332,6 +338,12 @@ function Layout({ boot, config, children }) {
             <h1>{currentTitle}</h1>
           </div>
           <div className="new-tools">
+            <VersionSwitch
+              legacyUrl={boot.version_links.old}
+              oldLabel={tr("Старая версия")}
+              newLabel={tr("Новая версия")}
+              ariaLabel={tr("Версия платформы")}
+            />
             <button
               className={`icon-button solar-react-button ${themeMode === "auto" ? "active" : ""}`}
               data-theme-mode={themeMode}
@@ -659,10 +671,7 @@ function DirectoryPage({ kind, boot }) {
     setBusy(true);
     setNotice("");
     try {
-      await api(`/api/react/directories/${kind}/`, {
-        method: "POST",
-        body: JSON.stringify(values),
-      });
+      await postLegacyForm(data.post_url, values);
       setEditing(null);
       setSelected(new Set());
       await reload();
@@ -680,6 +689,9 @@ function DirectoryPage({ kind, boot }) {
       <div className="directory-tabs">
         <NavLink to="/directories/stations">{tr("Предприятия")}</NavLink>
         <NavLink to="/directories/positions">{tr("Должности")}</NavLink>
+        <NavLink to="/modules/settings">
+          {tr("Остальные справочники")} <ExternalLink />
+        </NavLink>
       </div>
       <section className="panel">
         <div className="panel-head">
@@ -889,19 +901,45 @@ function DirectoryPage({ kind, boot }) {
   );
 }
 
+function embeddedUrl(url) {
+  if (!url) return "";
+  return `${url}${url.includes("?") ? "&" : "?"}embedded=1`;
+}
+
+function syncEmbeddedTheme(event) {
+  try {
+    event.currentTarget.contentDocument.documentElement.dataset.theme =
+      window.localStorage.getItem("mtu-react-theme") || "dark";
+  } catch (_) {
+    /* same-origin frame may still be loading */
+  }
+}
+
+function ModulePage({ boot, moduleKey }) {
+  const tr = createTranslator(boot.language);
+  const meta = moduleMeta[moduleKey] || {
+    title: "Раздел",
+    subtitle: "Рабочая область",
+    icon: Settings2,
+  };
+  const url = boot.legacy_links[moduleKey];
+  if (!url) return <Navigate to="/" />;
+  return (
+    <div className="module-page">
+      <iframe
+        title={tr(meta.title)}
+        src={embeddedUrl(url)}
+        onLoad={syncEmbeddedTheme}
+      />
+    </div>
+  );
+}
+
 function RequestEditorPage({ language }) {
   const tr = createTranslator(language);
   const { id } = useParams();
-  const { loading, data, error, reload } = useRemote(
-    () => api(`/api/react/requests/${id}/`),
-    [id],
-  );
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState("");
-  if (loading) return <Loading tr={tr} />;
-  if (error) return <ErrorState message={error} retry={reload} tr={tr} />;
   return (
-    <div className="page-stack">
+    <div className="module-page with-heading">
       <div className="module-heading">
         <ClipboardList />
         <div>
@@ -911,52 +949,11 @@ function RequestEditorPage({ language }) {
           <p>{tr("Редактирование и обработка заявки")}</p>
         </div>
       </div>
-      <form
-        className="panel request-editor-form"
-        onSubmit={async (event) => {
-          event.preventDefault();
-          setBusy(true);
-          setNotice("");
-          const form = new FormData(event.currentTarget);
-          const values = Object.fromEntries(form.entries());
-          try {
-            await api(`/api/react/requests/${id}/`, {
-              method: "PATCH",
-              body: JSON.stringify(values),
-            });
-            setNotice(tr("Изменения сохранены."));
-            await reload();
-          } catch (saveError) {
-            setNotice(saveError.message);
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        {notice && <p className="notice">{notice}</p>}
-        <div className="public-form-grid">
-          {["full_name", "platform", "company", "department", "position", "passport", "phone"].map((name) => (
-            <label key={name}>
-              <span>{tr({ full_name: "Ф.И.О", platform: "Платформа", company: "Предприятие", department: "Подразделение", position: "Должность", passport: "Паспорт", phone: "Телефон" }[name])}</span>
-              <input name={name} defaultValue={data[name] || ""} />
-            </label>
-          ))}
-          <label>
-            <span>{tr("Статус")}</span>
-            <select name="status" defaultValue={data.status}>
-              {data.statuses.map((item) => <option key={item.value} value={item.value}>{tr(item.label)}</option>)}
-            </select>
-          </label>
-          <label className="wide">
-            <span>{tr("Причина")}</span>
-            <textarea name="cause" defaultValue={data.cause || ""} rows="5" />
-          </label>
-        </div>
-        <div className="modal-actions">
-          <NavLink to="/requests">{tr("Отмена")}</NavLink>
-          <button className="primary-button" disabled={busy}>{tr(busy ? "Сохранение…" : "Сохранить")}</button>
-        </div>
-      </form>
+      <iframe
+        title={`${tr("Заявки")} ${id}`}
+        src={embeddedUrl(`/${language || "ru"}/requests/${id}/edit/`)}
+        onLoad={syncEmbeddedTheme}
+      />
     </div>
   );
 }
@@ -1023,8 +1020,17 @@ export default function App({ config }) {
             )
           }
         />
+        <Route
+          path="/modules/:moduleKey"
+          element={<ModuleRoute boot={boot} />}
+        />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Layout>
   );
+}
+
+function ModuleRoute({ boot }) {
+  const { moduleKey } = useParams();
+  return <ModulePage boot={boot} moduleKey={moduleKey} />;
 }

@@ -1125,48 +1125,11 @@ def dashboard_requests_api(request):
 
             "status_label": item.get_status_display(),
 
+            "edit_url": str(reverse_lazy("request_edit", kwargs={"pk": item.pk})), 
+
         })
 
     return JsonResponse({"rows": rows, "count": qs.count()})
-
-
-@login_required
-@user_passes_test(user_can_requests)
-def react_request_api(request, pk):
-    item = get_object_or_404(_intake_requests_for_user(request.user), pk=pk)
-    if request.method == "GET":
-        return JsonResponse({
-            "id": item.id,
-            "platform": item.platform,
-            "cause": item.cause,
-            "pnfl": item.pnfl,
-            "company": item.company,
-            "department": item.department,
-            "position": item.position,
-            "full_name": item.full_name,
-            "passport": item.passport,
-            "phone": item.phone,
-            "telegram_id": str(item.telegram_id),
-            "status": item.status,
-            "statuses": [{"value": value, "label": label} for value, label in IntakeRequest.Status.choices],
-        })
-    if request.method not in {"POST", "PATCH"}:
-        return JsonResponse({"detail": "Method not allowed."}, status=405)
-    try:
-        payload = json.loads(request.body or "{}")
-    except (TypeError, ValueError):
-        return JsonResponse({"detail": "Invalid JSON."}, status=400)
-    fields = ["pnfl", "full_name", "company", "department", "position", "passport", "phone", "telegram_id", "platform", "cause", "status"]
-    form_data = {field: getattr(item, field) for field in fields}
-    for field in fields:
-        if field in payload:
-            form_data[field] = payload[field]
-    form = IntakeRequestForm(form_data, instance=item, user=request.user)
-    if not form.is_valid():
-        return JsonResponse({"ok": False, "errors": form.errors.get_json_data()}, status=400)
-    form.save()
-    write_site_log(request, source="requests", action="request_update", message=f"Updated intake request #{item.id}")
-    return JsonResponse({"ok": True, "id": item.id})
 
 
 
@@ -3551,30 +3514,23 @@ def public_subscription_channels_api(request):
     return JsonResponse({"results": list(qs)})
 
 
-def frontend_redirect(request, path=""):
-    """Send every user-facing Django URL to the standalone React frontend."""
-    incoming = path.strip("/")
-    parts = [part for part in incoming.split("/") if part]
-    language = request.GET.get("lang") or "ru"
-    if parts and parts[0] in {"ru", "uz", "uz-cyrl", "en"}:
-        language = parts.pop(0)
-    if request.path.startswith("/app/"):
-        target_path = incoming
-    elif parts and parts[0] == "login":
-        target_path = "login"
-    elif not request.user.is_authenticated:
-        target_path = "public"
-    elif parts and parts[0] == "requests":
-        target_path = "/".join(parts)
-    else:
-        target_path = ""
-    target = f"{settings.FRONTEND_URL}/app/{target_path}"
-    if not target.endswith("/"):
-        target += "/"
-    query = request.GET.copy()
-    query.pop("legacy", None)
-    query["lang"] = language
-    return redirect(f"{target}?{query.urlencode()}")
+@ensure_csrf_cookie
+def react_app_view(request, path=""):
+    """Serve the exported Next.js app while Django keeps authentication and APIs."""
+    first_segment = (request.path.strip("/").split("/") or [""])[0]
+    if first_segment in {"ru", "uz", "uz-cyrl", "en"}:
+        target = f"/app/{path.strip('/')}" if path else "/app/"
+        response = redirect(target)
+        response.set_cookie(settings.LANGUAGE_COOKIE_NAME, first_segment, max_age=60 * 60 * 24 * 365)
+        return response
+    export_root = settings.BASE_DIR / "static" / "next"
+    safe_parts = [part for part in path.strip("/").split("/") if part and part not in {".", ".."}]
+    index_path = export_root.joinpath(*safe_parts, "index.html") if safe_parts else export_root / "index.html"
+    if not index_path.exists():
+        index_path = export_root / "index.html"
+    if index_path.exists():
+        return HttpResponse(index_path.read_text(encoding="utf-8"), content_type="text/html; charset=utf-8")
+    return render(request, "react_app.html", {"react_path": path})
 
 
 @ensure_csrf_cookie
@@ -3625,8 +3581,10 @@ def react_public_api(request):
         },
         "web_platforms": web_platforms,
         "links": {
-            "oneid": "/api/auth/oneid/",
-            "eimzo": "/api/auth/eimzo/",
+            "legacy_public": f"/{lang_code}/?legacy=1",
+            "legacy_login": f"/{lang_code}/login/?legacy=1",
+            "oneid": f"/{lang_code}/login/oneid/",
+            "eimzo": f"/{lang_code}/login/eimzo/",
         },
     })
 
@@ -3708,13 +3666,7 @@ def react_login_api(request):
     else:
         request.session.set_expiry(getattr(settings, "SESSION_COOKIE_AGE", 3600))
     write_site_log(request, source="site", action="login", message=f"React login: {form.get_user().username}")
-    return JsonResponse({"ok": True, "redirect": f"{settings.FRONTEND_URL}/app/"})
-
-
-@require_POST
-def react_logout_api(request):
-    logout(request)
-    return JsonResponse({"ok": True, "redirect": f"{settings.FRONTEND_URL}/app/login/"})
+    return JsonResponse({"ok": True, "redirect": reverse("react_app_global")})
 
 
 def _react_dashboard_payload(user):
@@ -3762,7 +3714,7 @@ def _react_dashboard_payload(user):
         {
             "id": item.id,
             "name": item.name,
-            "open_url": item.url,
+            "open_url": str(reverse_lazy("open_web_platform", kwargs={"pk": item.pk})),
             "image_url": item.image_url or _favicon_url(item.url),
             "favorite": item.id in favorite_ids,
             "uses": item.usage_count,
@@ -3802,6 +3754,23 @@ def react_bootstrap_api(request):
         "site_settings": user_can_site_settings(user),
         "programmers": user_can_programmers(user),
     }
+    legacy_links = {"profile": reverse("profile"), "logout": reverse("logout")}
+    optional_links = {
+        "messages": (permissions["messages"], "internal_messages"),
+        "chats": (permissions["chats"], "admin_chat_list"),
+        "tasks": (permissions["tasks"], "developer_tasks"),
+        "users": (permissions["users"], "users"),
+        "managers": (permissions["managers"], "manager_accounts"),
+        "logs": (permissions["logs"], "site_logs"),
+        "settings": (permissions["directories"], "settings"),
+        "api_settings": (permissions["api_settings"], "api_settings"),
+        "site_settings": (permissions["site_settings"], "site_settings"),
+        "programmers": (permissions["programmers"], "programmers"),
+    }
+    for key, (allowed, route_name) in optional_links.items():
+        if allowed:
+            legacy_links[key] = reverse(route_name)
+
     return JsonResponse({
         "site": {"name": settings_obj.site_name or "MTU FORUM"},
         "language": getattr(request, "LANGUAGE_CODE", "ru"),
@@ -3818,61 +3787,23 @@ def react_bootstrap_api(request):
             "organization": getattr(profile, "organization", "") if profile else "",
         },
         "permissions": permissions,
+        "legacy_links": legacy_links,
+        "version_links": {
+            "old": _merge_query(reverse("dashboard"), {"legacy": "1"}),
+            "new": reverse("react_app_global"),
+        },
+        "legacy_directories": reverse("settings"),
         "dashboard": _react_dashboard_payload(user),
     })
 
 
 @login_required
 @user_passes_test(user_can_manage_organizations)
+@require_GET
 def react_directory_api(request, section):
     if section not in {"stations", "positions"}:
         return JsonResponse({"error": "unknown directory"}, status=404)
     model = Station if section == "stations" else Position
-    form_class = StationForm if section == "stations" else PositionForm
-    if request.method == "POST":
-        try:
-            payload = json.loads(request.body or "{}")
-        except (TypeError, ValueError):
-            return JsonResponse({"detail": "Invalid JSON."}, status=400)
-        selected_ids = [str(value) for value in payload.get("selected_ids", []) if str(value).isdigit()]
-        if payload.get("action") in {"bulk_activate", "bulk_deactivate"}:
-            scoped = _scope_branch_directory_for_actor(model.objects.all(), request.user)
-            updated = scoped.filter(pk__in=selected_ids).update(
-                is_active=payload["action"] == "bulk_activate"
-            )
-            return JsonResponse({"ok": True, "updated": updated})
-        instance_id = str(payload.get("record_id") or "")
-        scoped = _scope_branch_directory_for_actor(model.objects.all(), request.user)
-        instance = get_object_or_404(scoped, pk=instance_id) if instance_id.isdigit() else None
-        form_data = {
-            "name": payload.get("name", ""),
-            "branch": payload.get("branch", ""),
-            "organization": payload.get("organization", ""),
-            "sort_order": payload.get("sort_order", 0),
-            "is_active": "on" if payload.get("is_active") in {True, "on", "true", "1"} else "",
-        }
-        if user_is_branch_manager(request.user):
-            branch = Branch.objects.filter(name=_actor_branch_name(request.user), is_active=True).first()
-            if not branch:
-                return JsonResponse({"detail": "Branch not found."}, status=400)
-            form_data["branch"] = str(branch.pk)
-        if user_is_organization_manager(request.user):
-            organization = Organization.objects.filter(
-                name=_actor_organization_name(request.user),
-                branch__name=_actor_branch_name(request.user),
-                is_active=True,
-            ).select_related("branch").first()
-            if not organization:
-                return JsonResponse({"detail": "Organization not found."}, status=400)
-            form_data["branch"] = str(organization.branch_id)
-            form_data["organization"] = str(organization.pk)
-        form = form_class(form_data, instance=instance)
-        if not form.is_valid():
-            return JsonResponse({"ok": False, "errors": form.errors.get_json_data()}, status=400)
-        saved = form.save()
-        return JsonResponse({"ok": True, "id": saved.pk})
-    if request.method != "GET":
-        return JsonResponse({"detail": "Method not allowed."}, status=405)
     rows = _scope_branch_directory_for_actor(
         model.objects.select_related("branch", "organization"),
         request.user,
@@ -3905,6 +3836,7 @@ def react_directory_api(request, section):
             {"id": item.id, "name": item.name, "branch_id": item.branch_id, "branch_name": item.branch.name}
             for item in organizations
         ],
+        "post_url": reverse("settings_section", kwargs={"section": section}),
     })
 
 

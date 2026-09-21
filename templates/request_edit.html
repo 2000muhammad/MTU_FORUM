@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% load ui_i18n %}
+{% block page_title %}{% tr 'request_editor' %} #{{ item.id }}{% endblock %}
+{% block content %}
+<form method="post" class="glass-card editor-form">
+  {% csrf_token %}
+  <div class="editor-head">
+    <div><h2>{{ item.full_name|default:'-' }}</h2><p class="text-secondary">Telegram ID: {{ item.telegram_id }}</p></div>
+    <span class="status-pill status-{{ item.status }}">{{ item.get_status_display }}</span>
+  </div>
+  <div class="form-grid">
+    {% for field in form %}<label>{{ field.label }}{{ field }}{{ field.errors }}</label>{% endfor %}
+  </div>
+  <div class="credential-box">
+    <div><span>{% tr 'username' %}</span><strong>{{ item.generated_login|default:'-' }}</strong></div>
+    <div>
+      <span>{% tr 'password' %}</span>
+      <strong>{% if plain_generated_password %}{{ plain_generated_password }}{% elif password_is_hashed %}Хэш сохранён{% else %}-{% endif %}</strong>
+    </div>
+  </div>
+  <div class="action-row">
+    <a class="btn btn-outline-light" href="{% url 'requests' %}">{% tr 'back' %}</a>
+    <button class="btn btn-outline-light" name="action" value="generate">{% tr 'generate_credentials' %}</button>
+    <button class="btn btn-outline-info" name="action" value="create_user">{% tr 'create_django_user' %}</button>
+    <button class="btn btn-outline-warning" name="action" value="send_credentials">{% tr 'send_to_telegram' %}</button>
+    <button class="btn btn-outline-danger" name="action" value="delete" onclick="return confirm('{% tr 'delete_request_confirm' %}')">{% tr 'delete' %}</button>
+    <button class="btn btn-primary" name="action" value="save">{% tr 'save' %}</button>
+  </div>
+</form>
+{% endblock %}

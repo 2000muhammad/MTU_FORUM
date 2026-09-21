@@ -1,17 +1,29 @@
-# MTU FORUM frontend
+# MTU FORUM React + Next.js frontend
 
-Это единственный пользовательский интерфейс проекта. Он работает отдельным процессом Next.js на `/app` и обращается к Django только через `/api`, `/media` и `/static`.
+The new platform is exported by Next.js and served by Django at `/app/`. It
+uses the existing Django session, CSRF protection, permissions, and database.
+The localized `/<language>/app/` addresses redirect to the canonical path.
+
+## Development
 
 ```powershell
-npm ci
+cd frontend
+npm install
 npm run dev
 ```
 
-Рабочая сборка:
+## Production build
 
 ```powershell
+cd frontend
+npm ci
 npm run build
-npm start
 ```
 
-Backend по умолчанию: `http://127.0.0.1:8000`. Для другого адреса задайте `DJANGO_BACKEND_URL` перед запуском или сборкой.
+Next.js creates a static export and the build script copies it to
+`static/next/`. Django serves the correct exported page for every `/app/`
+route. The legacy Django interface remains available through the version
+switch in the header. All authenticated platform sections are routed through
+the Next.js workspace. Complex existing forms run in same-origin embedded
+work areas so their Django permissions, CSRF handling, uploads, and actions
+continue to work during the migration.
