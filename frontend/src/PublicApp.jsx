@@ -340,7 +340,7 @@ function PublicRequest({ data }) {
           </div>
           <button
             className="public-submit"
-            disabled={busy || captcha.loading || !captcha.question}
+            disabled={busy}
           >
             {tr(busy ? "Отправка…" : "Отправить заявку")}
             <ArrowRight />
