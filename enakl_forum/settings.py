@@ -14,6 +14,9 @@ CSRF_TRUSTED_ORIGINS = [
     for origin in os.getenv("SITE_BASE_URL", "").split(",")
     if origin.strip()
 ]
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://127.0.0.1:3000").rstrip("/")
+if FRONTEND_URL not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append(FRONTEND_URL)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -28,7 +31,6 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "core.middleware.PlatformVersionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -93,9 +95,9 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-LOGIN_URL = "login"
-LOGIN_REDIRECT_URL = "react_app_global"
-LOGOUT_REDIRECT_URL = "login"
+LOGIN_URL = f"{FRONTEND_URL}/app/login/"
+LOGIN_REDIRECT_URL = f"{FRONTEND_URL}/app/"
+LOGOUT_REDIRECT_URL = f"{FRONTEND_URL}/app/login/"
 X_FRAME_OPTIONS = "SAMEORIGIN"
 SESSION_COOKIE_AGE = int(os.getenv("SESSION_COOKIE_AGE", "3600"))
 SESSION_SAVE_EVERY_REQUEST = True
