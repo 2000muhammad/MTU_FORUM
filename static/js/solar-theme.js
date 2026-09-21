@@ -40,7 +40,9 @@
     trigger.setAttribute('aria-pressed', String(!dark));
   }
   function dayAt(timeZone) {
-    return new Intl.DateTimeFormat('en-CA', { timeZone, year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date());
+    const parts = new Intl.DateTimeFormat('en', { timeZone, year:'numeric', month:'2-digit', day:'2-digit' }).formatToParts(new Date());
+    const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+    return `${values.year}-${values.month}-${values.day}`;
   }
   function valid(data) {
     if (!data || !data.tzid || !data.date) return false;
@@ -68,7 +70,10 @@
       if (label) label.textContent = light ? label.dataset.night : label.dataset.day;
     }
     const format = value => value ? new Intl.DateTimeFormat(root.lang || 'en', {timeZone:schedule.tzid,hour:'2-digit',minute:'2-digit'}).format(new Date(value)) : '—';
-    status.textContent = `${panel.dataset.rise}: ${format(schedule.sunrise)} · ${panel.dataset.set}: ${format(schedule.sunset)} (${schedule.tzid})`;
+    const details = `${panel.dataset.rise}: ${format(schedule.sunrise)} · ${panel.dataset.set}: ${format(schedule.sunset)} (${schedule.tzid})`;
+    status.textContent = details;
+    trigger.title = `${panel.dataset.auto} — ${details}`;
+    trigger.setAttribute('aria-label', `${panel.dataset.auto}. ${details}`);
   }
   let preciseLocation;
   async function locate() {
@@ -81,15 +86,27 @@
         }
       } catch {}
     }
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
-    try {
-      const response = await fetch('https://ipapi.co/json/', {signal:controller.signal, credentials:'omit', referrerPolicy:'no-referrer'});
-      if (!response.ok) throw new Error('Location unavailable');
-      const data = await response.json();
-      if (data.error || typeof data.latitude !== 'number' || typeof data.longitude !== 'number') throw new Error('Invalid location');
-      return {lat:Number(data.latitude.toFixed(2)), lng:Number(data.longitude.toFixed(2))};
-    } finally { clearTimeout(timer); }
+    const providers = [
+      {url:'https://ipwho.is/', parse:data => data.success === false ? null : {lat:data.latitude,lng:data.longitude}},
+      {url:'https://ipapi.co/json/', parse:data => data.error ? null : {lat:data.latitude,lng:data.longitude}},
+    ];
+    for (const provider of providers) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 7000);
+      try {
+        const response = await fetch(provider.url, {signal:controller.signal, credentials:'omit', referrerPolicy:'no-referrer'});
+        if (!response.ok) continue;
+        const location = provider.parse(await response.json());
+        if (location && Number.isFinite(Number(location.lat)) && Number.isFinite(Number(location.lng))) {
+          return {lat:Number(Number(location.lat).toFixed(2)),lng:Number(Number(location.lng).toFixed(2))};
+        }
+      } catch {} finally { clearTimeout(timer); }
+    }
+    // MTU FORUM is primarily used in Uzbekistan. This keeps automatic mode
+    // useful if both privacy-friendly IP lookups are unavailable.
+    const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (browserZone === 'Asia/Tashkent') return {lat:41.31,lng:69.24};
+    throw new Error('Location unavailable');
   }
   async function update(force = false) {
     if (!enabled || busy) return;
@@ -105,13 +122,13 @@
       const timeout = setTimeout(() => controller.abort(), 10000);
       let data;
       try {
-        const params = new URLSearchParams({...location, date:'today'});
+        const params = new URLSearchParams({...location, date:'today', time_format:'iso8601'});
         const response = await fetch(`https://api.sunrise-sunset.org/v2?${params}`, {signal:controller.signal, credentials:'omit', referrerPolicy:'no-referrer'});
         if (!response.ok) throw new Error('Sun times unavailable');
         data = await response.json();
       } finally { clearTimeout(timeout); }
       if (token !== generation || !enabled) return;
-      if (!valid(data) || (data.sun_status !== 'midnight_sun' && data.sun_status !== 'polar_night' && (!Number.isFinite(Date.parse(data.sunrise)) || !Number.isFinite(Date.parse(data.sunset))))) throw new Error('Incomplete sun times');
+      if (data.error || !valid(data) || (data.sun_status !== 'midnight_sun' && data.sun_status !== 'polar_night' && (!Number.isFinite(Date.parse(data.sunrise)) || !Number.isFinite(Date.parse(data.sunset))))) throw new Error('Incomplete sun times');
       // Store only the daily schedule, never the user's coordinates.
       schedule = {date:data.date,tzid:data.tzid,sunrise:data.sunrise,sunset:data.sunset,sun_status:data.sun_status};
       save('mtu-solar-schedule', JSON.stringify(schedule));

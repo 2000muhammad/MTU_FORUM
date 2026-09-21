@@ -2201,6 +2201,11 @@ UI["en"].update({"permission_title": "Permissions", "permission_location": "Loca
 UI["uz"].update({"permission_title": "Ruxsatlar", "permission_location": "Quyosh vaqtlari uchun joylashuv", "permission_sound": "Ovozni yoqish", "permission_hint": "Kamera Face ID orqali kirishda so‘raladi. Quyosh vaqtlarini hisoblash uchun yaxlitlangan koordinatalar Sunrise-Sunset.org xizmatiga yuboriladi.", "permission_location_ok": "Joylashuvga ruxsat berildi", "permission_sound_ok": "Ovoz yoqildi", "permission_error": "Ruxsat rad etildi yoki xizmat mavjud emas. Brauzerdagi sayt ruxsatlarini tekshirib, qayta urinib ko‘ring.", "permission_waiting": "Ruxsat kutilmoqda…"})
 UI["uz-cyrl"].update({"permission_title": "Рухсатлар", "permission_location": "Қуёш вақтлари учун жойлашув", "permission_sound": "Овозни ёқиш", "permission_hint": "Камера Face ID орқали киришда сўралади. Қуёш вақтларини ҳисоблаш учун яхлитланган координаталар Sunrise-Sunset.org хизматига юборилади.", "permission_location_ok": "Жойлашувга рухсат берилди", "permission_sound_ok": "Овоз ёқилди", "permission_error": "Рухсат рад этилди ёки хизмат мавжуд эмас. Браузердаги сайт рухсатларини текшириб, қайта уриниб кўринг.", "permission_waiting": "Рухсат кутилмоқда…"})
 
+UI["ru"].update({"version_label": "Версия платформы", "old_version": "Старая версия", "new_version": "Новая версия"})
+UI["uz"].update({"version_label": "Platforma versiyasi", "old_version": "Eski versiya", "new_version": "Yangi versiya"})
+UI["uz-cyrl"].update({"version_label": "Платформа версияси", "old_version": "Эски версия", "new_version": "Янги версия"})
+UI["en"].update({"version_label": "Platform version", "old_version": "Old version", "new_version": "New version"})
+
 def _lang(context=None):
     request = context.get("request") if context else None
     path = getattr(request, "path", "") or ""
