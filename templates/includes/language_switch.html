@@ -1,0 +1,10 @@
+{% load static ui_i18n %}
+<details class="language-picker">
+  <summary><img class="language-flag" src="{% if LANGUAGE_CODE == 'uz' or LANGUAGE_CODE == 'uz-cyrl' %}{% static 'img/flags/uz.svg' %}{% elif LANGUAGE_CODE == 'en' %}{% static 'img/flags/us.svg' %}{% else %}{% static 'img/flags/ru.svg' %}{% endif %}" alt=""><span>{% if LANGUAGE_CODE == 'uz-cyrl' %}ЎЗ{% elif LANGUAGE_CODE == 'uz' %}UZ{% elif LANGUAGE_CODE == 'en' %}EN{% else %}RU{% endif %}</span><svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+  <nav class="language-picker-options" aria-label="Language / Язык">
+    <a href="{% lang_url 'ru' %}" lang="ru" {% if LANGUAGE_CODE == 'ru' %}aria-current="true"{% endif %}> <img class="language-flag" src="{% static 'img/flags/ru.svg' %}" alt=""><span>Русский</span></a>
+    <a href="{% lang_url 'uz' %}" lang="uz" {% if LANGUAGE_CODE == 'uz' %}aria-current="true"{% endif %}> <img class="language-flag" src="{% static 'img/flags/uz.svg' %}" alt=""><span>O‘zbekcha</span></a>
+    <a href="{% lang_url 'uz-cyrl' %}" lang="uz-Cyrl" {% if LANGUAGE_CODE == 'uz-cyrl' %}aria-current="true"{% endif %}> <img class="language-flag" src="{% static 'img/flags/uz.svg' %}" alt=""><span>Ўзбекча</span></a>
+    <a href="{% lang_url 'en' %}" lang="en" {% if LANGUAGE_CODE == 'en' %}aria-current="true"{% endif %}> <img class="language-flag" src="{% static 'img/flags/us.svg' %}" alt=""><span>English</span></a>
+  </nav>
+</details>

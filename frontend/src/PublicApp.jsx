@@ -20,11 +20,12 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "./api";
 import { createTranslator } from "./i18n";
 import { useSolarTheme } from "./useSolarTheme";
+import { VersionSwitch } from "./VersionSwitch";
 import { AccessibilityControl } from "./AccessibilityControl";
 
 const languageLabels = { ru: "RU", uz: "UZ", "uz-cyrl": "ЎЗ", en: "EN" };
 
-function PublicTools({ language }) {
+function PublicTools({ language, legacyUrl }) {
   const tr = createTranslator(language);
   const {
     mode: themeMode,
@@ -43,6 +44,12 @@ function PublicTools({ language }) {
         : tr("Противоположно системе");
   return (
     <div className="public-tools">
+      <VersionSwitch
+        legacyUrl={legacyUrl}
+        oldLabel={tr("Старая версия")}
+        newLabel={tr("Новая версия")}
+        ariaLabel={tr("Версия платформы")}
+      />
       <button
         className={`icon-button solar-react-button ${themeMode === "auto" ? "active" : ""}`}
         data-theme-mode={themeMode}
@@ -117,7 +124,14 @@ function PublicFrame({ data, children, page }) {
           <img src="/static/img/mtu-forum-mark.svg" />
           <strong>{data?.site?.name || "MTU FORUM"}</strong>
         </a>
-        <PublicTools language={language} />
+        <PublicTools
+          language={language}
+          legacyUrl={
+            page === "login"
+              ? data?.links?.legacy_login
+              : data?.links?.legacy_public
+          }
+        />
         <a
           className="public-header-action"
           href={

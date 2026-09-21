@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% load ui_i18n %}
+{% block page_title %}{% tr 'site_logs_title' %}{% endblock %}
+{% block content %}
+<section class="glass-card log-toolbar">
+  <div>
+    <h2>{% tr 'event_journal' %}</h2>
+    <p class="text-secondary mb-0">{% tr 'total_logs' %}: {{ total_logs }}</p>
+  </div>
+  <form method="get" class="log-filters">
+    <input class="form-control" name="q" value="{{ query }}" placeholder="{% tr 'log_search' %}">
+    <select class="form-select" name="level">
+      <option value="">{% tr 'all_levels' %}</option>
+      {% for value,label in levels %}<option value="{{ value }}" {% if selected_level == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <select class="form-select" name="source">
+      <option value="">{% tr 'all_sources' %}</option>
+      {% for item in sources %}<option value="{{ item }}" {% if selected_source == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-primary">{% tr 'filter' %}</button>
+  </form>
+  <form method="post" onsubmit="return confirm('{% tr 'clear_logs_confirm' %}')">
+    {% csrf_token %}<input type="hidden" name="action" value="clear">
+    <button class="btn btn-outline-danger">{% tr 'clear_logs' %}</button>
+  </form>
+</section>
+
+<section class="glass-card table-card">
+  <div class="table-responsive">
+    <table class="table align-middle request-table log-table">
+      <thead>
+        <tr>
+          <th>{% tr 'date' %}</th><th>{% tr 'level' %}</th><th>{% tr 'source' %}</th><th>{% tr 'action' %}</th><th>{% tr 'user' %}</th><th>{% tr 'method' %}</th><th>{% tr 'status' %}</th><th>{% tr 'path' %}</th><th>{% tr 'ip' %}</th><th>{% tr 'message' %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in page_obj %}
+        <tr>
+          <td>{{ log.created_at|date:'d.m.Y H:i:s' }}</td>
+          <td><span class="log-level log-{{ log.level }}">{{ log.get_level_display }}</span></td>
+          <td>{{ log.source }}</td>
+          <td>{{ log.action|default:'-' }}</td>
+          <td>{{ log.username|default:'system' }}</td>
+          <td>{{ log.method|default:'-' }}</td>
+          <td>{{ log.status_code|default:'-' }}</td>
+          <td class="log-path">{{ log.path|default:'-' }}</td>
+          <td>{{ log.ip_address|default:'-' }}</td>
+          <td class="log-message">{{ log.message }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="10" class="text-center text-secondary py-5">{% tr 'no_logs' %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="log-pagination">
+  {% if page_obj.has_previous %}<a class="btn btn-outline-light" href="?page={{ page_obj.previous_page_number }}&q={{ query }}&level={{ selected_level }}&source={{ selected_source }}">{% tr 'back' %}</a>{% endif %}
+  <span>{% tr 'page' %} {{ page_obj.number }} {% tr 'of' %} {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}<a class="btn btn-outline-light" href="?page={{ page_obj.next_page_number }}&q={{ query }}&level={{ selected_level }}&source={{ selected_source }}">{% tr 'forward' %}</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}
