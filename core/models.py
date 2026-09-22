@@ -329,6 +329,21 @@ class IntakeRequest(models.Model):
         return f"#{self.pk} {self.full_name or self.pnfl}"
 
 
+class TelegramPasswordReset(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="telegram_password_resets")
+    token_hash = models.CharField(max_length=64, unique=True)
+    telegram_id = models.BigIntegerField(db_index=True)
+    expires_at = models.DateTimeField(db_index=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.username}: {self.created_at:%Y-%m-%d %H:%M}"
+
+
 
 
 

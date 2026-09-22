@@ -104,6 +104,7 @@ REMEMBER_ME_COOKIE_AGE = int(os.getenv("REMEMBER_ME_COOKIE_AGE", str(60 * 60 * 2
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_API_KEY = os.getenv("TELEGRAM_API_KEY", "change-me-api-key")
+TELEGRAM_BOT_USERNAME = os.getenv("TELEGRAM_BOT_USERNAME", "").strip().lstrip("@")
 HRM_BASE_URL = os.getenv("HRM_BASE_URL", "")
 HRM_CLIENT_ID = os.getenv("HRM_CLIENT_ID", "")
 HRM_ENDPOINT_PATH = os.getenv("HRM_ENDPOINT_PATH", "/api/v1/integration/mobile-face/check-worker")

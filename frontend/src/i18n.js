@@ -174,6 +174,11 @@ const uz = {
   "Вход…": "Kirilmoqda…",
   или: "yoki",
   "Нет аккаунта? Подать заявку": "Hisob yo‘qmi? Ariza yuboring",
+  "Восстановить пароль через Telegram": "Telegram orqali parolni tiklash",
+  "Подготовка ссылки…": "Havola tayyorlanmoqda…",
+  "Сначала введите логин.": "Avval loginni kiriting.",
+  "Откройте Telegram, чтобы получить новый пароль.": "Yangi parolni olish uchun Telegram’ni oching.",
+  "Не удалось открыть восстановление через Telegram.": "Telegram orqali tiklashni ochib bo‘lmadi.",
   "Неверный логин или пароль.": "Login yoki parol noto‘g‘ri.",
 };
 
@@ -243,6 +248,11 @@ const uzCyrl = {
   "Не удалось загрузить проверку. Обновите её.":
     "Текширувни юклаб бўлмади. Уни янгиланг.",
   "Нет аккаунта? Подать заявку": "Ҳисоб йўқми? Ариза юборинг",
+  "Восстановить пароль через Telegram": "Telegram орқали паролни тиклаш",
+  "Подготовка ссылки…": "Ҳавола тайёрланмоқда…",
+  "Сначала введите логин.": "Аввал логинни киритинг.",
+  "Откройте Telegram, чтобы получить новый пароль.": "Янги паролни олиш учун Telegram’ни очинг.",
+  "Не удалось открыть восстановление через Telegram.": "Telegram орқали тиклашни очиб бўлмади.",
   Подготовка: "Тайёрланмоқда",
   "Загрузка ресурсов": "Ресурслар юкланмоқда",
   "Почти готово": "Деярли тайёр",
@@ -426,6 +436,11 @@ const en = {
   "Вход…": "Signing in…",
   или: "or",
   "Нет аккаунта? Подать заявку": "No account? Submit a request",
+  "Восстановить пароль через Telegram": "Reset password via Telegram",
+  "Подготовка ссылки…": "Preparing link…",
+  "Сначала введите логин.": "Enter your username first.",
+  "Откройте Telegram, чтобы получить новый пароль.": "Open Telegram to receive a new password.",
+  "Не удалось открыть восстановление через Telegram.": "Could not open Telegram password recovery.",
   "Неверный логин или пароль.": "Invalid username or password.",
 };
 
