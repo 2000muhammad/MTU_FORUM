@@ -51,7 +51,7 @@ from PIL import Image, ImageOps
 
 from .forms import ApiConfigurationForm, BotSubscriptionChannelForm, BranchForm, DeveloperTaskForm, EmployeeProfileForm, ExternalApiConnectionForm, IntakeRequestForm, LoginForm, ManagerAccountForm, OrganizationForm, PlatformForm, PositionForm, SiteIntakeForm, SiteRoleForm, SiteSettingsForm, StationForm, StyledPasswordChangeForm, UserForm, UserInfoForm, UserProfileForm, WebPlatformForm
 from .excel_utils import build_xlsx, parse_xlsx, truthy
-from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, Platform, Position, SiteLog, SiteRole, SiteSettings, Station, TelegramPasswordReset, UserProfile, WebPlatform, WebPlatformFavorite
+from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, Platform, Position, SiteLog, SiteRole, SiteSettings, Station, TelegramAccountLink, TelegramPasswordReset, UserProfile, WebPlatform, WebPlatformFavorite
 from .site_logs import write_site_log
 from .middleware import get_platform_version
 from .telegram import get_telegram_profile_photo, send_telegram_media, send_telegram_message
@@ -1695,6 +1695,16 @@ def profile(request):
 
             messages.error(request, "Проверьте поля смены пароля.")
 
+        elif action == "telegram_unlink":
+
+            profile_obj.telegram_id = None
+            profile_obj.telegram_username = ""
+            profile_obj.telegram_phone = ""
+            profile_obj.telegram_verified_at = None
+            profile_obj.save(update_fields=["telegram_id", "telegram_username", "telegram_phone", "telegram_verified_at", "updated_at"])
+            messages.success(request, "Telegram-аккаунт отключён.")
+            return redirect("profile")
+
     return render(request, "profile.html", {
         "password_form": password_form,
         "avatar_form": avatar_form,
@@ -1702,6 +1712,28 @@ def profile(request):
         "employee_form": employee_form,
         "profile_obj": profile_obj,
     })
+
+
+@login_required
+def telegram_profile_link(request):
+    profile_obj, _ = UserProfile.objects.get_or_create(user=request.user)
+    if not profile_obj.phone:
+        messages.error(request, "Сначала укажите номер телефона в профиле.")
+        return redirect("profile")
+    bot_username = _telegram_bot_username()
+    if not bot_username:
+        messages.error(request, "Telegram-бот пока не настроен.")
+        return redirect("profile")
+    TelegramAccountLink.objects.filter(
+        user=request.user, used_at__isnull=True, expires_at__gt=timezone.now()
+    ).update(expires_at=timezone.now())
+    token = secrets.token_urlsafe(32)
+    TelegramAccountLink.objects.create(
+        user=request.user,
+        token_hash=_password_reset_token_hash(token),
+        expires_at=timezone.now() + timedelta(minutes=10),
+    )
+    return redirect(f"https://t.me/{bot_username}?start=bind_{token}")
   
   
 def _developer_task_counts(queryset):
@@ -3685,6 +3717,11 @@ def _password_reset_token_hash(token):
     return hashlib.sha256(str(token).encode("utf-8")).hexdigest()
 
 
+def _phone_digits(value):
+    digits = "".join(ch for ch in str(value or "") if ch.isdigit())
+    return digits[-9:] if len(digits) >= 9 else digits
+
+
 def _telegram_bot_username():
     configured = settings.TELEGRAM_BOT_USERNAME
     if configured:
@@ -3715,14 +3752,12 @@ def react_password_reset_request_api(request):
     if not bot_username:
         return JsonResponse({"detail": "Восстановление через Telegram пока не настроено."}, status=503)
     user = User.objects.filter(username__iexact=username, is_active=True).first()
-    linked_request = None
+    linked_telegram_id = None
     if user:
-        linked_request = (
-            IntakeRequest.objects.filter(Q(django_user=user) | Q(generated_login=user.username), telegram_id__gt=0)
-            .order_by("-updated_at")
-            .first()
-        )
-    if not user or not linked_request:
+        profile_obj = getattr(user, "profile", None)
+        if profile_obj and profile_obj.telegram_id and profile_obj.telegram_verified_at:
+            linked_telegram_id = profile_obj.telegram_id
+    if not user or not linked_telegram_id:
         return JsonResponse(
             {"detail": "Для этого логина не найден привязанный Telegram-аккаунт."},
             status=400,
@@ -3734,7 +3769,7 @@ def react_password_reset_request_api(request):
     TelegramPasswordReset.objects.create(
         user=user,
         token_hash=_password_reset_token_hash(token),
-        telegram_id=linked_request.telegram_id,
+        telegram_id=linked_telegram_id,
         expires_at=timezone.now() + timedelta(minutes=10),
     )
     return JsonResponse({
@@ -3783,6 +3818,59 @@ def telegram_password_reset_complete_api(request):
         meta={"user_id": reset.user_id, "telegram_id": telegram_id},
     )
     return JsonResponse({"ok": True, "username": reset.user.username, "password": password})
+
+
+@csrf_exempt
+@require_POST
+def telegram_profile_link_complete_api(request):
+    if not _api_key_valid(request):
+        return JsonResponse({"ok": False, "message": "Unauthorized"}, status=401)
+    try:
+        payload = json.loads(request.body or "{}")
+        telegram_id = int(payload.get("telegram_id"))
+    except (TypeError, ValueError):
+        return JsonResponse({"ok": False, "message": "Некорректный запрос."}, status=400)
+    token = str(payload.get("token") or "").strip()
+    phone = str(payload.get("phone") or "").strip()
+    link = (
+        TelegramAccountLink.objects.select_related("user", "user__profile")
+        .filter(
+            token_hash=_password_reset_token_hash(token),
+            used_at__isnull=True,
+            expires_at__gt=timezone.now(),
+            user__is_active=True,
+        )
+        .first()
+    )
+    if not link:
+        return JsonResponse({"ok": False, "message": "Ссылка недействительна или истекла."}, status=400)
+    profile_obj, _ = UserProfile.objects.get_or_create(user=link.user)
+    if not _phone_digits(profile_obj.phone) or _phone_digits(profile_obj.phone) != _phone_digits(phone):
+        return JsonResponse({
+            "ok": False,
+            "message": "Номер Telegram не совпадает с номером в профиле. Обновите номер профиля и повторите привязку.",
+        }, status=400)
+    conflict = UserProfile.objects.filter(telegram_id=telegram_id).exclude(pk=profile_obj.pk).exists()
+    if conflict:
+        return JsonResponse({"ok": False, "message": "Этот Telegram уже привязан к другому профилю."}, status=409)
+    with transaction.atomic():
+        profile_obj.telegram_id = telegram_id
+        profile_obj.telegram_username = str(payload.get("username") or "").strip().lstrip("@")[:64]
+        profile_obj.telegram_phone = phone[:32]
+        profile_obj.telegram_verified_at = timezone.now()
+        profile_obj.save(update_fields=[
+            "telegram_id", "telegram_username", "telegram_phone", "telegram_verified_at", "updated_at"
+        ])
+        link.used_at = timezone.now()
+        link.save(update_fields=["used_at"])
+    write_site_log(
+        None,
+        source="telegram",
+        action="telegram_profile_link",
+        message=f"Telegram linked: {link.user.username}",
+        meta={"user_id": link.user_id, "telegram_id": telegram_id},
+    )
+    return JsonResponse({"ok": True, "username": link.user.username})
 
 
 def _react_dashboard_payload(user):

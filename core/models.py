@@ -344,6 +344,17 @@ class TelegramPasswordReset(models.Model):
         return f"{self.user.username}: {self.created_at:%Y-%m-%d %H:%M}"
 
 
+class TelegramAccountLink(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="telegram_account_links")
+    token_hash = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField(db_index=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
 
 
 
@@ -554,6 +565,10 @@ class UserProfile(models.Model):
     pnfl = models.CharField(max_length=32, blank=True, db_index=True)
     middle_name = models.CharField(max_length=120, blank=True)
     phone = models.CharField(max_length=32, blank=True, db_index=True)
+    telegram_id = models.BigIntegerField(null=True, blank=True, unique=True)
+    telegram_username = models.CharField(max_length=64, blank=True)
+    telegram_phone = models.CharField(max_length=32, blank=True)
+    telegram_verified_at = models.DateTimeField(null=True, blank=True)
     birth_date = models.DateField(null=True, blank=True)
     employee_pinfl = models.CharField(max_length=32, blank=True, db_index=True)
     branch = models.CharField(max_length=180, blank=True)

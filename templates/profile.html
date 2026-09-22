@@ -97,6 +97,38 @@
       <button class="btn btn-primary" type="submit">{% tr 'save_profile' %}</button>
     </form>
 
+    <section class="glass-card profile-card telegram-profile-card">
+      <div class="telegram-profile-head">
+        <span class="telegram-profile-icon" aria-hidden="true">✈</span>
+        <div>
+          <h2>{% tr 'telegram_link_title' %}</h2>
+          <p class="hint">{% tr 'telegram_link_hint' %}</p>
+        </div>
+      </div>
+      {% if profile_obj.telegram_verified_at %}
+        <div class="telegram-link-state is-linked">
+          <strong>{% tr 'telegram_linked' %}</strong>
+          <span>
+            {% if profile_obj.telegram_username %}@{{ profile_obj.telegram_username }} · {% endif %}
+            {{ profile_obj.telegram_phone }}
+          </span>
+        </div>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="telegram_unlink">
+          <button class="btn btn-outline-danger" type="submit">{% tr 'telegram_unlink' %}</button>
+        </form>
+      {% else %}
+        <div class="telegram-link-state">
+          <strong>{% tr 'telegram_not_linked' %}</strong>
+          <span>{% tr 'telegram_phone_check_hint' %}</span>
+        </div>
+        <a class="btn btn-primary telegram-link-button" href="{% url 'telegram_profile_link' %}" target="_blank" rel="noopener">
+          {% tr 'telegram_link_button' %}
+        </a>
+      {% endif %}
+    </section>
+
     <form method="post" class="glass-card profile-card">
       {% csrf_token %}
       <input type="hidden" name="action" value="password">

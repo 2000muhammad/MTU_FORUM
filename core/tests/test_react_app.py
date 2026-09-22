@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from core.models import Branch, IntakeRequest, Organization, Position, SiteRole, Station, TelegramPasswordReset, UserProfile
 
@@ -107,11 +108,12 @@ class ReactAppTests(TestCase):
     @override_settings(TELEGRAM_BOT_USERNAME="mtu_forum_bot", TELEGRAM_API_KEY="test-api-key")
     def test_password_reset_is_completed_only_by_linked_telegram_account(self):
         user = User.objects.create_user("telegram-user", password="old-password")
-        IntakeRequest.objects.create(
-            pnfl="12345678901234",
+        UserProfile.objects.create(
+            user=user,
+            phone="+998-90-123-45-67",
             telegram_id=778899,
-            generated_login=user.username,
-            django_user=user,
+            telegram_phone="+998-90-123-45-67",
+            telegram_verified_at=timezone.now(),
         )
         response = self.client.post(
             reverse("react_password_reset_request_api"),

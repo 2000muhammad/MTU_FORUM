@@ -2077,6 +2077,13 @@ UI["ru"].update({
     "programmers_static_title": "Разработчики проекта MTU FORUM",
     "programmers_static_summary": "Официальные контакты команды разработки.",
     "official_link": "Официальная ссылка",
+    "telegram_link_title": "Telegram для восстановления",
+    "telegram_link_hint": "Привяжите личный Telegram-аккаунт и подтвердите номер телефона через бота.",
+    "telegram_linked": "Telegram подтверждён",
+    "telegram_not_linked": "Telegram не привязан",
+    "telegram_phone_check_hint": "Бот попросит отправить ваш контакт и сравнит номер с профилем.",
+    "telegram_link_button": "Привязать Telegram",
+    "telegram_unlink": "Отключить Telegram",
 })
 
 UI["uz"].update({
@@ -2087,6 +2094,13 @@ UI["uz"].update({
     "programmers_static_title": "MTU FORUM loyihasi dasturchilari",
     "programmers_static_summary": "Loyiha dasturchilari va rasmiy havolalari.",
     "official_link": "Rasmiy havola",
+    "telegram_link_title": "Tiklash uchun Telegram",
+    "telegram_link_hint": "Shaxsiy Telegram hisobingizni ulang va telefon raqamingizni bot orqali tasdiqlang.",
+    "telegram_linked": "Telegram tasdiqlangan",
+    "telegram_not_linked": "Telegram ulanmagan",
+    "telegram_phone_check_hint": "Bot kontaktingizni so‘raydi va raqamni profil bilan solishtiradi.",
+    "telegram_link_button": "Telegramni ulash",
+    "telegram_unlink": "Telegramni uzish",
 })
 
 UI["uz-cyrl"].update({
@@ -2097,6 +2111,13 @@ UI["uz-cyrl"].update({
     "programmers_static_title": "MTU FORUM лойиҳаси дастурчилари",
     "programmers_static_summary": "Лойиҳа дастурчилари ва расмий ҳаволалари.",
     "official_link": "Расмий ҳавола",
+    "telegram_link_title": "Тиклаш учун Telegram",
+    "telegram_link_hint": "Шахсий Telegram ҳисобингизни уланг ва телефон рақамингизни бот орқали тасдиқланг.",
+    "telegram_linked": "Telegram тасдиқланган",
+    "telegram_not_linked": "Telegram уланмаган",
+    "telegram_phone_check_hint": "Бот контактингизни сўрайди ва рақамни профил билан солиштиради.",
+    "telegram_link_button": "Telegramни улаш",
+    "telegram_unlink": "Telegramни узиш",
 })
 
 UI["en"].update({
@@ -2107,6 +2128,13 @@ UI["en"].update({
     "programmers_static_title": "MTU FORUM project developers",
     "programmers_static_summary": "Project developers and official links.",
     "official_link": "Official link",
+    "telegram_link_title": "Telegram recovery",
+    "telegram_link_hint": "Link your personal Telegram account and verify your phone number through the bot.",
+    "telegram_linked": "Telegram verified",
+    "telegram_not_linked": "Telegram not linked",
+    "telegram_phone_check_hint": "The bot will request your contact and compare the number with your profile.",
+    "telegram_link_button": "Link Telegram",
+    "telegram_unlink": "Disconnect Telegram",
 })
   
   
