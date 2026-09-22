@@ -180,6 +180,7 @@ const uz = {
   "Откройте Telegram, чтобы получить новый пароль.": "Yangi parolni olish uchun Telegram’ni oching.",
   "Не удалось открыть восстановление через Telegram.": "Telegram orqali tiklashni ochib bo‘lmadi.",
   "Неверный логин или пароль.": "Login yoki parol noto‘g‘ri.",
+  "Слишком много ошибок входа. Повторите через 15 минут.": "Kirishda xatolar juda ko‘p. 15 daqiqadan keyin qayta urinib ko‘ring.",
 };
 
 const uzCyrl = {
@@ -248,6 +249,7 @@ const uzCyrl = {
   "Не удалось загрузить проверку. Обновите её.":
     "Текширувни юклаб бўлмади. Уни янгиланг.",
   "Нет аккаунта? Подать заявку": "Ҳисоб йўқми? Ариза юборинг",
+  "Слишком много ошибок входа. Повторите через 15 минут.": "Киришда хатолар жуда кўп. 15 дақиқадан кейин қайта уриниб кўринг.",
   "Восстановить пароль через Telegram": "Telegram орқали паролни тиклаш",
   "Подготовка ссылки…": "Ҳавола тайёрланмоқда…",
   "Сначала введите логин.": "Аввал логинни киритинг.",
@@ -442,6 +444,7 @@ const en = {
   "Откройте Telegram, чтобы получить новый пароль.": "Open Telegram to receive a new password.",
   "Не удалось открыть восстановление через Telegram.": "Could not open Telegram password recovery.",
   "Неверный логин или пароль.": "Invalid username or password.",
+  "Слишком много ошибок входа. Повторите через 15 минут.": "Too many failed sign-in attempts. Try again in 15 minutes.",
 };
 
 Object.assign(uz, {

@@ -34,6 +34,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "core.middleware.SiteLogMiddleware",
+    "core.maintenance.AutoMaintenanceMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -113,3 +114,6 @@ HRM_PUBLIC_KEY = os.getenv("HRM_PUBLIC_KEY", "")
 HRM_SECRET_TYPE = os.getenv("HRM_SECRET_TYPE", "")
 HRM_SECRET_KEY = os.getenv("HRM_SECRET_KEY", HRM_SECRET)
 HRM_VERIFY_SSL = os.getenv("HRM_VERIFY_SSL", "0") == "1"
+AUTO_MAINTENANCE_ENABLED = os.getenv("AUTO_MAINTENANCE_ENABLED", "0") == "1"
+AUTO_MAINTENANCE_INTERVAL = int(os.getenv("AUTO_MAINTENANCE_INTERVAL", str(24 * 60 * 60)))
+BACKUP_RETENTION_DAYS = int(os.getenv("BACKUP_RETENTION_DAYS", "14"))

@@ -25,6 +25,7 @@ static/remix/
 # Runtime files
 runtime_logs/
 *.log
+backups/
 *.err
 *.pid
 
