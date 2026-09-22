@@ -152,9 +152,11 @@ class ReactAppTests(TestCase):
         self.assertEqual(reused.status_code, 400)
 
     def test_legacy_login_keeps_the_selected_version(self):
+        self.client.get("/ru/login/?legacy=1")
+        captcha_answer = self.client.session["react_login_captcha"]["answer"]
         response = self.client.post(
             "/ru/login/?legacy=1",
-            {"username": "react-admin", "password": "test-password"},
+            {"username": "react-admin", "password": "test-password", "captcha_answer": captcha_answer},
         )
 
         self.assertRedirects(response, reverse("dashboard"), fetch_redirect_response=False)

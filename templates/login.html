@@ -112,6 +112,18 @@
         </button>
       </span>
     </label>
+    <section class="login-human-check" aria-label="{% tr 'human_check' %}">
+      <div class="login-human-copy">
+        <strong>{% tr 'human_check' %}</strong>
+        <small>{% tr 'human_check_hint' %}</small>
+      </div>
+      <div class="login-human-row">
+        <output>{{ captcha_question }}</output>
+        <span>=</span>
+        <input class="form-control" type="text" name="captcha_answer" inputmode="numeric" autocomplete="off" placeholder="{% tr 'captcha_answer' %}" required>
+        <a href="{% url 'login' %}?legacy=1" aria-label="{% tr 'refresh' %}" title="{% tr 'refresh' %}">↻</a>
+      </div>
+    </section>
     <label class="login-remember-line">
       {{ form.remember_me }}
       <span>{% tr 'remember_me' %}</span>

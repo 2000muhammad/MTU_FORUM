@@ -18,15 +18,29 @@ class LoginSecurityTests(TestCase):
 
     def test_legacy_login_is_temporarily_locked_after_failures(self):
         for _ in range(5):
-            self.client.post("/ru/login/?legacy=1", {"username": self.user.username, "password": "wrong"})
+            self.client.get("/ru/login/?legacy=1")
+            answer = self.client.session["react_login_captcha"]["answer"]
+            self.client.post("/ru/login/?legacy=1", {"username": self.user.username, "password": "wrong", "captcha_answer": answer})
+        self.client.get("/ru/login/?legacy=1")
+        answer = self.client.session["react_login_captcha"]["answer"]
         response = self.client.post(
             "/ru/login/?legacy=1",
-            {"username": self.user.username, "password": "correct-password"},
+            {"username": self.user.username, "password": "correct-password", "captcha_answer": answer},
         )
         self.assertEqual(response.status_code, 302)
         self.assertIn("login", response.url)
         self.assertTrue(SecurityThrottle.objects.filter(kind="login", locked_until__gt=timezone.now()).exists())
         self.assertTrue(SiteLog.objects.filter(action="login_locked").exists())
+
+    def test_legacy_login_requires_one_time_captcha(self):
+        page = self.client.get("/ru/login/?legacy=1")
+        self.assertContains(page, "name=\"captcha_answer\"")
+        answer = self.client.session["react_login_captcha"]["answer"]
+        success = self.client.post(
+            "/ru/login/?legacy=1",
+            {"username": self.user.username, "password": "correct-password", "captcha_answer": answer},
+        )
+        self.assertEqual(success.status_code, 302)
 
     @override_settings(TELEGRAM_BOT_USERNAME="test_bot")
     def test_password_reset_rate_limit_allows_three_requests(self):
