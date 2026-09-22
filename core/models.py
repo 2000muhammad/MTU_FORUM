@@ -355,6 +355,18 @@ class TelegramAccountLink(models.Model):
         ordering = ["-created_at"]
 
 
+class SecurityThrottle(models.Model):
+    key = models.CharField(max_length=64, unique=True)
+    kind = models.CharField(max_length=32, db_index=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    window_started_at = models.DateTimeField(default=timezone.now)
+    locked_until = models.DateTimeField(null=True, blank=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+
 
 
 

@@ -415,8 +415,11 @@ function Login({ data }) {
       window.location.assign(result.redirect || "/app/");
     } catch (err) {
       const captchaFailed = err.data?.error_code === "captcha_invalid";
+      const loginLocked = err.data?.error_code === "login_locked";
       setError(
-        captchaFailed
+        loginLocked
+          ? tr("Слишком много ошибок входа. Повторите через 15 минут.")
+          : captchaFailed
           ? tr("Неверный ответ. Решите новый пример.")
           : err.data?.errors?.__all__?.[0]?.message ||
               tr("Неверный логин или пароль."),

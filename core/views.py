@@ -51,8 +51,9 @@ from PIL import Image, ImageOps
 
 from .forms import ApiConfigurationForm, BotSubscriptionChannelForm, BranchForm, DeveloperTaskForm, EmployeeProfileForm, ExternalApiConnectionForm, IntakeRequestForm, LoginForm, ManagerAccountForm, OrganizationForm, PlatformForm, PositionForm, SiteIntakeForm, SiteRoleForm, SiteSettingsForm, StationForm, StyledPasswordChangeForm, UserForm, UserInfoForm, UserProfileForm, WebPlatformForm
 from .excel_utils import build_xlsx, parse_xlsx, truthy
-from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, Platform, Position, SiteLog, SiteRole, SiteSettings, Station, TelegramAccountLink, TelegramPasswordReset, UserProfile, WebPlatform, WebPlatformFavorite
+from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, Platform, Position, SecurityThrottle, SiteLog, SiteRole, SiteSettings, Station, TelegramAccountLink, TelegramPasswordReset, UserProfile, WebPlatform, WebPlatformFavorite
 from .site_logs import write_site_log
+from .security import clear_failures, consume_rate_limit, is_locked, record_failure
 from .middleware import get_platform_version
 from .telegram import get_telegram_profile_photo, send_telegram_media, send_telegram_message
 from .utils import (
@@ -211,6 +212,15 @@ class LoginView(DjangoLoginView):
 
     redirect_authenticated_user = True
 
+    def post(self, request, *args, **kwargs):
+        username = request.POST.get("username", "")
+        locked, remaining = is_locked("login", request, username)
+        if locked:
+            messages.error(request, f"Слишком много ошибок входа. Повторите через {max(1, remaining // 60 + 1)} мин.")
+            write_site_log(request, level=SiteLog.Level.SECURITY, source="auth", action="login_locked", message=f"Locked login: {username}")
+            return redirect("login")
+        return super().post(request, *args, **kwargs)
+
     def get(self, request, *args, **kwargs):
         if request.GET.get("legacy") == "1" or get_platform_version(request) == "legacy":
             return super().get(request, *args, **kwargs)
@@ -228,12 +238,19 @@ class LoginView(DjangoLoginView):
         return super().get_success_url()
 
     def form_valid(self, form):
+        clear_failures("login", self.request, form.cleaned_data.get("username", ""))
         response = super().form_valid(form)
         if form.cleaned_data.get("remember_me"):
             self.request.session.set_expiry(getattr(settings, "REMEMBER_ME_COOKIE_AGE", 60 * 60 * 24 * 30))
         else:
             self.request.session.set_expiry(getattr(settings, "SESSION_COOKIE_AGE", 3600))
         return response
+
+    def form_invalid(self, form):
+        username = self.request.POST.get("username", "")
+        record_failure("login", self.request, username)
+        write_site_log(self.request, level=SiteLog.Level.SECURITY, source="auth", action="login_failed", message=f"Failed login: {username}")
+        return super().form_invalid(form)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -3669,6 +3686,11 @@ def react_login_api(request):
         payload = json.loads(request.body or "{}")
     except (TypeError, ValueError):
         return JsonResponse({"detail": "Invalid JSON."}, status=400)
+    username = str(payload.get("username") or "").strip()
+    locked, remaining = is_locked("login", request, username)
+    if locked:
+        write_site_log(request, level=SiteLog.Level.SECURITY, source="auth", action="login_locked", message=f"Locked React login: {username}")
+        return JsonResponse({"ok": False, "error_code": "login_locked", "retry_after": remaining}, status=429)
     challenge = request.session.pop(_REACT_LOGIN_CAPTCHA_KEY, None)
     request.session.modified = True
     captcha_answer = str(payload.pop("captcha_answer", "")).strip()
@@ -3696,6 +3718,8 @@ def react_login_api(request):
         )
     form = LoginForm(request, data=payload)
     if not form.is_valid():
+        record_failure("login", request, username)
+        write_site_log(request, level=SiteLog.Level.SECURITY, source="auth", action="login_failed", message=f"Failed React login: {username}")
         return JsonResponse(
             {
                 "ok": False,
@@ -3705,6 +3729,7 @@ def react_login_api(request):
             status=400,
         )
     auth_login(request, form.get_user())
+    clear_failures("login", request, username)
     if form.cleaned_data.get("remember_me"):
         request.session.set_expiry(getattr(settings, "REMEMBER_ME_COOKIE_AGE", 60 * 60 * 24 * 30))
     else:
@@ -3748,6 +3773,10 @@ def react_password_reset_request_api(request):
     username = str(payload.get("username") or "").strip()
     if not username:
         return JsonResponse({"detail": "Введите логин."}, status=400)
+    allowed, retry_after = consume_rate_limit("password_reset", request, username, limit=3, window_minutes=15)
+    if not allowed:
+        write_site_log(request, level=SiteLog.Level.SECURITY, source="auth", action="password_reset_limited", message=f"Password reset limited: {username}")
+        return JsonResponse({"detail": "Слишком много запросов. Повторите через 15 минут.", "retry_after": retry_after}, status=429)
     bot_username = _telegram_bot_username()
     if not bot_username:
         return JsonResponse({"detail": "Восстановление через Telegram пока не настроено."}, status=503)
