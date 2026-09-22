@@ -4,6 +4,8 @@ from app.api import complete_password_reset
 
 
 async def start(update, context):
+    if update.effective_user is None or context.user_data is None or update.message is None:
+        return
     context.user_data.clear()
     argument = context.args[0] if context.args else ""
     if argument.startswith("reset_"):
