@@ -6,6 +6,7 @@ from app.handlers.menu import menu_router
 from app.handlers.request_flow import request_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 def main():
@@ -15,14 +16,16 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(menu_router, pattern="^(lang:|check_subscription|settings)"))
     app.add_handler(MessageHandler(
-        (filters.TEXT & ~filters.COMMAND)
-        | filters.CONTACT
-        | filters.PHOTO
-        | filters.VIDEO
-        | filters.Document.ALL
-        | filters.VOICE
-        | filters.VIDEO_NOTE
-        | filters.LOCATION,
+        filters.ChatType.PRIVATE & (
+            (filters.TEXT & ~filters.COMMAND)
+            | filters.CONTACT
+            | filters.PHOTO
+            | filters.VIDEO
+            | filters.Document.ALL
+            | filters.VOICE
+            | filters.VIDEO_NOTE
+            | filters.LOCATION
+        ),
         request_router,
     ))
     app.run_polling(allowed_updates=["message", "callback_query"])

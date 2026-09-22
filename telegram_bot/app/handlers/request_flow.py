@@ -293,6 +293,8 @@ async def _handle_menu_action(update, context, action, lang):
 
 
 async def request_router(update, context):
+    if update.effective_user is None or context.user_data is None or update.message is None:
+        return
     lang = context.user_data.get("lang", "ru")
     state = context.user_data.get("state", states.MENU)
     text = (update.message.text or update.message.caption or "").strip()
