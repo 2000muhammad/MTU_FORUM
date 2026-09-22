@@ -1,4 +1,4 @@
-from app.keyboards import language_keyboard
+from app.keyboards import contact_keyboard, language_keyboard
 from app.texts import t
 from app.api import complete_password_reset
 
@@ -21,5 +21,13 @@ async def start(update, context):
             await update.message.reply_text(
                 result.get("message") or "Ссылка недействительна или истекла. Запросите новую ссылку на странице входа."
             )
+        return
+    if argument.startswith("bind_"):
+        context.user_data["telegram_bind_token"] = argument.removeprefix("bind_")
+        context.user_data["state"] = "telegram_bind_contact"
+        await update.message.reply_text(
+            "Для привязки профиля отправьте свой номер кнопкой ниже. Номер должен совпадать с номером в профиле MTU FORUM.",
+            reply_markup=contact_keyboard("ru"),
+        )
         return
     await update.message.reply_text(t("ru", "choose_language"), reply_markup=language_keyboard())

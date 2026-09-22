@@ -5,6 +5,7 @@ import re
 from app import states
 from app.api import (
     close_chat_thread,
+    complete_telegram_link,
     create_chat_thread,
     get_chat_threads,
     get_intake_summary,
@@ -297,6 +298,34 @@ async def request_router(update, context):
         return
     lang = context.user_data.get("lang", "ru")
     state = context.user_data.get("state", states.MENU)
+    if state == "telegram_bind_contact":
+        contact = update.message.contact
+        if not contact or contact.user_id != update.effective_user.id:
+            await update.message.reply_text(
+                "Используйте кнопку «Отправить контакт» и отправьте именно свой номер.",
+                reply_markup=contact_keyboard(lang),
+            )
+            return
+        result = complete_telegram_link(
+            context.user_data.get("telegram_bind_token", ""),
+            update.effective_user.id,
+            update.effective_user.username or "",
+            contact.phone_number,
+        )
+        if result.get("ok"):
+            context.user_data.clear()
+            context.user_data["lang"] = lang
+            context.user_data["state"] = states.MENU
+            await update.message.reply_text(
+                "Telegram успешно привязан к профилю MTU FORUM. Теперь его можно использовать для восстановления пароля.",
+                reply_markup=main_menu(lang),
+            )
+        else:
+            await update.message.reply_text(
+                result.get("message") or "Не удалось привязать Telegram.",
+                reply_markup=contact_keyboard(lang),
+            )
+        return
     text = (update.message.text or update.message.caption or "").strip()
     action = _menu_action(text)
 

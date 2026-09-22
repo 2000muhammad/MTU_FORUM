@@ -122,3 +122,26 @@ def complete_password_reset(token, telegram_id):
     if response.status_code >= 400:
         data.setdefault("ok", False)
     return data
+
+
+def complete_telegram_link(token, telegram_id, username, phone):
+    try:
+        response = requests.post(
+            f"{SITE_BASE_URL}/api/telegram-link/complete/",
+            json={
+                "token": token,
+                "telegram_id": telegram_id,
+                "username": username,
+                "phone": phone,
+            },
+            headers=HEADERS,
+            timeout=15,
+        )
+        data = response.json()
+    except requests.RequestException as exc:
+        return {"ok": False, "message": str(exc)}
+    except ValueError:
+        return {"ok": False, "message": "Invalid response from site API."}
+    if response.status_code >= 400:
+        data.setdefault("ok", False)
+    return data

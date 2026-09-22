@@ -46,6 +46,7 @@ urlpatterns += i18n_patterns(
     path("logout/", views.logout_view, name="logout"),
 
     path("profile/", views.profile, name="profile"),
+    path("profile/telegram/link/", views.telegram_profile_link, name="telegram_profile_link"),
     path("messages/", views.internal_messages_view, name="internal_messages"),
     path("messages/<int:chat_id>/", views.internal_messages_view, name="internal_messages_detail"),
     path("web-platforms/<int:pk>/open/", views.open_web_platform, name="open_web_platform"),
