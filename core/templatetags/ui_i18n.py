@@ -2084,6 +2084,9 @@ UI["ru"].update({
     "telegram_phone_check_hint": "Бот попросит отправить ваш контакт и сравнит номер с профилем.",
     "telegram_link_button": "Привязать Telegram",
     "telegram_unlink": "Отключить Telegram",
+    "human_check": "Проверка человека",
+    "human_check_hint": "Решите математический пример",
+    "captcha_answer": "Ответ",
 })
 
 UI["uz"].update({
@@ -2101,6 +2104,9 @@ UI["uz"].update({
     "telegram_phone_check_hint": "Bot kontaktingizni so‘raydi va raqamni profil bilan solishtiradi.",
     "telegram_link_button": "Telegramni ulash",
     "telegram_unlink": "Telegramni uzish",
+    "human_check": "Inson ekanligini tekshirish",
+    "human_check_hint": "Matematik misolni yeching",
+    "captcha_answer": "Javob",
 })
 
 UI["uz-cyrl"].update({
@@ -2118,6 +2124,9 @@ UI["uz-cyrl"].update({
     "telegram_phone_check_hint": "Бот контактингизни сўрайди ва рақамни профил билан солиштиради.",
     "telegram_link_button": "Telegramни улаш",
     "telegram_unlink": "Telegramни узиш",
+    "human_check": "Инсон эканлигини текшириш",
+    "human_check_hint": "Математик мисолни ечинг",
+    "captcha_answer": "Жавоб",
 })
 
 UI["en"].update({
@@ -2135,6 +2144,9 @@ UI["en"].update({
     "telegram_phone_check_hint": "The bot will request your contact and compare the number with your profile.",
     "telegram_link_button": "Link Telegram",
     "telegram_unlink": "Disconnect Telegram",
+    "human_check": "Human verification",
+    "human_check_hint": "Solve the math problem",
+    "captcha_answer": "Answer",
 })
   
   

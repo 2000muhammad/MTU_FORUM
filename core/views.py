@@ -201,6 +201,41 @@ def _intake_platforms_for_user(user):
     return queryset.filter(allowed_users__user=user)
 
 
+_REACT_LOGIN_CAPTCHA_KEY = "react_login_captcha"
+_REACT_LOGIN_CAPTCHA_MAX_AGE = 10 * 60
+
+
+def _issue_login_captcha(request):
+    operator = secrets.choice(("+", "−", "×"))
+    if operator == "+":
+        left, right = secrets.randbelow(12) + 2, secrets.randbelow(10) + 1
+        answer = left + right
+    elif operator == "−":
+        right = secrets.randbelow(9) + 1
+        left = right + secrets.randbelow(10) + 1
+        answer = left - right
+    else:
+        left, right = secrets.randbelow(7) + 2, secrets.randbelow(7) + 2
+        answer = left * right
+    request.session[_REACT_LOGIN_CAPTCHA_KEY] = {"answer": answer, "issued_at": timezone.now().timestamp()}
+    return f"{left} {operator} {right}"
+
+
+def _consume_login_captcha(request, answer):
+    challenge = request.session.pop(_REACT_LOGIN_CAPTCHA_KEY, None)
+    request.session.modified = True
+    answer = str(answer or "").strip()
+    if not challenge or not answer:
+        return False
+    try:
+        age = timezone.now().timestamp() - float(challenge.get("issued_at", 0))
+        return 0 <= age <= _REACT_LOGIN_CAPTCHA_MAX_AGE and secrets.compare_digest(
+            answer, str(int(challenge.get("answer")))
+        )
+    except (TypeError, ValueError):
+        return False
+
+
 
 
 
@@ -213,6 +248,9 @@ class LoginView(DjangoLoginView):
     redirect_authenticated_user = True
 
     def post(self, request, *args, **kwargs):
+        if not _consume_login_captcha(request, request.POST.get("captcha_answer")):
+            messages.error(request, "Неверный ответ. Решите новый пример.")
+            return redirect(f"{reverse('login')}?legacy=1")
         username = request.POST.get("username", "")
         locked, remaining = is_locked("login", request, username)
         if locked:
@@ -255,6 +293,7 @@ class LoginView(DjangoLoginView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update(_public_web_platform_context())
+        context["captcha_question"] = _issue_login_captcha(self.request)
         return context
 
 
@@ -3650,32 +3689,11 @@ def react_public_api(request):
     })
 
 
-_REACT_LOGIN_CAPTCHA_KEY = "react_login_captcha"
-_REACT_LOGIN_CAPTCHA_MAX_AGE = 10 * 60
-
-
 @require_GET
 @ensure_csrf_cookie
 def react_captcha_api(request):
     """Create a short-lived, one-use arithmetic challenge for React login."""
-    operator = secrets.choice(("+", "−", "×"))
-    if operator == "+":
-        left = secrets.randbelow(12) + 2
-        right = secrets.randbelow(10) + 1
-        answer = left + right
-    elif operator == "−":
-        right = secrets.randbelow(9) + 1
-        left = right + secrets.randbelow(10) + 1
-        answer = left - right
-    else:
-        left = secrets.randbelow(7) + 2
-        right = secrets.randbelow(7) + 2
-        answer = left * right
-    request.session[_REACT_LOGIN_CAPTCHA_KEY] = {
-        "answer": answer,
-        "issued_at": timezone.now().timestamp(),
-    }
-    return JsonResponse({"question": f"{left} {operator} {right}"})
+    return JsonResponse({"question": _issue_login_captcha(request)})
 
 
 @require_POST
@@ -3691,22 +3709,8 @@ def react_login_api(request):
     if locked:
         write_site_log(request, level=SiteLog.Level.SECURITY, source="auth", action="login_locked", message=f"Locked React login: {username}")
         return JsonResponse({"ok": False, "error_code": "login_locked", "retry_after": remaining}, status=429)
-    challenge = request.session.pop(_REACT_LOGIN_CAPTCHA_KEY, None)
-    request.session.modified = True
     captcha_answer = str(payload.pop("captcha_answer", "")).strip()
-    captcha_valid = False
-    if challenge and captcha_answer:
-        try:
-            age = timezone.now().timestamp() - float(challenge.get("issued_at", 0))
-            captcha_valid = (
-                0 <= age <= _REACT_LOGIN_CAPTCHA_MAX_AGE
-                and secrets.compare_digest(
-                    captcha_answer,
-                    str(int(challenge.get("answer"))),
-                )
-            )
-        except (TypeError, ValueError):
-            captcha_valid = False
+    captcha_valid = _consume_login_captcha(request, captcha_answer)
     if not captcha_valid:
         return JsonResponse(
             {
