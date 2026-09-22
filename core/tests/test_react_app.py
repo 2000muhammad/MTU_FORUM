@@ -3,10 +3,10 @@ from pathlib import Path
 
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from core.models import Branch, Organization, Position, SiteRole, Station, UserProfile
+from core.models import Branch, IntakeRequest, Organization, Position, SiteRole, Station, TelegramPasswordReset, UserProfile
 
 
 class ReactAppTests(TestCase):
@@ -103,6 +103,51 @@ class ReactAppTests(TestCase):
         self.assertEqual(wrong.status_code, 400)
         self.assertTrue(wrong.json()["captcha_refresh"])
         self.assertNotIn("react_login_captcha", self.client.session)
+
+    @override_settings(TELEGRAM_BOT_USERNAME="mtu_forum_bot", TELEGRAM_API_KEY="test-api-key")
+    def test_password_reset_is_completed_only_by_linked_telegram_account(self):
+        user = User.objects.create_user("telegram-user", password="old-password")
+        IntakeRequest.objects.create(
+            pnfl="12345678901234",
+            telegram_id=778899,
+            generated_login=user.username,
+            django_user=user,
+        )
+        response = self.client.post(
+            reverse("react_password_reset_request_api"),
+            data=json.dumps({"username": user.username}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("https://t.me/mtu_forum_bot?start=reset_", response.json()["deep_link"])
+        token = response.json()["deep_link"].split("reset_", 1)[1]
+
+        wrong_account = self.client.post(
+            reverse("telegram_password_reset_complete_api"),
+            data=json.dumps({"token": token, "telegram_id": 1}),
+            content_type="application/json",
+            HTTP_X_API_KEY="test-api-key",
+        )
+        self.assertEqual(wrong_account.status_code, 400)
+
+        completed = self.client.post(
+            reverse("telegram_password_reset_complete_api"),
+            data=json.dumps({"token": token, "telegram_id": 778899}),
+            content_type="application/json",
+            HTTP_X_API_KEY="test-api-key",
+        )
+        self.assertEqual(completed.status_code, 200)
+        user.refresh_from_db()
+        self.assertTrue(user.check_password(completed.json()["password"]))
+        self.assertEqual(TelegramPasswordReset.objects.filter(used_at__isnull=False).count(), 1)
+
+        reused = self.client.post(
+            reverse("telegram_password_reset_complete_api"),
+            data=json.dumps({"token": token, "telegram_id": 778899}),
+            content_type="application/json",
+            HTTP_X_API_KEY="test-api-key",
+        )
+        self.assertEqual(reused.status_code, 400)
 
     def test_legacy_login_keeps_the_selected_version(self):
         response = self.client.post(

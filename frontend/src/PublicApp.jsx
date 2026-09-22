@@ -386,7 +386,9 @@ function Login({ data }) {
   const [captcha, setCaptcha] = useState({ question: "", loading: true });
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const navigate = useNavigate();
   const loadCaptcha = useCallback(async () => {
     setCaptcha((current) => ({ ...current, loading: true }));
@@ -427,6 +429,27 @@ function Login({ data }) {
       setBusy(false);
     }
   };
+  const resetPassword = async () => {
+    if (!values.username.trim()) {
+      setError(tr("Сначала введите логин."));
+      return;
+    }
+    setResetBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await api("/api/react/password-reset/", {
+        method: "POST",
+        body: JSON.stringify({ username: values.username.trim() }),
+      });
+      setNotice(tr("Откройте Telegram, чтобы получить новый пароль."));
+      window.location.assign(result.deep_link);
+    } catch (err) {
+      setError(err.data?.detail || tr("Не удалось открыть восстановление через Telegram."));
+    } finally {
+      setResetBusy(false);
+    }
+  };
   return (
     <PublicFrame data={data} page="login">
       <main className="login-react-main">
@@ -457,6 +480,7 @@ function Login({ data }) {
             </div>
           </div>
           {error && <div className="public-error">{error}</div>}
+          {notice && <div className="public-notice">{notice}</div>}
           <label>
             <span>{tr("Логин")}</span>
             <div className="input-with-icon">
@@ -552,6 +576,15 @@ function Login({ data }) {
           <button className="public-submit" disabled={busy}>
             {tr(busy ? "Вход…" : "Войти")}
             <ArrowRight />
+          </button>
+          <button
+            className="telegram-reset-action"
+            type="button"
+            onClick={resetPassword}
+            disabled={resetBusy}
+          >
+            <Send />
+            {tr(resetBusy ? "Подготовка ссылки…" : "Восстановить пароль через Telegram")}
           </button>
           <div className="sso-divider">
             <span>{tr("или")}</span>

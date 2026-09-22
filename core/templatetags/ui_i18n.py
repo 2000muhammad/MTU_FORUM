@@ -2071,6 +2071,9 @@ UI["en"].update({
 
 UI["ru"].update({
     "remember_me": "Запомнить меня",
+    "telegram_password_reset": "Восстановить пароль через Telegram",
+    "telegram_password_reset_login": "Сначала введите логин.",
+    "telegram_password_reset_open": "Откройте Telegram, чтобы получить новый пароль.",
     "programmers_static_title": "Разработчики проекта MTU FORUM",
     "programmers_static_summary": "Официальные контакты команды разработки.",
     "official_link": "Официальная ссылка",
@@ -2078,6 +2081,9 @@ UI["ru"].update({
 
 UI["uz"].update({
     "remember_me": "Meni eslab qolish",
+    "telegram_password_reset": "Telegram orqali parolni tiklash",
+    "telegram_password_reset_login": "Avval loginni kiriting.",
+    "telegram_password_reset_open": "Yangi parolni olish uchun Telegram’ni oching.",
     "programmers_static_title": "MTU FORUM loyihasi dasturchilari",
     "programmers_static_summary": "Loyiha dasturchilari va rasmiy havolalari.",
     "official_link": "Rasmiy havola",
@@ -2085,6 +2091,9 @@ UI["uz"].update({
 
 UI["uz-cyrl"].update({
     "remember_me": "Мени эслаб қолиш",
+    "telegram_password_reset": "Telegram орқали паролни тиклаш",
+    "telegram_password_reset_login": "Аввал логинни киритинг.",
+    "telegram_password_reset_open": "Янги паролни олиш учун Telegram’ни очинг.",
     "programmers_static_title": "MTU FORUM лойиҳаси дастурчилари",
     "programmers_static_summary": "Лойиҳа дастурчилари ва расмий ҳаволалари.",
     "official_link": "Расмий ҳавола",
@@ -2092,6 +2101,9 @@ UI["uz-cyrl"].update({
 
 UI["en"].update({
     "remember_me": "Remember me",
+    "telegram_password_reset": "Reset password via Telegram",
+    "telegram_password_reset_login": "Enter your username first.",
+    "telegram_password_reset_open": "Open Telegram to receive a new password.",
     "programmers_static_title": "MTU FORUM project developers",
     "programmers_static_summary": "Project developers and official links.",
     "official_link": "Official link",

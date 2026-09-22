@@ -1,11 +1,13 @@
 import base64
 import binascii
+import hashlib
 import json
 import os
 import secrets
 import tempfile
 
 from collections import defaultdict
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 from io import BytesIO, StringIO
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
@@ -49,7 +51,7 @@ from PIL import Image, ImageOps
 
 from .forms import ApiConfigurationForm, BotSubscriptionChannelForm, BranchForm, DeveloperTaskForm, EmployeeProfileForm, ExternalApiConnectionForm, IntakeRequestForm, LoginForm, ManagerAccountForm, OrganizationForm, PlatformForm, PositionForm, SiteIntakeForm, SiteRoleForm, SiteSettingsForm, StationForm, StyledPasswordChangeForm, UserForm, UserInfoForm, UserProfileForm, WebPlatformForm
 from .excel_utils import build_xlsx, parse_xlsx, truthy
-from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, Platform, Position, SiteLog, SiteRole, SiteSettings, Station, UserProfile, WebPlatform, WebPlatformFavorite
+from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, Platform, Position, SiteLog, SiteRole, SiteSettings, Station, TelegramPasswordReset, UserProfile, WebPlatform, WebPlatformFavorite
 from .site_logs import write_site_log
 from .middleware import get_platform_version
 from .telegram import get_telegram_profile_photo, send_telegram_media, send_telegram_message
@@ -3677,6 +3679,110 @@ def react_login_api(request):
         request.session.set_expiry(getattr(settings, "SESSION_COOKIE_AGE", 3600))
     write_site_log(request, source="site", action="login", message=f"React login: {form.get_user().username}")
     return JsonResponse({"ok": True, "redirect": reverse("react_app_global")})
+
+
+def _password_reset_token_hash(token):
+    return hashlib.sha256(str(token).encode("utf-8")).hexdigest()
+
+
+def _telegram_bot_username():
+    configured = settings.TELEGRAM_BOT_USERNAME
+    if configured:
+        return configured
+    token = ApiConfiguration.load().telegram_bot_token or settings.TELEGRAM_BOT_TOKEN
+    if not token:
+        return ""
+    try:
+        response = requests.get(f"https://api.telegram.org/bot{token}/getMe", timeout=5)
+        if response.ok:
+            return str((response.json().get("result") or {}).get("username") or "").strip()
+    except (requests.RequestException, ValueError):
+        pass
+    return ""
+
+
+@require_POST
+def react_password_reset_request_api(request):
+    """Create a short-lived Telegram deep link for an account already linked to Telegram."""
+    try:
+        payload = json.loads(request.body or "{}")
+    except (TypeError, ValueError):
+        return JsonResponse({"detail": "Invalid JSON."}, status=400)
+    username = str(payload.get("username") or "").strip()
+    if not username:
+        return JsonResponse({"detail": "Введите логин."}, status=400)
+    bot_username = _telegram_bot_username()
+    if not bot_username:
+        return JsonResponse({"detail": "Восстановление через Telegram пока не настроено."}, status=503)
+    user = User.objects.filter(username__iexact=username, is_active=True).first()
+    linked_request = None
+    if user:
+        linked_request = (
+            IntakeRequest.objects.filter(Q(django_user=user) | Q(generated_login=user.username), telegram_id__gt=0)
+            .order_by("-updated_at")
+            .first()
+        )
+    if not user or not linked_request:
+        return JsonResponse(
+            {"detail": "Для этого логина не найден привязанный Telegram-аккаунт."},
+            status=400,
+        )
+    TelegramPasswordReset.objects.filter(
+        user=user, used_at__isnull=True, expires_at__gt=timezone.now()
+    ).update(expires_at=timezone.now())
+    token = secrets.token_urlsafe(32)
+    TelegramPasswordReset.objects.create(
+        user=user,
+        token_hash=_password_reset_token_hash(token),
+        telegram_id=linked_request.telegram_id,
+        expires_at=timezone.now() + timedelta(minutes=10),
+    )
+    return JsonResponse({
+        "ok": True,
+        "deep_link": f"https://t.me/{bot_username}?start=reset_{token}",
+        "detail": "Откройте Telegram, чтобы получить новый пароль.",
+    })
+
+
+@csrf_exempt
+@require_POST
+def telegram_password_reset_complete_api(request):
+    """Redeem a password-reset token from the trusted Telegram bot backend."""
+    if not _api_key_valid(request):
+        return JsonResponse({"ok": False, "message": "Unauthorized"}, status=401)
+    try:
+        payload = json.loads(request.body or "{}")
+        telegram_id = int(payload.get("telegram_id"))
+    except (TypeError, ValueError):
+        return JsonResponse({"ok": False, "message": "Invalid request"}, status=400)
+    token = str(payload.get("token") or "").strip()
+    reset = (
+        TelegramPasswordReset.objects.select_related("user")
+        .filter(
+            token_hash=_password_reset_token_hash(token),
+            telegram_id=telegram_id,
+            used_at__isnull=True,
+            expires_at__gt=timezone.now(),
+            user__is_active=True,
+        )
+        .first()
+    )
+    if not reset:
+        return JsonResponse({"ok": False, "message": "Ссылка недействительна или истекла."}, status=400)
+    password = generate_password()
+    with transaction.atomic():
+        reset.user.set_password(password)
+        reset.user.save(update_fields=["password"])
+        reset.used_at = timezone.now()
+        reset.save(update_fields=["used_at"])
+    write_site_log(
+        None,
+        source="telegram",
+        action="password_reset",
+        message=f"Telegram password reset: {reset.user.username}",
+        meta={"user_id": reset.user_id, "telegram_id": telegram_id},
+    )
+    return JsonResponse({"ok": True, "username": reset.user.username, "password": password})
 
 
 def _react_dashboard_payload(user):
