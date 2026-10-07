@@ -3360,11 +3360,10 @@ def telegram_intake_api(request):
     if not payload.get("pnfl") or not payload.get("telegram_id"):
         return JsonResponse({"ok": False, "error": "pnfl and telegram_id are required"}, status=400)
 
-    # Telegram intake works without HRM. Admins can review and complete data later.
-    hrm = {"found": False, "message": "HRM API disabled for Telegram intake.", "raw": {"disabled": True}}
-    hrm_found = False
+    # Telegram requests are accepted for manual review without an HRM/PINFL lookup.
     selected_position = payload.get("selected_position") or payload.get("position", "")
     selected_company = payload.get("company", "") or payload.get("station", "")
+    selected_station = payload.get("station", "") or selected_company
     selected_department = payload.get("department", "")
     reply_via_bot = bool(payload.get("reply_via_bot"))
 
@@ -3392,14 +3391,14 @@ def telegram_intake_api(request):
 
         company=selected_company,
 
-        hrm_payload={"found": hrm_found, "message": hrm.get("message", ""), "raw": hrm.get("raw", {})},
+        station=selected_station,
 
     )
 
     message = "Ваша заявка принята. Администратор обработает ее в ближайшее время."
     telegram_notified = False
     if reply_via_bot:
-        return JsonResponse({"ok": True, "id": item.id, "hrm_found": False, "hrm_disabled": True, "message": message, "telegram_notified": False})
+        return JsonResponse({"ok": True, "id": item.id, "message": message, "telegram_notified": False})
 
     try:
         send_telegram_message(item.telegram_id, message)
@@ -3416,7 +3415,7 @@ def telegram_intake_api(request):
             meta={"request_id": item.id, "telegram_id": item.telegram_id},
         )
 
-    return JsonResponse({"ok": True, "id": item.id, "hrm_found": hrm_found, "hrm_disabled": True, "message": message, "telegram_notified": telegram_notified})
+    return JsonResponse({"ok": True, "id": item.id, "message": message, "telegram_notified": telegram_notified})
 
 
 

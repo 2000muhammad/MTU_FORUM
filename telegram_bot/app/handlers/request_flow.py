@@ -440,6 +440,7 @@ async def request_router(update, context):
             "telegram_id": update.effective_user.id,
             "passport": context.user_data.get("passport"),
             "company": context.user_data.get("company"),
+            "station": context.user_data.get("company"),
             "department": context.user_data.get("company"),
             "selected_position": context.user_data.get("selected_position"),
             "full_name": context.user_data.get("full_name", ""),
@@ -452,7 +453,9 @@ async def request_router(update, context):
         context.user_data.clear()
         context.user_data["lang"] = lang
         context.user_data["state"] = states.MENU
-        message = result.get("message") or (t(lang, "sent") if result.get("ok") else t(lang, "submit_error"))
+        # Do not expose API/HRM validation details to the user. Telegram intake
+        # accepts the request for manual review; failures get a generic retry message.
+        message = t(lang, "sent") if result.get("ok") else t(lang, "submit_error")
         await update.message.reply_text(message, reply_markup=main_menu(lang))
     else:
         context.user_data["state"] = states.MENU
