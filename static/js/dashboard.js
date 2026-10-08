@@ -59,9 +59,7 @@ function requestCard(row) {
       </div>
 
       <div class="request-card-actions">
-        <a class="request-action primary" href="${esc(row.edit_url)}">${esc(T.editor || "Редактор")}</a>
-        <a class="request-action" href="${esc(row.edit_url)}">${esc(T.block_unblock || "Блок/Разблок")}</a>
-        <a class="request-action danger" href="${esc(row.edit_url)}">${esc(T.delete || "Удалить")}</a>
+        <a class="request-action primary" href="${esc(row.edit_url)}">${esc(T.open_editor || "Открыть редактор")}</a>
       </div>
     </article>
   `;

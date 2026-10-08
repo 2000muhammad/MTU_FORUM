@@ -2258,6 +2258,16 @@ UI["uz"].update({"version_label": "Platforma versiyasi", "old_version": "Eski ve
 UI["uz-cyrl"].update({"version_label": "Платформа версияси", "old_version": "Эски версия", "new_version": "Янги версия"})
 UI["en"].update({"version_label": "Platform version", "old_version": "Old version", "new_version": "New version"})
 
+UI["ru"].update({"copy": "Копировать", "copied": "Скопировано", "enter_new_password": "Введите новый пароль"})
+UI["uz"].update({"copy": "Nusxalash", "copied": "Nusxalandi", "enter_new_password": "Yangi parolni kiriting"})
+UI["uz-cyrl"].update({"copy": "Нусхалаш", "copied": "Нусхаланди", "enter_new_password": "Янги паролни киритинг"})
+UI["en"].update({"copy": "Copy", "copied": "Copied", "enter_new_password": "Enter a new password"})
+
+UI["ru"].update({"open_editor": "Открыть редактор"})
+UI["uz"].update({"open_editor": "Tahrirlovchini ochish"})
+UI["uz-cyrl"].update({"open_editor": "Таҳрирловчини очиш"})
+UI["en"].update({"open_editor": "Open editor"})
+
 def _lang(context=None):
     request = context.get("request") if context else None
     path = getattr(request, "path", "") or ""

@@ -236,6 +236,28 @@ class IntakeRequestForm(forms.ModelForm):
                 raise forms.ValidationError("У вас нет доступа к этому предприятию.")
         return value
 
+    def clean_position(self):
+        value = self.cleaned_data["position"].strip()
+        if self.user and self.user.is_authenticated and not self.user.is_superuser:
+            profile = getattr(self.user, "profile", None)
+            positions = Position.objects.filter(is_active=True)
+            if user_is_organization_manager(self.user):
+                positions = positions.filter(organization__name=getattr(profile, "organization", ""))
+                if getattr(profile, "branch", ""):
+                    positions = positions.filter(branch__name=profile.branch)
+            elif user_is_branch_manager(self.user):
+                positions = positions.filter(branch__name=getattr(profile, "branch", ""))
+            else:
+                if profile and not profile.positions_access_configured:
+                    return value
+                positions = profile.allowed_positions.all() if profile else Position.objects.none()
+            allowed_values = set(positions.values_list("name", flat=True))
+            if (allowed_values and value not in allowed_values) or (
+                not allowed_values and profile and profile.positions_access_configured
+            ):
+                raise forms.ValidationError("У вас нет доступа к этой должности.")
+        return value
+
     class Meta:
 
         model = IntakeRequest
@@ -311,6 +333,8 @@ class SiteIntakeForm(forms.Form):
                 stations = stations.filter(branch__name=branch_name)
             else:
                 stations = stations.filter(allowed_users__user=self.user)
+                if profile and profile.positions_access_configured:
+                    positions = positions.filter(allowed_users__user=self.user)
         if branch_name and not self.user.is_superuser:
             stations = stations.filter(branch__name=branch_name)
             positions = positions.filter(branch__name=branch_name)
@@ -732,6 +756,12 @@ class UserForm(AdminStyledModelForm):
         widget=forms.CheckboxSelectMultiple,
         label="Доступ к предприятиям",
     )
+    allowed_positions = forms.ModelMultipleChoiceField(
+        queryset=Position.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label="Доступ к должностям",
+    )
     password = forms.CharField(required=False, widget=forms.PasswordInput(render_value=False))
     pnfl = forms.CharField(required=False, max_length=32)
     middle_name = forms.CharField(required=False, max_length=120)
@@ -768,6 +798,21 @@ class UserForm(AdminStyledModelForm):
         if actor_is_branch_manager and actor_branch:
             stations = stations.filter(branch__name=actor_branch)
         self.fields["allowed_stations"].queryset = stations.order_by("branch__sort_order", "branch__name", "sort_order", "name")
+        positions = Position.objects.filter(is_active=True).select_related("branch", "organization")
+        if actor_is_branch_manager and actor_branch:
+            positions = positions.filter(branch__name=actor_branch)
+        self.fields["allowed_positions"].queryset = positions.order_by("branch__sort_order", "branch__name", "sort_order", "name")
+
+        def grouped_choices(items):
+            groups = {}
+            for item in items:
+                branch = item.branch.name if item.branch else "Без филиала"
+                organization = item.organization.name if item.organization else "Без организации"
+                groups.setdefault(f"{branch} — {organization}", []).append((item.pk, item.name))
+            return list(groups.items())
+
+        self.fields["allowed_stations"].choices = grouped_choices(self.fields["allowed_stations"].queryset)
+        self.fields["allowed_positions"].choices = grouped_choices(self.fields["allowed_positions"].queryset)
         branch_names = list(branches_qs.values_list("name", flat=True))
         organization_names = list(organizations_qs.values_list("name", flat=True))
         user = self.instance if getattr(self.instance, "pk", None) else None
@@ -782,6 +827,7 @@ class UserForm(AdminStyledModelForm):
                 self.fields["roles"].initial = [selected_role.pk] if selected_role else []
                 self.fields["allowed_platforms"].initial = profile.allowed_platforms.values_list("pk", flat=True)
                 self.fields["allowed_stations"].initial = profile.allowed_stations.values_list("pk", flat=True)
+                self.fields["allowed_positions"].initial = profile.allowed_positions.values_list("pk", flat=True)
                 for field in USER_PROFILE_FORM_FIELDS:
                     if field == "avatar":
                         continue
@@ -822,6 +868,7 @@ class UserForm(AdminStyledModelForm):
               "roles",
               "allowed_platforms",
               "allowed_stations",
+              "allowed_positions",
               "is_staff",
             "is_superuser",
             "is_active",

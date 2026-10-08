@@ -1,5 +1,6 @@
 from io import BytesIO
 from pathlib import Path
+import logging
 import re
 
 from app import states
@@ -36,6 +37,7 @@ from app.texts import t
 
 
 PINFL_HINT_IMAGE = Path(__file__).resolve().parents[2] / "assets" / "pinfl_hint.jpg"
+logger = logging.getLogger(__name__)
 
 
 def _menu_action(text):
@@ -252,7 +254,13 @@ async def _open_admin_chat(update, context, lang, thread_id):
 async def _new_admin_chat(update, context, lang):
     result = create_chat_thread(update.effective_user.id, update.effective_user.full_name)
     if not result.get("ok") or not result.get("id"):
-        await update.message.reply_text(result.get("message") or _chat_error_text(lang), reply_markup=main_menu(lang))
+        logger.warning(
+            "Could not create admin chat for Telegram user %s: status=%s message=%s",
+            update.effective_user.id,
+            result.get("status_code"),
+            result.get("message") or result.get("error"),
+        )
+        await update.message.reply_text(_chat_error_text(lang), reply_markup=main_menu(lang))
         context.user_data["state"] = states.MENU
         return
     await _open_admin_chat(update, context, lang, result["id"])
@@ -450,13 +458,23 @@ async def request_router(update, context):
             "reply_via_bot": True,
         }
         result = submit_request(payload)
-        context.user_data.clear()
-        context.user_data["lang"] = lang
-        context.user_data["state"] = states.MENU
-        # Do not expose API/HRM validation details to the user. Telegram intake
-        # accepts the request for manual review; failures get a generic retry message.
-        message = t(lang, "sent") if result.get("ok") else t(lang, "submit_error")
-        await update.message.reply_text(message, reply_markup=main_menu(lang))
+        if result.get("ok"):
+            context.user_data.clear()
+            context.user_data["lang"] = lang
+            context.user_data["state"] = states.MENU
+            await update.message.reply_text(t(lang, "sent"), reply_markup=main_menu(lang))
+        else:
+            logger.warning(
+                "Could not submit intake for Telegram user %s: status=%s message=%s",
+                update.effective_user.id,
+                result.get("status_code"),
+                result.get("message") or result.get("error"),
+            )
+            context.user_data["state"] = states.PHONE
+            await update.message.reply_text(
+                t(lang, "submit_error"),
+                reply_markup=contact_keyboard(lang, include_back=True),
+            )
     else:
         context.user_data["state"] = states.MENU
         await update.message.reply_text(t(lang, "welcome"), reply_markup=main_menu(lang))
