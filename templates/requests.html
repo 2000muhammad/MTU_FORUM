@@ -21,6 +21,25 @@
 <section class="glass-card request-directory-panel">
   <div id="requestRows" class="request-card-list"></div>
 </section>
+
+<div class="secret-confirm-modal" id="secretConfirmModal" hidden>
+  <div class="secret-confirm-backdrop" data-secret-cancel></div>
+  <form class="secret-confirm-card glass-card" id="secretConfirmForm">
+    {% csrf_token %}
+    <button class="secret-confirm-close" type="button" data-secret-cancel aria-label="Закрыть">×</button>
+    <div class="secret-confirm-icon">🔐</div>
+    <h3>Подтверждение доступа</h3>
+    <p>Введите пароль вашего аккаунта, чтобы показать персональные данные.</p>
+    <label>Пароль аккаунта
+      <input class="form-control" id="secretConfirmPassword" type="password" autocomplete="current-password" required>
+    </label>
+    <div class="secret-confirm-error" id="secretConfirmError" role="alert"></div>
+    <div class="secret-confirm-actions">
+      <button class="btn btn-outline-light" type="button" data-secret-cancel>Отмена</button>
+      <button class="btn btn-primary" type="submit">Подтвердить</button>
+    </div>
+  </form>
+</div>
 {% endblock %}
 {% block scripts %}
 {% tr 'show' as ui_show %}
@@ -37,5 +56,5 @@ window.UI_TEXTS = {
   new: "{{ ui_new|escapejs }}", done: "{{ ui_done|escapejs }}", blocked: "{{ ui_blocked|escapejs }}"
 };
 </script>
-<script src="{% static 'js/dashboard.js' %}?v=20261008-open-editor"></script>
+<script src="{% static 'js/dashboard.js' %}?v=20261008-password-confirm"></script>
 {% endblock %}

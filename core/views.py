@@ -1184,8 +1184,6 @@ def dashboard_requests_api(request):
 
             "cause": item.cause,
 
-            "pnfl": item.pnfl,
-
             "pnfl_masked": mask_value(item.pnfl),
 
             "company": item.company,
@@ -1196,16 +1194,8 @@ def dashboard_requests_api(request):
 
             "full_name": item.full_name,
 
-            "passport": item.passport,
-
             "passport_masked": mask_value(item.passport, 2),
-
-            "phone": item.phone,
-
             "phone_masked": mask_value(item.phone, 4),
-
-            "telegram_id": str(item.telegram_id),
-
             "telegram_id_masked": mask_value(item.telegram_id, 2),
 
             "status": item.status,
@@ -1217,6 +1207,45 @@ def dashboard_requests_api(request):
         })
 
     return JsonResponse({"rows": rows, "count": qs.count()})
+
+
+@login_required
+@user_passes_test(user_can_requests)
+@require_POST
+def dashboard_request_reveal_api(request):
+    try:
+        payload = json.loads(request.body or "{}")
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return JsonResponse({"ok": False, "error": "Некорректный запрос."}, status=400)
+
+    password = str(payload.get("password") or "")
+    if not request.user.check_password(password):
+        write_site_log(
+            request,
+            level=SiteLog.Level.SECURITY,
+            source="requests",
+            action="sensitive_reveal_denied",
+            message="Неверный пароль при попытке просмотра персональных данных.",
+            status_code=403,
+        )
+        return JsonResponse({"ok": False, "error": "Неверный пароль аккаунта."}, status=403)
+
+    field = str(payload.get("field") or "")
+    allowed_fields = {"pnfl", "passport", "phone", "telegram_id"}
+    if field not in allowed_fields:
+        return JsonResponse({"ok": False, "error": "Недоступное поле."}, status=400)
+
+    item = get_object_or_404(_intake_requests_for_user(request.user), pk=payload.get("request_id"))
+    value = getattr(item, field, "")
+    write_site_log(
+        request,
+        level=SiteLog.Level.SECURITY,
+        source="requests",
+        action="sensitive_reveal",
+        message=f"Открыто поле {field} заявки #{item.pk}.",
+        meta={"request_id": item.pk, "field": field},
+    )
+    return JsonResponse({"ok": True, "value": str(value or "")})
 
 
 
@@ -1394,9 +1423,11 @@ def admin_chat_list(request):
         telegram_id = request.POST.get("telegram_id", "").strip()
         title = request.POST.get("title", "").strip()
         full_name = request.POST.get("full_name", "").strip()
+        telegram_username = request.POST.get("telegram_username", "").strip().lstrip("@")
         if telegram_id:
             thread = AdminChatThread.objects.create(
                 telegram_id=telegram_id,
+                telegram_username=telegram_username,
                 title=title,
                 full_name=full_name,
                 created_by=request.user,
@@ -1414,12 +1445,16 @@ def admin_chat_list(request):
     for thread in AdminChatThread.objects.prefetch_related("messages").all()[:200]:
         last = thread.messages.order_by("-created_at").first()
         unread = thread.messages.filter(direction=AdminChatMessage.Direction.IN, is_read=False).count()
+        linked_profile = UserProfile.objects.filter(telegram_id=thread.telegram_id).first()
         chats.append({
             "thread_id": thread.id,
             "telegram_id": thread.telegram_id,
             "last": last,
             "unread": unread,
             "full_name": thread.title or thread.full_name or "",
+            "telegram_username": thread.telegram_username or (
+                linked_profile.telegram_username if linked_profile else ""
+            ),
             "status": thread.status,
         })
 
@@ -1429,8 +1464,20 @@ def admin_chat_list(request):
         if last and last.thread_id:
             continue
 
-        profile = AdminChatMessage.objects.filter(telegram_id=row["telegram_id"]).exclude(full_name="").order_by("-created_at").first()
-        chats.append({"thread_id": None, "telegram_id": row["telegram_id"], "last": last, "unread": row["unread"], "full_name": profile.full_name if profile else "", "status": ""})
+        profile = AdminChatMessage.objects.filter(telegram_id=row["telegram_id"]).order_by("-created_at").first()
+        linked_profile = UserProfile.objects.filter(telegram_id=row["telegram_id"]).first()
+        chats.append({
+            "thread_id": None,
+            "telegram_id": row["telegram_id"],
+            "last": last,
+            "unread": row["unread"],
+            "full_name": profile.full_name if profile else "",
+            "telegram_username": (
+                (profile.telegram_username if profile else "")
+                or (linked_profile.telegram_username if linked_profile else "")
+            ),
+            "status": "",
+        })
     return render(request, "admin_chat_list.html", {"chats": chats})
 
 
@@ -1462,14 +1509,19 @@ def telegram_profile_photo(request, telegram_id):
     return response
 
 
-def _admin_chat_thread_for(telegram_id, full_name="", user=None):
+def _admin_chat_thread_for(telegram_id, full_name="", username="", user=None):
     thread = AdminChatThread.objects.filter(telegram_id=telegram_id, status=AdminChatThread.Status.OPEN).order_by("-updated_at").first()
     if thread:
         if full_name and not thread.full_name:
             thread.full_name = full_name
             thread.save(update_fields=["full_name"])
         return thread
-    return AdminChatThread.objects.create(telegram_id=telegram_id, full_name=full_name, created_by=user)
+    return AdminChatThread.objects.create(
+        telegram_id=telegram_id,
+        full_name=full_name,
+        telegram_username=str(username or "").lstrip("@")[:64],
+        created_by=user,
+    )
 
 
 def _admin_chat_screen(request, telegram_id, thread=None):
@@ -3547,9 +3599,14 @@ def telegram_chat_incoming_api(request):
     if payload.get("thread_id"):
         thread = AdminChatThread.objects.filter(pk=payload.get("thread_id"), telegram_id=payload.get("telegram_id")).first()
     if thread is None:
-        thread = _admin_chat_thread_for(payload.get("telegram_id"), full_name=payload.get("full_name", ""))
+        thread = _admin_chat_thread_for(
+            payload.get("telegram_id"),
+            full_name=payload.get("full_name", ""),
+            username=payload.get("username", ""),
+        )
     create_kwargs = {
         "telegram_id": payload.get("telegram_id"),
+        "telegram_username": str(payload.get("username") or "").lstrip("@")[:64],
         "thread": thread,
         "full_name": payload.get("full_name", ""),
         "text": payload.get("text", ""),
@@ -3565,11 +3622,14 @@ def telegram_chat_incoming_api(request):
 
     msg = AdminChatMessage.objects.create(**create_kwargs)
     thread.updated_at = timezone.now()
+    update_fields = ["updated_at"]
     if payload.get("full_name") and not thread.full_name:
         thread.full_name = payload.get("full_name")
-        thread.save(update_fields=["updated_at", "full_name"])
-    else:
-        thread.save(update_fields=["updated_at"])
+        update_fields.append("full_name")
+    if payload.get("username"):
+        thread.telegram_username = str(payload.get("username")).lstrip("@")[:64]
+        update_fields.append("telegram_username")
+    thread.save(update_fields=update_fields)
 
     return JsonResponse({"ok": True, "id": msg.id})
 
@@ -3596,6 +3656,7 @@ def telegram_chat_threads_api(request):
     if action == "create":
         thread = AdminChatThread.objects.create(
             telegram_id=telegram_id,
+            telegram_username=str(payload.get("username") or "").lstrip("@")[:64],
             full_name=payload.get("full_name", ""),
             title=payload.get("title", "") or "Чат с администратором",
         )
