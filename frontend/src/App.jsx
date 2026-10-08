@@ -531,17 +531,86 @@ function RequestsPage({ language }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
   const [revealed, setRevealed] = useState(new Set());
+  const [revealedValues, setRevealedValues] = useState({});
+  const [confirmSecret, setConfirmSecret] = useState(null);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [confirmError, setConfirmError] = useState("");
+  const [confirmBusy, setConfirmBusy] = useState(false);
   const endpoint = `/api/dashboard/requests/?q=${encodeURIComponent(query)}&status=${encodeURIComponent(status)}`;
   const { loading, data, error, reload } = useRemote(
     () => api(endpoint),
     [endpoint],
   );
-  const toggle = (key) =>
-    setRevealed((current) => {
-      const next = new Set(current);
-      next.has(key) ? next.delete(key) : next.add(key);
-      return next;
-    });
+  const toggle = (rowId, field) => {
+    const id = `${rowId}:${field}`;
+    if (revealed.has(id)) {
+      setRevealed((current) => {
+        const next = new Set(current);
+        next.delete(id);
+        return next;
+      });
+      setRevealedValues((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+      return;
+    }
+    setConfirmSecret({ id, rowId, field });
+    setConfirmPassword("");
+    setConfirmError("");
+  };
+
+  const closeConfirm = () => {
+    if (confirmBusy) return;
+    setConfirmSecret(null);
+    setConfirmPassword("");
+    setConfirmError("");
+  };
+
+  useEffect(() => {
+    if (!confirmSecret) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape" && !confirmBusy) closeConfirm();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [confirmSecret, confirmBusy]);
+
+  const revealSecret = async (event) => {
+    event.preventDefault();
+    if (!confirmSecret) return;
+    setConfirmBusy(true);
+    setConfirmError("");
+    try {
+      const result = await api("/api/dashboard/requests/reveal/", {
+        method: "POST",
+        body: JSON.stringify({
+          request_id: confirmSecret.rowId,
+          field: confirmSecret.field,
+          password: confirmPassword,
+        }),
+      });
+      setRevealed((current) => new Set(current).add(confirmSecret.id));
+      setRevealedValues((current) => ({
+        ...current,
+        [confirmSecret.id]: result.value,
+      }));
+      setConfirmSecret(null);
+      setConfirmPassword("");
+    } catch (requestError) {
+      setConfirmError(
+        requestError.data?.error || tr("Неверный пароль аккаунта."),
+      );
+    } finally {
+      setConfirmBusy(false);
+    }
+  };
   return (
     <div className="page-stack">
       <section className="panel">
@@ -614,9 +683,11 @@ function RequestsPage({ language }) {
                     <div key={key}>
                       <small>{tr(label)}</small>
                       <b>
-                        {revealed.has(id) ? row[key] : row[`${key}_masked`]}
+                        {revealed.has(id)
+                          ? revealedValues[id]
+                          : row[`${key}_masked`]}
                       </b>
-                      <button onClick={() => toggle(id)}>
+                      <button onClick={() => toggle(row.id, key)}>
                         {tr(revealed.has(id) ? "Скрыть" : "Показать")}
                       </button>
                     </div>
@@ -635,6 +706,64 @@ function RequestsPage({ language }) {
             <div className="state-card">{tr("Заявок не найдено.")}</div>
           )}
         </section>
+      )}
+      {confirmSecret && (
+        <div
+          className="secret-modal-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeConfirm();
+          }}
+        >
+          <form
+            className="secret-modal"
+            onSubmit={revealSecret}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="secret-modal-title"
+          >
+            <button
+              className="secret-modal-close"
+              type="button"
+              onClick={closeConfirm}
+              aria-label={tr("Закрыть")}
+            >
+              ×
+            </button>
+            <div className="secret-modal-icon">🔐</div>
+            <h3 id="secret-modal-title">{tr("Подтверждение доступа")}</h3>
+            <p>
+              {tr(
+                "Введите пароль вашего аккаунта, чтобы показать персональные данные.",
+              )}
+            </p>
+            <label>
+              {tr("Пароль аккаунта")}
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                autoComplete="current-password"
+                autoFocus
+                required
+              />
+            </label>
+            <div className="secret-modal-error" role="alert">
+              {confirmError}
+            </div>
+            <div className="secret-modal-actions">
+              <button type="button" onClick={closeConfirm}>
+                {tr("Отмена")}
+              </button>
+              <button
+                type="submit"
+                className="primary-button"
+                disabled={confirmBusy}
+              >
+                {tr(confirmBusy ? "Проверка…" : "Подтвердить")}
+              </button>
+            </div>
+          </form>
+        </div>
       )}
     </div>
   );

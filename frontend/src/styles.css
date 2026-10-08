@@ -488,6 +488,71 @@ select,
   color: var(--brand);
   font-size: 10px;
 }
+.secret-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(3, 11, 17, 0.58);
+  backdrop-filter: blur(30px) saturate(80%) brightness(68%);
+  -webkit-backdrop-filter: blur(30px) saturate(80%) brightness(68%);
+}
+.secret-modal {
+  position: relative;
+  display: grid;
+  width: min(440px, 100%);
+  gap: 12px;
+  padding: 28px;
+  border: 1px solid rgba(99, 222, 196, 0.38);
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--surface) 95%, transparent);
+  box-shadow: 0 42px 110px rgba(0, 0, 0, 0.58), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+.secret-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 24px;
+}
+.secret-modal-icon {
+  display: grid;
+  width: 62px;
+  height: 62px;
+  margin: 0 auto 4px;
+  place-items: center;
+  border: 1px solid rgba(99, 222, 196, 0.36);
+  border-radius: 19px;
+  background: linear-gradient(135deg, rgba(99, 222, 196, 0.2), rgba(79, 157, 255, 0.14));
+  font-size: 27px;
+}
+.secret-modal h3,
+.secret-modal p { margin: 0; text-align: center; }
+.secret-modal p { color: var(--muted); line-height: 1.5; }
+.secret-modal label { display: grid; gap: 7px; color: var(--muted); font-size: 12px; font-weight: 750; }
+.secret-modal input { width: 100%; padding: 12px 13px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface-2); color: var(--text); }
+.secret-modal input:focus { outline: 3px solid rgba(99, 222, 196, 0.15); border-color: var(--brand); }
+.secret-modal-error { min-height: 18px; color: #ef8d99; font-size: 12px; font-weight: 750; }
+.secret-modal-actions { display: flex; justify-content: flex-end; gap: 9px; }
+.secret-modal-actions button { padding: 10px 15px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--text); }
+.secret-modal-actions .primary-button { border: 0; }
+html[data-theme="light"] .secret-modal-backdrop {
+  background: rgba(224, 239, 244, 0.46);
+  backdrop-filter: blur(30px) saturate(70%) brightness(92%);
+  -webkit-backdrop-filter: blur(30px) saturate(70%) brightness(92%);
+}
+@media (max-width: 520px) {
+  .secret-modal { padding: 24px 18px; }
+  .secret-modal-actions { flex-direction: column-reverse; }
+  .secret-modal-actions button { width: 100%; }
+}
 .primary-button,
 .directory-list article > button,
 .bulk-bar button {
