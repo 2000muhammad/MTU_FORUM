@@ -12,19 +12,88 @@
     {% for field in form %}<label>{{ field.label }}{{ field }}{{ field.errors }}</label>{% endfor %}
   </div>
   <div class="credential-box">
-    <div><span>{% tr 'username' %}</span><strong>{{ item.generated_login|default:'-' }}</strong></div>
-    <div>
-      <span>{% tr 'password' %}</span>
-      <strong>{% if plain_generated_password %}{{ plain_generated_password }}{% elif password_is_hashed %}Хэш сохранён{% else %}-{% endif %}</strong>
+    <div class="credential-item" data-credential-item>
+      <div class="credential-head">
+        <span>{% tr 'username' %}</span>
+        <div class="credential-tools">
+          <button type="button" data-copy-credential data-copy-label="{% tr 'copy' %}" {% if not item.generated_login %}disabled{% endif %}>{% tr 'copy' %}</button>
+          <button type="button" data-edit-credential>{% tr 'edit' %}</button>
+        </div>
+      </div>
+      <strong data-credential-value>{{ item.generated_login|default:'-' }}</strong>
+      <div class="credential-editor" data-credential-editor hidden>
+        <input class="form-control" name="generated_login" value="{{ item.generated_login }}" maxlength="150" autocomplete="off" aria-label="{% tr 'username' %}">
+        <button type="button" data-cancel-credential>{% tr 'cancel' %}</button>
+        <button class="btn btn-primary" name="action" value="save_credentials">{% tr 'save' %}</button>
+      </div>
+    </div>
+    <div class="credential-item" data-credential-item>
+      <div class="credential-head">
+        <span>{% tr 'password' %}</span>
+        <div class="credential-tools">
+          <button type="button" data-copy-credential data-copy-label="{% tr 'copy' %}" {% if not plain_generated_password %}disabled{% endif %}>{% tr 'copy' %}</button>
+          <button type="button" data-edit-credential>{% tr 'edit' %}</button>
+        </div>
+      </div>
+      <strong data-credential-value data-copy-value="{{ plain_generated_password }}">{% if plain_generated_password %}{{ plain_generated_password }}{% elif password_is_hashed %}Хэш сохранён{% else %}-{% endif %}</strong>
+      <div class="credential-editor" data-credential-editor hidden>
+        <input class="form-control" name="generated_password" value="" maxlength="150" autocomplete="new-password" placeholder="{% tr 'enter_new_password' %}" aria-label="{% tr 'password' %}">
+        <button type="button" data-cancel-credential>{% tr 'cancel' %}</button>
+        <button class="btn btn-primary" name="action" value="save_credentials">{% tr 'save' %}</button>
+      </div>
     </div>
   </div>
   <div class="action-row">
     <a class="btn btn-outline-light" href="{% url 'requests' %}">{% tr 'back' %}</a>
     <button class="btn btn-outline-light" name="action" value="generate">{% tr 'generate_credentials' %}</button>
-    <button class="btn btn-outline-info" name="action" value="create_user">{% tr 'create_django_user' %}</button>
     <button class="btn btn-outline-warning" name="action" value="send_credentials">{% tr 'send_to_telegram' %}</button>
     <button class="btn btn-outline-danger" name="action" value="delete" onclick="return confirm('{% tr 'delete_request_confirm' %}')">{% tr 'delete' %}</button>
     <button class="btn btn-primary" name="action" value="save">{% tr 'save' %}</button>
   </div>
 </form>
-{% endblock %}
+<script>
+document.querySelectorAll('[data-credential-item]').forEach((item) => {
+  const value = item.querySelector('[data-credential-value]');
+  const editor = item.querySelector('[data-credential-editor]');
+  const input = editor?.querySelector('input');
+  const editButton = item.querySelector('[data-edit-credential]');
+  const copyButton = item.querySelector('[data-copy-credential]');
+  const cancelButton = item.querySelector('[data-cancel-credential]');
+
+  editButton?.addEventListener('click', () => {
+    value.hidden = true;
+    editor.hidden = false;
+    editButton.hidden = true;
+    input?.focus();
+    input?.select();
+  });
+
+  cancelButton?.addEventListener('click', () => {
+    editor.hidden = true;
+    value.hidden = false;
+    editButton.hidden = false;
+  });
+
+  copyButton?.addEventListener('click', async () => {
+    const text = value.dataset.copyValue || value.textContent.trim();
+    if (!text || text === '-') return;
+    try {
+      await navigator.clipboard.writeText(text);
+      const oldText = copyButton.textContent;
+      copyButton.textContent = "{% tr 'copied' %}";
+      copyButton.classList.add('is-copied');
+      window.setTimeout(() => {
+        copyButton.textContent = copyButton.dataset.copyLabel || oldText;
+        copyButton.classList.remove('is-copied');
+      }, 1600);
+    } catch (_) {
+      const range = document.createRange();
+      range.selectNodeContents(value);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+  });
+});
+</script>
+{% endblock %}

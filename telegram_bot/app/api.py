@@ -4,6 +4,17 @@ from .config import SITE_API_KEY, SITE_BASE_URL
 HEADERS = {"X-API-KEY": SITE_API_KEY}
 
 
+def _response_data(response):
+    try:
+        data = response.json()
+    except ValueError:
+        data = {"ok": False, "message": "Invalid response from site API."}
+    if response.status_code >= 400:
+        data["ok"] = False
+        data["status_code"] = response.status_code
+    return data
+
+
 def _get_results(path):
     try:
         return requests.get(f"{SITE_BASE_URL}{path}", timeout=15).json().get("results", [])
@@ -32,14 +43,9 @@ def get_channels():
 def submit_request(payload):
     try:
         response = requests.post(f"{SITE_BASE_URL}/api/intake/telegram/", json=payload, headers=HEADERS, timeout=20)
-        data = response.json()
     except requests.RequestException as exc:
         return {"ok": False, "message": str(exc)}
-    except ValueError:
-        return {"ok": False, "message": "Invalid response from site API."}
-    if response.status_code >= 400:
-        data.setdefault("ok", False)
-    return data
+    return _response_data(response)
 
 
 def send_chat_message(payload):
@@ -72,13 +78,14 @@ def get_chat_threads(telegram_id):
 
 def create_chat_thread(telegram_id, full_name=""):
     try:
-        return requests.post(
+        response = requests.post(
             f"{SITE_BASE_URL}/api/chat/threads/",
             data={"action": "create", "telegram_id": telegram_id, "full_name": full_name},
             headers=HEADERS,
             timeout=15,
-        ).json()
-    except (requests.RequestException, ValueError) as exc:
+        )
+        return _response_data(response)
+    except requests.RequestException as exc:
         return {"ok": False, "message": str(exc)}
 
 

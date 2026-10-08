@@ -382,6 +382,22 @@ body.embedded-react-view{overflow:auto!important;background:transparent!importan
 body.embedded-react-view .glass-card{box-shadow:none!important}
 body.embedded-react-view .profile-layout,body.embedded-react-view .settings-folder-shell{margin:0!important}
 
+/* Editable request credentials. */
+.credential-item{display:grid;gap:12px;min-width:0}
+.credential-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0!important;border:0!important;background:transparent!important}
+.credential-head>span{margin:0}
+.credential-tools{display:flex;align-items:center;gap:7px;padding:0!important;border:0!important;background:transparent!important}
+.credential-tools button,.credential-editor>button{min-height:34px;padding:6px 11px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.055);color:var(--text);font-size:12px;font-weight:800;transition:border-color .16s,background .16s,color .16s}
+.credential-tools button:hover,.credential-editor>button:hover{border-color:rgba(68,215,182,.55);background:rgba(68,215,182,.11);color:var(--brand)}
+.credential-tools button:disabled{cursor:not-allowed;opacity:.38}
+.credential-tools button.is-copied{border-color:rgba(68,215,182,.62);background:rgba(68,215,182,.14);color:var(--brand)}
+.credential-item>strong{min-width:0;overflow-wrap:anywhere;font-size:17px}
+.credential-editor{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:0!important;border:0!important;background:transparent!important}
+.credential-editor[hidden]{display:none!important}
+.credential-editor .form-control{min-width:0}
+html[data-theme="light"] .credential-tools button,html[data-theme="light"] .credential-editor>button{background:rgba(20,48,70,.045);color:#173247}
+@media(max-width:680px){.credential-head{align-items:flex-start;flex-direction:column}.credential-tools{width:100%}.credential-tools button{flex:1}.credential-editor{grid-template-columns:1fr}.credential-editor>button{width:100%}}
+
 /* Final ultrawide containment override: keep the workspace next to the sidebar. */
 @media (min-width:1800px){
   body:not(.embedded-react-view) .app-shell{

@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.contrib.auth.hashers import check_password
 from django.test import TestCase
 from django.urls import reverse
 
@@ -71,6 +72,30 @@ class RequestPlatformAccessTests(TestCase):
         response = self.client.get(reverse("request_edit", kwargs={"pk": self.denied_company_request.pk}))
 
         self.assertEqual(response.status_code, 404)
+
+    def test_operator_can_edit_and_hash_generated_credentials(self):
+        response = self.client.post(
+            reverse("request_edit", kwargs={"pk": self.alpha_request.pk}),
+            {
+                "action": "save_credentials",
+                "platform": self.alpha.name,
+                "company": self.allowed_station.name,
+                "pnfl": self.alpha_request.pnfl,
+                "telegram_id": self.alpha_request.telegram_id,
+                "status": self.alpha_request.status,
+                "generated_login": "updated.login",
+                "generated_password": "Secure-8421",
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("requests"),
+        )
+        self.alpha_request.refresh_from_db()
+        self.assertEqual(self.alpha_request.generated_login, "updated.login")
+        self.assertNotEqual(self.alpha_request.generated_password, "Secure-8421")
+        self.assertTrue(check_password("Secure-8421", self.alpha_request.generated_password))
 
     def test_notification_tracks_only_assigned_platforms(self):
         response = self.client.get(reverse("notification_state_api"))

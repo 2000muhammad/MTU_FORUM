@@ -183,14 +183,43 @@ def _allowed_intake_company_values(user):
     return values
 
 
+def _allowed_intake_position_values(user):
+    """Return position names visible to a user, or None when directory scope grants all."""
+    if user.is_superuser:
+        return None
+    profile = getattr(user, "profile", None)
+    if not profile:
+        return set()
+    positions = Position.objects.filter(is_active=True)
+    if user_is_organization_manager(user):
+        if not profile.organization:
+            return set()
+        positions = positions.filter(organization__name=profile.organization)
+        if profile.branch:
+            positions = positions.filter(branch__name=profile.branch)
+        values = set(positions.values_list("name", flat=True))
+        return values or None
+    if user_is_branch_manager(user):
+        if not profile.branch:
+            return set()
+        values = set(positions.filter(branch__name=profile.branch).values_list("name", flat=True))
+        return values or None
+    if not profile.positions_access_configured:
+        return None
+    return set(profile.allowed_positions.values_list("name", flat=True))
+
+
 def _intake_requests_for_user(user):
     queryset = IntakeRequest.objects.all()
     allowed_platforms = _allowed_intake_platform_values(user)
     allowed_companies = _allowed_intake_company_values(user)
+    allowed_positions = _allowed_intake_position_values(user)
     if allowed_platforms is not None:
         queryset = queryset.filter(platform__in=allowed_platforms)
     if allowed_companies is not None:
         queryset = queryset.filter(company__in=allowed_companies)
+    if allowed_positions is not None:
+        queryset = queryset.filter(position__in=allowed_positions)
     return queryset
 
 
@@ -1229,6 +1258,50 @@ def request_edit(request, pk):
 
             item = form.save(commit=False)
 
+            if action == "save_credentials":
+
+                username = (request.POST.get("generated_login") or "").strip()
+
+                password = request.POST.get("generated_password") or ""
+
+                if not username:
+
+                    messages.error(request, "Логин не может быть пустым.")
+
+                    return redirect("request_edit", pk=item.pk)
+
+                linked_user = item.django_user
+
+                duplicate = User.objects.filter(username__iexact=username)
+
+                if linked_user:
+
+                    duplicate = duplicate.exclude(pk=linked_user.pk)
+
+                if duplicate.exists():
+
+                    messages.error(request, "Этот логин уже используется другим пользователем.")
+
+                    return redirect("request_edit", pk=item.pk)
+
+                item.generated_login = username[:150]
+
+                if password:
+
+                    item.generated_password = make_password(password)
+
+                    _store_plain_request_password(request, item.pk, password)
+
+                if linked_user:
+
+                    linked_user.username = item.generated_login
+
+                    if password:
+
+                        linked_user.set_password(password)
+
+                    linked_user.save()
+
             if action in {"generate", "create_user"}:
 
                 item.generated_login = item.generated_login or generate_login(item.full_name, item.pnfl)
@@ -1281,9 +1354,17 @@ def request_edit(request, pk):
 
                 messages.success(request, "Логин и пароль отправлены в Telegram.")
 
+            elif action == "save_credentials":
+
+                messages.success(request, "Данные доступа обновлены.")
+
             else:
 
                 messages.success(request, "Заявка сохранена.")
+
+            if action in {"save", "save_credentials"}:
+
+                return redirect("requests")
 
             return redirect("request_edit", pk=item.pk)
 
@@ -2158,6 +2239,11 @@ def _save_user_profile_from_form(user, form):
         profile.allowed_platforms.set(form.cleaned_data.get("allowed_platforms"))
     if "allowed_stations" in form.cleaned_data:
         profile.allowed_stations.set(form.cleaned_data.get("allowed_stations"))
+    if "allowed_positions" in form.cleaned_data:
+        profile.allowed_positions.set(form.cleaned_data.get("allowed_positions"))
+        if not profile.positions_access_configured:
+            profile.positions_access_configured = True
+            profile.save(update_fields=["positions_access_configured", "updated_at"])
     return profile
 
 
@@ -2378,23 +2464,38 @@ def users_view(request):
             messages.error(request, "Проверьте поля пользователя.")
 
     users = list(_scope_users_for_actor(
-        _users_queryset(query).prefetch_related("profile__allowed_platforms", "profile__allowed_stations"),
+        _users_queryset(query).prefetch_related("profile__allowed_platforms", "profile__allowed_stations", "profile__allowed_positions"),
         request.user,
     ))
     for user in users:
         profile = _ensure_user_profile(user)
         selected_role = profile.roles.filter(is_active=True).order_by("sort_order", "name").first()
         user.selected_role_id = selected_role.pk if selected_role else None
+    stations = list(_scope_branch_directory_for_actor(
+        Station.objects.filter(is_active=True).select_related("branch", "organization"), request.user,
+    ))
+    positions = list(_scope_branch_directory_for_actor(
+        Position.objects.filter(is_active=True).select_related("branch", "organization"), request.user,
+    ))
+
+    def directory_groups(items):
+        groups = {}
+        for item in items:
+            branch = item.branch.name if item.branch else "Без филиала"
+            organization = item.organization.name if item.organization else "Без организации"
+            groups.setdefault(f"{branch} — {organization}", []).append(item)
+        return [{"name": name, "items": values} for name, values in groups.items()]
+
     return render(request, "users.html", {
         "users": users,
         "user_form": user_form,
         "query": query,
         "roles": user_form.fields["roles"].queryset,
         "platforms": Platform.objects.filter(is_active=True).order_by("sort_order", "name"),
-        "stations": _scope_branch_directory_for_actor(
-            Station.objects.filter(is_active=True).select_related("branch", "organization"),
-            request.user,
-        ),
+        "stations": stations,
+        "positions": positions,
+        "station_groups": directory_groups(stations),
+        "position_groups": directory_groups(positions),
         "branches": Branch.objects.filter(
             is_active=True,
             **({"name": _actor_branch_name(request.user)} if user_is_branch_manager(request.user) else {}),
@@ -3548,12 +3649,15 @@ def telegram_intake_summary_api(request):
 def public_stations_api(request):
     items = Station.objects.filter(is_active=True)
     if request.user.is_authenticated and not request.user.is_superuser:
-        branch_name = getattr(getattr(request.user, "profile", None), "branch", "")
-        organization_name = getattr(getattr(request.user, "profile", None), "organization", "")
-        if branch_name:
+        profile = getattr(request.user, "profile", None)
+        branch_name = getattr(profile, "branch", "")
+        organization_name = getattr(profile, "organization", "")
+        if user_is_organization_manager(request.user):
+            items = items.filter(branch__name=branch_name, organization__name=organization_name)
+        elif user_is_branch_manager(request.user):
             items = items.filter(branch__name=branch_name)
-        if organization_name:
-            items = items.filter(organization__name=organization_name)
+        else:
+            items = items.filter(allowed_users__user=request.user)
     return JsonResponse({"results": list(items.values("id", "name", "code"))})
 
 
@@ -3565,12 +3669,15 @@ def public_stations_api(request):
 def public_positions_api(request):
     items = Position.objects.filter(is_active=True)
     if request.user.is_authenticated and not request.user.is_superuser:
-        branch_name = getattr(getattr(request.user, "profile", None), "branch", "")
-        organization_name = getattr(getattr(request.user, "profile", None), "organization", "")
-        if branch_name:
+        profile = getattr(request.user, "profile", None)
+        branch_name = getattr(profile, "branch", "")
+        organization_name = getattr(profile, "organization", "")
+        if user_is_organization_manager(request.user):
+            items = items.filter(branch__name=branch_name, organization__name=organization_name)
+        elif user_is_branch_manager(request.user):
             items = items.filter(branch__name=branch_name)
-        if organization_name:
-            items = items.filter(organization__name=organization_name)
+        elif profile and profile.positions_access_configured:
+            items = items.filter(allowed_users__user=request.user)
     return JsonResponse({"results": list(items.values("id", "name"))})
 
 
