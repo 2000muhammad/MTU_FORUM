@@ -9,6 +9,7 @@ urlpatterns = [
     path("chat/threads/", views.telegram_chat_threads_api, name="telegram_chat_threads_api"),
     path("intake/telegram/summary/", views.telegram_intake_summary_api, name="telegram_intake_summary_api"),
     path("dashboard/requests/", views.dashboard_requests_api, name="dashboard_requests_api"),
+    path("dashboard/requests/reveal/", views.dashboard_request_reveal_api, name="dashboard_request_reveal_api"),
     path("notifications/state/", views.notification_state_api, name="notification_state_api"),
     path("react/bootstrap/", views.react_bootstrap_api, name="react_bootstrap_api"),
     path("react/public/", views.react_public_api, name="react_public_api"),

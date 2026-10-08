@@ -254,6 +254,9 @@ html[data-theme="light"] .request-id-badge{color:#075f58!important;background:li
   animation-direction: alternate;
   will-change: transform;
 }
+
+/* Password confirmation before revealing request personal data. */
+.secret-confirm-modal{position:fixed;inset:0;z-index:10050;display:grid;place-items:center;padding:20px}.secret-confirm-modal[hidden]{display:none!important}.secret-confirm-backdrop{position:absolute;inset:0;background:rgba(3,11,18,.7);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}.secret-confirm-card{position:relative;z-index:1;width:min(440px,calc(100vw - 28px));padding:28px!important;border-radius:26px!important;text-align:center;box-shadow:0 34px 90px rgba(0,0,0,.46)!important}.secret-confirm-close{position:absolute;right:16px;top:16px;display:grid;place-items:center;width:38px;height:38px;border:1px solid rgba(169,194,215,.2);border-radius:50%;background:rgba(255,255,255,.07);color:var(--text);font-size:24px}.secret-confirm-icon{display:grid;place-items:center;width:62px;height:62px;margin:0 auto 14px;border:1px solid rgba(68,215,182,.38);border-radius:20px;background:linear-gradient(135deg,rgba(68,215,182,.2),rgba(127,183,255,.15));font-size:28px}.secret-confirm-card h3{margin:0 0 8px;color:var(--text);font-size:22px}.secret-confirm-card p{margin:0 0 20px;color:var(--muted);line-height:1.5}.secret-confirm-card label{display:grid;gap:8px;color:var(--text);font-size:13px;font-weight:850;text-align:left}.secret-confirm-error{min-height:20px;margin-top:9px;color:#ff7f91;font-size:13px;font-weight:800;text-align:left}.secret-confirm-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px}.secret-confirm-actions .btn{min-width:120px}html[data-theme="light"] .secret-confirm-backdrop{background:rgba(224,238,244,.74)}@media(max-width:520px){.secret-confirm-card{padding:24px 18px!important}.secret-confirm-actions{flex-direction:column-reverse}.secret-confirm-actions .btn{width:100%}}
 .public-web-track-forward { animation-name: publicWebLaneForward; animation-delay: -5s; }
 .public-web-track-reverse { animation-name: publicWebLaneReverse; }
 @keyframes publicWebLaneForward {
@@ -412,3 +415,11 @@ html[data-theme="light"] .credential-tools button,html[data-theme="light"] .cred
   body:not(.embedded-react-view) .platform-metric-grid,
   body:not(.embedded-react-view) .web-service-grid{width:100%;min-width:0}
 }
+
+.chat-live-search{position:relative;display:flex;align-items:center;margin:4px 6px 8px}.chat-live-search>span{position:absolute;left:17px;z-index:1;color:var(--brand);font-size:25px;line-height:1;pointer-events:none}.chat-live-search .form-control{height:50px;padding-left:50px;padding-right:48px;border-radius:16px;background:color-mix(in srgb,var(--panel-2) 84%,transparent);font-weight:700}.chat-live-search button{position:absolute;right:9px;display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--line);border-radius:50%;background:color-mix(in srgb,var(--panel) 80%,transparent);color:var(--text);font-size:21px}.chat-search-summary{min-height:20px;margin:0 14px 4px;color:var(--muted);font-size:12px;font-weight:750}.chat-row[hidden]{display:none!important}.chat-nickname{display:block;margin-top:2px;color:var(--brand);font-size:13px;font-weight:800}.chat-search-empty{margin:12px 6px;padding:28px;border:1px dashed var(--line);border-radius:16px;color:var(--muted);text-align:center;font-weight:800}
+
+/* Strong frosted backdrop for password confirmation. */
+.secret-confirm-modal{isolation:isolate;background:rgba(3,10,16,.16)}
+.secret-confirm-backdrop{position:fixed!important;inset:0!important;background:rgba(4,13,21,.56)!important;backdrop-filter:blur(30px) saturate(80%) brightness(68%)!important;-webkit-backdrop-filter:blur(30px) saturate(80%) brightness(68%)!important}
+.secret-confirm-card{border-color:rgba(106,226,205,.38)!important;background:color-mix(in srgb,var(--panel) 94%,transparent)!important;box-shadow:0 42px 110px rgba(0,0,0,.58),inset 0 1px 0 rgba(255,255,255,.16)!important}
+html[data-theme="light"] .secret-confirm-backdrop{background:rgba(224,239,244,.46)!important;backdrop-filter:blur(30px) saturate(70%) brightness(92%)!important;-webkit-backdrop-filter:blur(30px) saturate(70%) brightness(92%)!important}

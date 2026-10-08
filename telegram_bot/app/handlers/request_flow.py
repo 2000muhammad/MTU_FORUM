@@ -118,6 +118,7 @@ async def _chat_media_payload(update, context, text):
     message = update.message
     payload = {
         "telegram_id": update.effective_user.id,
+        "username": update.effective_user.username or "",
         "full_name": update.effective_user.full_name,
         "text": text,
         "message_type": "text",
@@ -252,7 +253,11 @@ async def _open_admin_chat(update, context, lang, thread_id):
 
 
 async def _new_admin_chat(update, context, lang):
-    result = create_chat_thread(update.effective_user.id, update.effective_user.full_name)
+    result = create_chat_thread(
+        update.effective_user.id,
+        update.effective_user.full_name,
+        update.effective_user.username or "",
+    )
     if not result.get("ok") or not result.get("id"):
         logger.warning(
             "Could not create admin chat for Telegram user %s: status=%s message=%s",

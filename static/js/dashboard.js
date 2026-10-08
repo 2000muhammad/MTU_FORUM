@@ -2,8 +2,14 @@ const rowsEl = document.getElementById("requestRows");
 const searchInput = document.getElementById("searchInput");
 const statusFilter = document.getElementById("statusFilter");
 let reveal = new Set();
+const revealedValues = new Map();
 let timer;
 const T = window.UI_TEXTS || {};
+const confirmModal = document.getElementById("secretConfirmModal");
+const confirmForm = document.getElementById("secretConfirmForm");
+const confirmPassword = document.getElementById("secretConfirmPassword");
+const confirmError = document.getElementById("secretConfirmError");
+let pendingSecret = null;
 
 function esc(value) {
   return String(value ?? "").replace(/[&<>'"]/g, s => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[s]));
@@ -12,10 +18,11 @@ function esc(value) {
 function secretBlock(row, key, maskedKey, label) {
   const id = `${row.id}:${key}`;
   const shown = reveal.has(id);
+  const visibleValue = revealedValues.get(id) || "";
   return `
     <span class="request-secret-item">
       <small>${esc(label)}</small>
-      <b class="secret" data-id="${id}" data-full="${esc(row[key])}" data-mask="${esc(row[maskedKey])}">${shown ? esc(row[key]) : esc(row[maskedKey])}</b>
+      <b class="secret" data-id="${id}" data-mask="${esc(row[maskedKey])}">${shown ? esc(visibleValue) : esc(row[maskedKey])}</b>
       <button class="request-secret-toggle" type="button" data-toggle-secret="${id}">${shown ? (T.hide || "Скрыть") : (T.show || "Показать")}</button>
     </span>
   `;
@@ -74,13 +81,71 @@ async function loadRows() {
   rowsEl.innerHTML = data.rows.map(requestCard).join("") || `<div class="empty-state request-empty">${esc(T.no_requests || "Заявок не найдено")}</div>`;
 }
 
+function closeSecretConfirm() {
+  if (!confirmModal) return;
+  confirmModal.hidden = true;
+  confirmPassword.value = "";
+  confirmError.textContent = "";
+  pendingSecret = null;
+  document.documentElement.classList.remove("modal-open");
+}
+
 document.addEventListener("click", event => {
   const btn = event.target.closest("[data-toggle-secret]");
   if (!btn) return;
   const id = btn.dataset.toggleSecret;
-  if (reveal.has(id)) reveal.delete(id); else reveal.add(id);
-  document.querySelectorAll(`[data-id="${CSS.escape(id)}"]`).forEach(el => el.textContent = reveal.has(id) ? el.dataset.full : el.dataset.mask);
-  btn.textContent = reveal.has(id) ? (T.hide || "Скрыть") : (T.show || "Показать");
+  if (reveal.has(id)) {
+    reveal.delete(id);
+    revealedValues.delete(id);
+    document.querySelectorAll(`[data-id="${CSS.escape(id)}"]`).forEach(el => { el.textContent = el.dataset.mask; });
+    btn.textContent = T.show || "Показать";
+    return;
+  }
+  const [requestId, field] = id.split(":");
+  pendingSecret = { id, requestId, field, button: btn };
+  confirmModal.hidden = false;
+  document.documentElement.classList.add("modal-open");
+  window.setTimeout(() => confirmPassword.focus(), 30);
+});
+
+confirmForm?.addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!pendingSecret) return;
+  const submit = confirmForm.querySelector('[type="submit"]');
+  submit.disabled = true;
+  confirmError.textContent = "";
+  try {
+    const response = await fetch("/api/dashboard/requests/reveal/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": confirmForm.querySelector('[name="csrfmiddlewaretoken"]').value,
+      },
+      body: JSON.stringify({
+        request_id: pendingSecret.requestId,
+        field: pendingSecret.field,
+        password: confirmPassword.value,
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.ok) throw new Error(data.error || "Не удалось подтвердить пароль.");
+    const { id, button } = pendingSecret;
+    reveal.add(id);
+    revealedValues.set(id, data.value);
+    document.querySelectorAll(`[data-id="${CSS.escape(id)}"]`).forEach(el => { el.textContent = data.value; });
+    button.textContent = T.hide || "Скрыть";
+    closeSecretConfirm();
+  } catch (error) {
+    confirmError.textContent = error.message;
+    confirmPassword.select();
+  } finally {
+    submit.disabled = false;
+  }
+});
+
+document.querySelectorAll("[data-secret-cancel]").forEach(button => button.addEventListener("click", closeSecretConfirm));
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && confirmModal && !confirmModal.hidden) closeSecretConfirm();
 });
 
 function scheduleLoad() {

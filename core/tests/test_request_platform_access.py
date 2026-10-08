@@ -1,3 +1,5 @@
+import json
+
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import check_password
 from django.test import TestCase
@@ -62,6 +64,40 @@ class RequestPlatformAccessTests(TestCase):
         payload = response.json()
         self.assertEqual(payload["count"], 1)
         self.assertEqual([row["id"] for row in payload["rows"]], [self.alpha_request.id])
+        self.assertNotIn("pnfl", payload["rows"][0])
+        self.assertNotIn("phone", payload["rows"][0])
+
+    def test_sensitive_value_requires_current_account_password(self):
+        denied = self.client.post(
+            reverse("dashboard_request_reveal_api"),
+            data=json.dumps({"request_id": self.alpha_request.id, "field": "pnfl", "password": "wrong"}),
+            content_type="application/json",
+        )
+        self.assertEqual(denied.status_code, 403)
+
+        allowed = self.client.post(
+            reverse("dashboard_request_reveal_api"),
+            data=json.dumps({
+                "request_id": self.alpha_request.id,
+                "field": "pnfl",
+                "password": "test-password",
+            }),
+            content_type="application/json",
+        )
+        self.assertEqual(allowed.status_code, 200)
+        self.assertEqual(allowed.json()["value"], self.alpha_request.pnfl)
+
+    def test_sensitive_value_cannot_be_revealed_outside_scope(self):
+        response = self.client.post(
+            reverse("dashboard_request_reveal_api"),
+            data=json.dumps({
+                "request_id": self.beta_request.id,
+                "field": "pnfl",
+                "password": "test-password",
+            }),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 404)
 
     def test_unassigned_request_cannot_be_opened_directly(self):
         response = self.client.get(reverse("request_edit", kwargs={"pk": self.beta_request.pk}))

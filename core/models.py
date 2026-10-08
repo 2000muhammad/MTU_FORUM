@@ -376,6 +376,7 @@ class AdminChatThread(models.Model):
         CLOSED = "closed", "Закрыт"
 
     telegram_id = models.BigIntegerField(db_index=True)
+    telegram_username = models.CharField(max_length=64, blank=True, db_index=True)
     full_name = models.CharField(max_length=180, blank=True)
     title = models.CharField(max_length=180, blank=True)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.OPEN, db_index=True)
@@ -411,6 +412,8 @@ class AdminChatMessage(models.Model):
 
 
     telegram_id = models.BigIntegerField(db_index=True)
+
+    telegram_username = models.CharField(max_length=64, blank=True, db_index=True)
 
     thread = models.ForeignKey(AdminChatThread, null=True, blank=True, on_delete=models.SET_NULL, related_name="messages")
 

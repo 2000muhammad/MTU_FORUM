@@ -12,21 +12,64 @@
   <form method="post" class="log-filters">
     {% csrf_token %}
     <input class="form-control" name="telegram_id" placeholder="Telegram ID" required>
+    <input class="form-control" name="telegram_username" placeholder="Telegram nickname, например @username">
     <input class="form-control" name="full_name" placeholder="Имя пользователя">
     <input class="form-control" name="title" placeholder="Название чата">
     <button class="btn btn-primary" type="submit">Создать</button>
   </form>
 </section>
 <section class="glass-card list-card">
+  <div class="chat-live-search">
+    <span aria-hidden="true">⌕</span>
+    <input class="form-control" id="chatLiveSearch" type="search" placeholder="Поиск по Telegram ID, имени или @nickname" autocomplete="off">
+    <button type="button" id="chatSearchClear" aria-label="Очистить поиск" hidden>×</button>
+  </div>
+  <p class="chat-search-summary" id="chatSearchSummary" aria-live="polite"></p>
+  <div id="chatRows">
   {% for chat in chats %}
-  <a class="chat-row" href="{% if chat.thread_id %}{% url 'admin_chat_thread_detail' chat.thread_id %}{% else %}{% url 'admin_chat_detail' chat.telegram_id %}{% endif %}">
+  <a class="chat-row" data-chat-search="{{ chat.telegram_id }} {{ chat.full_name }} {{ chat.telegram_username }}" href="{% if chat.thread_id %}{% url 'admin_chat_thread_detail' chat.thread_id %}{% else %}{% url 'admin_chat_detail' chat.telegram_id %}{% endif %}">
     <div class="chat-main">
       <img class="chat-avatar" src="{% url 'telegram_profile_photo' chat.telegram_id %}" alt="Telegram profile">
-      <div><strong>{{ chat.full_name|default:chat.telegram_id }}{% if chat.status == 'closed' %} <small>· закрыт</small>{% endif %}</strong><p>{{ chat.last.text|truncatechars:90 }}</p><small>Telegram ID: {{ chat.telegram_id }}</small></div>
+      <div><strong>{{ chat.full_name|default:chat.telegram_id }}{% if chat.status == 'closed' %} <small>· закрыт</small>{% endif %}</strong>{% if chat.telegram_username %}<span class="chat-nickname">@{{ chat.telegram_username }}</span>{% endif %}<p>{{ chat.last.text|truncatechars:90 }}</p><small>Telegram ID: {{ chat.telegram_id }}</small></div>
     </div>
     <div class="chat-meta"><span>{{ chat.last.created_at|date:'d.m.Y H:i' }}</span>{% if chat.unread %}<b>{{ chat.unread }}</b>{% endif %}</div>
   </a>
   {% empty %}<p class="text-secondary">{% tr 'no_messages' %}</p>{% endfor %}
+  </div>
+  <div class="chat-search-empty" id="chatSearchEmpty" hidden>Пользователь не найден</div>
 </section>
 <audio id="chatSound" src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=" preload="auto"></audio>
+{% endblock %}
+{% block scripts %}
+<script>
+const chatSearch = document.getElementById('chatLiveSearch');
+const chatClear = document.getElementById('chatSearchClear');
+const chatSummary = document.getElementById('chatSearchSummary');
+const chatEmpty = document.getElementById('chatSearchEmpty');
+const chatRows = [...document.querySelectorAll('[data-chat-search]')];
+
+function normalizeChatSearch(value) {
+  return String(value || '').toLocaleLowerCase().replace(/^@/, '').trim();
+}
+
+function filterChats() {
+  const query = normalizeChatSearch(chatSearch.value);
+  let visible = 0;
+  chatRows.forEach((row) => {
+    const matches = !query || normalizeChatSearch(row.dataset.chatSearch).includes(query);
+    row.hidden = !matches;
+    if (matches) visible += 1;
+  });
+  chatClear.hidden = !query;
+  chatEmpty.hidden = visible > 0 || !query;
+  chatSummary.textContent = query ? `Найдено: ${visible}` : '';
+}
+
+chatSearch?.addEventListener('input', filterChats);
+chatClear?.addEventListener('click', () => {
+  chatSearch.value = '';
+  filterChats();
+  chatSearch.focus();
+});
+</script>
 {% endblock %}

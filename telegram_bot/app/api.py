@@ -76,11 +76,11 @@ def get_chat_threads(telegram_id):
         return []
 
 
-def create_chat_thread(telegram_id, full_name=""):
+def create_chat_thread(telegram_id, full_name="", username=""):
     try:
         response = requests.post(
             f"{SITE_BASE_URL}/api/chat/threads/",
-            data={"action": "create", "telegram_id": telegram_id, "full_name": full_name},
+            data={"action": "create", "telegram_id": telegram_id, "full_name": full_name, "username": username},
             headers=HEADERS,
             timeout=15,
         )
