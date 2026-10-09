@@ -60,7 +60,9 @@ urlpatterns += i18n_patterns(
     path("settings/<str:section>/", views.settings_view, name="settings_section"),
     path("logs/", views.site_logs_view, name="site_logs"),
     path("users/", views.users_view, name="users"),
+    path("users/excel/<str:mode>/", views.users_excel_view, name="users_excel"),
     path("managers/", views.manager_accounts_view, name="manager_accounts"),
+    path("managers/excel/<str:mode>/", views.manager_accounts_excel_view, name="manager_accounts_excel"),
     path("requests/<int:pk>/edit/", views.request_edit, name="request_edit"),
 
     path("chats/", views.admin_chat_list, name="admin_chat_list"),

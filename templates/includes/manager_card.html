@@ -1,5 +1,5 @@
 {% load ui_i18n %}
-<article class="manager-card {% if not item.is_active %}is-muted{% endif %}">
+<article class="manager-card {% if not item.is_active %}is-muted{% endif %}" data-user-presence-id="{{ item.id }}">
   <div class="manager-avatar">
     {% if item.profile.avatar %}
       <img src="{{ item.profile.avatar.url }}" alt="{{ item.username }}">
@@ -13,6 +13,7 @@
     <div class="manager-card-top">
       <strong>{{ item.get_full_name|default:item.username }}</strong>
       <span class="manager-role-badge">{{ item.manager_role_name|default:"-" }}</span>
+      <span class="presence-badge {% if item.is_online %}is-online{% else %}is-offline{% endif %}" data-presence-label>{% if item.is_online %}Онлайн{% else %}Офлайн{% endif %}</span>
     </div>
     <p>{{ item.username }}{% if item.email %} · {{ item.email }}{% endif %}</p>
     <div class="manager-tags">

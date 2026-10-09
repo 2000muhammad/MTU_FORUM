@@ -51,7 +51,7 @@ from PIL import Image, ImageOps
 
 from .forms import ApiConfigurationForm, BotSubscriptionChannelForm, BranchForm, DeveloperTaskForm, EmployeeProfileForm, ExternalApiConnectionForm, IntakeRequestForm, LoginForm, ManagerAccountForm, OrganizationForm, PlatformForm, PositionForm, SiteIntakeForm, SiteRoleForm, SiteSettingsForm, StationForm, StyledPasswordChangeForm, UserForm, UserInfoForm, UserProfileForm, WebPlatformForm
 from .excel_utils import build_xlsx, parse_xlsx, truthy
-from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, IntakeRequestHistory, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, Platform, Position, SecurityThrottle, SiteLog, SiteRole, SiteSettings, Station, TelegramAccountLink, TelegramPasswordReset, UserProfile, WebPlatform, WebPlatformFavorite
+from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, IntakeRequestHistory, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, Platform, Position, SecurityThrottle, SiteLog, SiteRole, SiteSettings, Station, TelegramAccountLink, TelegramPasswordReset, UserPresence, UserProfile, WebPlatform, WebPlatformFavorite
 from .site_logs import write_site_log
 from .security import clear_failures, consume_rate_limit, is_locked, record_failure
 from .middleware import get_platform_version
@@ -2514,6 +2514,209 @@ def _scope_branch_directory_for_actor(queryset, actor):
     return queryset
 
 
+USER_EXCEL_HEADERS = [
+    "username", "first_name", "last_name", "email", "phone", "pnfl",
+    "branch", "organization", "department", "position", "role_code",
+    "is_active", "password",
+]
+MANAGER_EXCEL_HEADERS = [
+    "username", "first_name", "last_name", "email", "phone",
+    "manager_type", "branch", "organization", "is_active", "password",
+]
+
+
+def _people_xlsx_response(filename, rows, headers):
+    response = HttpResponse(
+        build_xlsx(headers, rows),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+def _import_error_message(errors):
+    preview = "; ".join(errors[:5])
+    return f"Импорт не выполнен: {preview}" + (f"; ещё ошибок: {len(errors) - 5}" if len(errors) > 5 else "")
+
+
+@login_required
+@user_passes_test(user_can_manage_people)
+def users_excel_view(request, mode):
+    if mode == "export":
+        rows = []
+        queryset = _scope_users_for_actor(_users_queryset().prefetch_related("profile__roles"), request.user)
+        for user in queryset:
+            profile = _ensure_user_profile(user)
+            role = profile.roles.filter(is_active=True).order_by("sort_order", "name").first()
+            rows.append([
+                user.username, user.first_name, user.last_name, user.email, profile.phone,
+                profile.pnfl or profile.employee_pinfl, profile.branch, profile.organization,
+                profile.department, profile.position, role.code if role else "",
+                "yes" if user.is_active else "no", "",
+            ])
+        return _people_xlsx_response("users-export.xlsx", rows, USER_EXCEL_HEADERS)
+    if mode == "sample":
+        return _people_xlsx_response("users-sample.xlsx", [[
+            "example.user", "Иван", "Иванов", "user@example.uz", "+998901234567",
+            "12345678901234", "Филиал", "Организация", "Отдел", "Специалист",
+            "employee", "yes", "ChangeMe123!",
+        ]], USER_EXCEL_HEADERS)
+    if mode != "import" or request.method != "POST":
+        return HttpResponse(status=405)
+    upload = request.FILES.get("excel_file")
+    if not upload or not upload.name.lower().endswith(".xlsx"):
+        messages.error(request, "Выберите файл XLSX.")
+        return redirect("users")
+    try:
+        rows = parse_xlsx(upload)
+    except Exception:
+        messages.error(request, "Не удалось прочитать XLSX-файл.")
+        return redirect("users")
+    errors = []
+    prepared = []
+    allowed_branches = set(Branch.objects.filter(is_active=True).values_list("name", flat=True))
+    allowed_organizations = set(_scope_organizations_for_actor(Organization.objects.filter(is_active=True), request.user).values_list("name", flat=True))
+    for number, row in enumerate(rows, start=2):
+        username = str(row.get("username", "")).strip()
+        if not username:
+            errors.append(f"строка {number}: нет username")
+            continue
+        existing = User.objects.filter(username=username).first()
+        if existing and not _scope_users_for_actor(User.objects.filter(pk=existing.pk), request.user).exists():
+            errors.append(f"строка {number}: нет доступа к {username}")
+            continue
+        branch = str(row.get("branch", "")).strip()
+        organization = str(row.get("organization", "")).strip()
+        if branch and branch not in allowed_branches:
+            errors.append(f"строка {number}: филиал не найден")
+        if organization and organization not in allowed_organizations:
+            errors.append(f"строка {number}: организация недоступна")
+        role_code = str(row.get("role_code", "")).strip()
+        role = SiteRole.objects.filter(code=role_code, is_active=True).first() if role_code else None
+        if role_code and not role:
+            errors.append(f"строка {number}: роль {role_code} не найдена")
+        prepared.append((row, existing, role))
+    if errors:
+        messages.error(request, _import_error_message(errors))
+        return redirect("users")
+    created = updated = 0
+    with transaction.atomic():
+        for row, user, role in prepared:
+            is_new = user is None
+            if is_new:
+                user = User(username=str(row["username"]).strip())
+            user.first_name = str(row.get("first_name", "")).strip()
+            user.last_name = str(row.get("last_name", "")).strip()
+            user.email = str(row.get("email", "")).strip()
+            user.is_active = truthy(row.get("is_active", "yes"))
+            password = str(row.get("password", "")).strip()
+            if password:
+                user.set_password(password)
+            elif is_new:
+                user.set_password(generate_password())
+            user.save()
+            profile = _ensure_user_profile(user)
+            for field in ("phone", "pnfl", "branch", "organization", "department", "position"):
+                setattr(profile, field, str(row.get(field, "")).strip())
+            profile.save()
+            if role:
+                profile.roles.set([role])
+                user.is_staff = role.is_staff_role
+                user.is_superuser = role.is_admin_role
+                user.save(update_fields=["is_staff", "is_superuser"])
+            created += int(is_new)
+            updated += int(not is_new)
+    messages.success(request, f"Импорт завершён: создано {created}, обновлено {updated}.")
+    return redirect("users")
+
+
+@login_required
+@user_passes_test(user_can_manage_manager_accounts)
+def manager_accounts_excel_view(request, mode):
+    _manager_role(ManagerAccountForm.MANAGER_BRANCH)
+    _manager_role(ManagerAccountForm.MANAGER_ORGANIZATION)
+    queryset = _scope_users_for_actor(_manager_users_queryset(), request.user)
+    if user_is_branch_manager(request.user):
+        queryset = queryset.filter(profile__roles__code="organization_manager")
+    if mode == "export":
+        rows = []
+        for user in queryset:
+            profile = _ensure_user_profile(user)
+            role = profile.roles.filter(code__in=["branch_manager", "organization_manager"]).first()
+            rows.append([user.username, user.first_name, user.last_name, user.email, profile.phone,
+                         "organization" if role and role.code == "organization_manager" else "branch",
+                         profile.branch, profile.organization, "yes" if user.is_active else "no", ""])
+        return _people_xlsx_response("managers-export.xlsx", rows, MANAGER_EXCEL_HEADERS)
+    if mode == "sample":
+        return _people_xlsx_response("managers-sample.xlsx", [[
+            "manager.example", "Анна", "Иванова", "manager@example.uz", "+998901234567",
+            "organization", "Филиал", "Организация", "yes", "ChangeMe123!",
+        ]], MANAGER_EXCEL_HEADERS)
+    if mode != "import" or request.method != "POST":
+        return HttpResponse(status=405)
+    upload = request.FILES.get("excel_file")
+    if not upload or not upload.name.lower().endswith(".xlsx"):
+        messages.error(request, "Выберите файл XLSX.")
+        return redirect("manager_accounts")
+    try:
+        rows = parse_xlsx(upload)
+    except Exception:
+        messages.error(request, "Не удалось прочитать XLSX-файл.")
+        return redirect("manager_accounts")
+    errors, prepared = [], []
+    for number, row in enumerate(rows, start=2):
+        username = str(row.get("username", "")).strip()
+        manager_type = str(row.get("manager_type", "organization")).strip().lower()
+        branch = Branch.objects.filter(name=str(row.get("branch", "")).strip(), is_active=True).first()
+        organization = Organization.objects.filter(name=str(row.get("organization", "")).strip(), is_active=True).first()
+        existing = User.objects.filter(username=username).first() if username else None
+        if not username:
+            errors.append(f"строка {number}: нет username")
+        if manager_type not in {"branch", "organization"}:
+            errors.append(f"строка {number}: manager_type должен быть branch или organization")
+        if user_is_branch_manager(request.user) and manager_type != "organization":
+            errors.append(f"строка {number}: разрешён только organization")
+        if not branch or (user_is_branch_manager(request.user) and branch.name != _actor_branch_name(request.user)):
+            errors.append(f"строка {number}: филиал недоступен")
+        if manager_type == "organization" and (not organization or organization.branch_id != getattr(branch, "id", None)):
+            errors.append(f"строка {number}: организация не относится к филиалу")
+        if existing and not _scope_users_for_actor(User.objects.filter(pk=existing.pk), request.user).exists():
+            errors.append(f"строка {number}: нет доступа к {username}")
+        prepared.append((row, existing, manager_type, branch, organization))
+    if errors:
+        messages.error(request, _import_error_message(errors))
+        return redirect("manager_accounts")
+    created = updated = 0
+    with transaction.atomic():
+        for row, user, manager_type, branch, organization in prepared:
+            is_new = user is None
+            if is_new:
+                user = User(username=str(row["username"]).strip())
+            user.first_name = str(row.get("first_name", "")).strip()
+            user.last_name = str(row.get("last_name", "")).strip()
+            user.email = str(row.get("email", "")).strip()
+            user.is_active = truthy(row.get("is_active", "yes"))
+            role = _manager_role(manager_type)
+            user.is_staff = True
+            password = str(row.get("password", "")).strip()
+            if password:
+                user.set_password(password)
+            elif is_new:
+                user.set_password(generate_password())
+            user.save()
+            profile = _ensure_user_profile(user)
+            profile.phone = str(row.get("phone", "")).strip()
+            profile.branch = branch.name
+            profile.organization = organization.name if manager_type == "organization" else ""
+            profile.position = role.name
+            profile.save()
+            profile.roles.set([role])
+            created += int(is_new)
+            updated += int(not is_new)
+    messages.success(request, f"Импорт завершён: создано {created}, обновлено {updated}.")
+    return redirect("manager_accounts")
+
+
 @login_required
 @user_passes_test(user_can_manage_people)
 def users_view(request):
@@ -2616,6 +2819,7 @@ def users_view(request):
         profile = _ensure_user_profile(user)
         selected_role = profile.roles.filter(is_active=True).order_by("sort_order", "name").first()
         user.selected_role_id = selected_role.pk if selected_role else None
+        user.is_online = UserPresence.objects.filter(user=user, last_seen_at__gte=timezone.now() - timedelta(seconds=70)).exists()
     stations = list(_scope_branch_directory_for_actor(
         Station.objects.filter(is_active=True).select_related("branch", "organization"), request.user,
     ))
@@ -2808,6 +3012,7 @@ def manager_accounts_view(request):
             organization = Organization.objects.filter(name=profile.organization).first()
         user.manager_branch_id = branch.pk if branch else ""
         user.manager_organization_id = organization.pk if organization else ""
+        user.is_online = UserPresence.objects.filter(user=user, last_seen_at__gte=timezone.now() - timedelta(seconds=70)).exists()
 
     branch_manager_users = [
         user for user in manager_users if user.manager_type == ManagerAccountForm.MANAGER_BRANCH
@@ -3511,6 +3716,27 @@ def api_settings_view(request):
         "config": config,
         "external_form": external_form,
         "external_apis": ExternalApiConnection.objects.all(),
+    })
+
+
+@login_required
+@require_POST
+def user_presence_heartbeat_api(request):
+    UserPresence.objects.update_or_create(user=request.user, defaults={"last_seen_at": timezone.now()})
+    return JsonResponse({"ok": True})
+
+
+@login_required
+@require_GET
+def user_presence_state_api(request):
+    if not (user_can_manage_people(request.user) or user_can_manage_manager_accounts(request.user)):
+        return JsonResponse({"ok": False}, status=403)
+    visible = _scope_users_for_actor(User.objects.all(), request.user)
+    cutoff = timezone.now() - timedelta(seconds=70)
+    online_ids = set(UserPresence.objects.filter(user__in=visible, last_seen_at__gte=cutoff).values_list("user_id", flat=True))
+    return JsonResponse({
+        "ok": True,
+        "users": [{"id": user_id, "online": user_id in online_ids} for user_id in visible.values_list("id", flat=True)],
     })
 
 

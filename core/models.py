@@ -635,6 +635,17 @@ class UserProfile(models.Model):
         return self.user.username
 
 
+class UserPresence(models.Model):
+    user = models.OneToOneField(User, related_name="presence", on_delete=models.CASCADE)
+    last_seen_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ["-last_seen_at"]
+
+    def __str__(self):
+        return f"{self.user.username}: {self.last_seen_at:%Y-%m-%d %H:%M:%S}"
+
+
 class ApiConfiguration(models.Model):
     site_base_url = models.URLField(default="http://127.0.0.1:8000")
 
