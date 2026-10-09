@@ -72,6 +72,7 @@ html.mtu-loader-active {
   height: min(520px, 70vh);
   display: grid;
   place-items: center;
+  min-width: 0;
   transition: transform .72s cubic-bezier(.65, 0, .35, 1), filter .72s;
 }
 
@@ -121,6 +122,8 @@ html.mtu-loader-active {
   position: relative;
   z-index: 2;
   width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .mtu-loader__emblem {
@@ -332,12 +335,25 @@ html.mtu-loader-active {
 
 @media (max-width: 640px) {
   .mtu-loader::before { inset: 10px; }
-  .mtu-loader__stage { width: calc(100vw - 32px); }
-  .mtu-loader__logo { width: calc(100vw - 40px); padding-inline: 12px; font-size: 9vw; }
-  .mtu-loader__kicker { max-width: 86vw; margin: 0 auto 17px; font-size: 11px; letter-spacing: .04em; }
+  .mtu-loader__stage { width: calc(100vw - 32px); max-width: 100%; }
+  .mtu-loader__orbit { width: min(76vw, 300px); }
+  .mtu-loader__emblem { width: clamp(76px, 25vw, 112px); margin-bottom: 16px; }
+  .mtu-loader__logo { width: 100%; max-width: 100%; padding-inline: 6px; font-size: clamp(28px, 11vw, 48px); letter-spacing: -.055em; }
+  .mtu-loader__kicker { width: 100%; max-width: 100%; margin: 0 auto 17px; padding-inline: 8px; gap: 7px; font-size: clamp(8px, 2.8vw, 11px); letter-spacing: .025em; }
   .mtu-loader__kicker > i { flex-basis: 14px; width: 14px; }
-  .mtu-loader__progress { margin-top: 30px; }
+  .mtu-loader__kicker > span { min-width: 0; text-align: center; overflow-wrap: anywhere; }
+  .mtu-loader__kicker strong { letter-spacing: .12em; }
+  .mtu-loader__progress { width: min(100%, 520px); margin-top: 30px; padding-inline: 8px; }
+  .mtu-loader__meta { min-width: 0; letter-spacing: .17em; }
   .mtu-loader__corner { right: 24px; bottom: 24px; }
+}
+
+@media (max-width: 360px) {
+  .mtu-loader__stage { width: calc(100vw - 24px); }
+  .mtu-loader__kicker > i { display: none; }
+  .mtu-loader__logo { font-size: clamp(26px, 10.5vw, 38px); }
+  .mtu-loader__progress { padding-inline: 4px; }
+  .mtu-loader__meta { letter-spacing: .12em; }
 }
 
 @media (max-height: 420px) {
