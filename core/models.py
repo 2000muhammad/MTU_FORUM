@@ -329,6 +329,40 @@ class IntakeRequest(models.Model):
         return f"#{self.pk} {self.full_name or self.pnfl}"
 
 
+class IntakeRequestHistory(models.Model):
+    class Event(models.TextChoices):
+        CREATED = "created", "Заявка создана"
+        UPDATED = "updated", "Данные изменены"
+        STATUS = "status", "Статус изменён"
+        CREDENTIALS = "credentials", "Данные доступа изменены"
+
+    request = models.ForeignKey(
+        IntakeRequest,
+        on_delete=models.CASCADE,
+        related_name="history",
+    )
+    actor = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="intake_request_changes",
+    )
+    event = models.CharField(max_length=24, choices=Event.choices)
+    changes = models.JSONField(default=dict, blank=True)
+    from_status = models.CharField(max_length=16, blank=True)
+    to_status = models.CharField(max_length=16, blank=True)
+    telegram_notified = models.BooleanField(default=False)
+    telegram_error = models.CharField(max_length=500, blank=True)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return f"#{self.request_id}: {self.get_event_display()}"
+
+
 class TelegramPasswordReset(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="telegram_password_resets")
     token_hash = models.CharField(max_length=64, unique=True)
