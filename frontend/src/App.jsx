@@ -439,6 +439,19 @@ function Layout({ boot, config, children }) {
 function Dashboard({ boot }) {
   const tr = createTranslator(boot.language);
   const stats = boot.dashboard.stats;
+  const requestTotal = stats.new + stats.done + stats.blocked;
+  const requestChart = [
+    { key: "new", label: tr("Новые заявки"), value: stats.new },
+    { key: "done", label: tr("Выполнено"), value: stats.done },
+    { key: "blocked", label: tr("Заблокировано"), value: stats.blocked },
+  ].map((item) => ({
+    ...item,
+    percent: requestTotal ? Math.round((item.value / requestTotal) * 100) : 0,
+  }));
+  const newEnd = requestTotal ? (stats.new / requestTotal) * 360 : 0;
+  const doneEnd = requestTotal
+    ? ((stats.new + stats.done) / requestTotal) * 360
+    : 0;
   return (
     <div className="page-stack">
       <section className="hero">
@@ -458,28 +471,67 @@ function Dashboard({ boot }) {
         <ShieldCheck />
       </section>
       {boot.permissions.requests && (
-        <section className="metric-grid">
-          <article>
-            <span>{tr("Новые заявки")}</span>
-            <strong>{stats.new}</strong>
-            <ClipboardList />
-          </article>
-          <article>
-            <span>{tr("Выполнено")}</span>
-            <strong>{stats.done}</strong>
-            <CheckCircle2 />
-          </article>
-          <article>
-            <span>{tr("Заблокировано")}</span>
-            <strong>{stats.blocked}</strong>
-            <XCircle />
-          </article>
-          <article>
-            <span>{tr("Непрочитанные чаты")}</span>
-            <strong>{stats.chats}</strong>
-            <Users />
-          </article>
-        </section>
+        <>
+          <section className="metric-grid">
+            <article>
+              <span>{tr("Новые заявки")}</span>
+              <strong>{stats.new}</strong>
+              <ClipboardList />
+            </article>
+            <article>
+              <span>{tr("Выполнено")}</span>
+              <strong>{stats.done}</strong>
+              <CheckCircle2 />
+            </article>
+            <article>
+              <span>{tr("Заблокировано")}</span>
+              <strong>{stats.blocked}</strong>
+              <XCircle />
+            </article>
+            <article>
+              <span>{tr("Непрочитанные чаты")}</span>
+              <strong>{stats.chats}</strong>
+              <Users />
+            </article>
+          </section>
+          <section className="request-chart-panel" aria-label={tr("Статистика заявок")}>
+            <div className="request-chart-copy">
+              <span>{tr("ОБЗОР СИСТЕМЫ")}</span>
+              <h2>{tr("Статистика заявок")}</h2>
+              <p>{tr("Актуальное состояние заявок и быстрый доступ к рабочим сервисам.")}</p>
+              <div className="request-chart-legend">
+                {requestChart.map((item) => (
+                  <div className={`request-chart-row is-${item.key}`} key={item.key}>
+                    <div>
+                      <i aria-hidden="true" />
+                      <span>{item.label}</span>
+                      <strong>{item.value}</strong>
+                      <b>{item.percent}%</b>
+                    </div>
+                    <span className="request-chart-track" aria-hidden="true">
+                      <i style={{ width: `${item.percent}%` }} />
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div
+              className={`request-donut ${requestTotal ? "" : "is-empty"}`}
+              style={{
+                "--chart-new-end": `${newEnd}deg`,
+                "--chart-done-end": `${doneEnd}deg`,
+              }}
+              role="img"
+              aria-label={`${tr("Всего")}: ${requestTotal}`}
+            >
+              <div>
+                <small>{tr("Всего")}</small>
+                <strong>{requestTotal}</strong>
+                <span>{tr("Заявки")}</span>
+              </div>
+            </div>
+          </section>
+        </>
       )}
       <section className="panel">
         <div className="panel-head">
