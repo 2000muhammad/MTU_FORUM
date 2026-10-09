@@ -3,7 +3,7 @@
 <html lang="{{ LANGUAGE_CODE }}">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   {% if site_settings.site_description %}<meta name="description" content="{{ site_settings.site_description|striptags|truncatechars:160 }}">{% endif %}
   {% if site_settings.site_tags %}<meta name="keywords" content="{{ site_settings.site_tags }}">{% endif %}
   <title>{% block title %}{{ site_settings.site_name|default:'MTU FORUM' }}{% endblock %}</title>
@@ -47,6 +47,7 @@
   <script src="{% static 'js/permissions.js' %}?v=2-auto" defer></script>
   <script src="{% static 'js/version-switch.js' %}?v=20260921-loader" defer></script>
   <link rel="stylesheet" href="{% static 'css/minimal-theme.css' %}?v=12-access-groups">
+  <link rel="stylesheet" href="{% static 'css/mobile-responsive.css' %}?v=20261009-iphone-scroll">
 </head>
 <body class="{% if request.GET.embedded %}embedded-react-view{% endif %}">
   <script>

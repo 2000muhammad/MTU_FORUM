@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from core.models import TelegramAccountLink, UserProfile
+from core.models import ApiConfiguration, TelegramAccountLink, UserProfile
 
 
 @override_settings(TELEGRAM_BOT_USERNAME="mtu_test_bot", TELEGRAM_API_KEY="test-key")
@@ -65,3 +65,41 @@ class TelegramProfileLinkTests(TestCase):
         self.profile.refresh_from_db()
         self.assertIsNone(self.profile.telegram_id)
         self.assertIsNone(self.profile.telegram_verified_at)
+
+    def test_environment_api_key_remains_valid_during_database_key_rotation(self):
+        token = self._start_link()
+        config = ApiConfiguration.load()
+        config.telegram_api_key = "new-database-key"
+        config.save(update_fields=["telegram_api_key"])
+
+        response = self.client.post(
+            reverse("telegram_profile_link_complete_api"),
+            data=json.dumps({
+                "token": token,
+                "telegram_id": 778,
+                "username": "telegram_user",
+                "phone": "998901234567",
+            }),
+            content_type="application/json",
+            HTTP_X_API_KEY="test-key",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.telegram_id, 778)
+
+    def test_unknown_api_key_is_rejected(self):
+        token = self._start_link()
+        response = self.client.post(
+            reverse("telegram_profile_link_complete_api"),
+            data=json.dumps({
+                "token": token,
+                "telegram_id": 779,
+                "username": "telegram_user",
+                "phone": "998901234567",
+            }),
+            content_type="application/json",
+            HTTP_X_API_KEY="wrong-key",
+        )
+
+        self.assertEqual(response.status_code, 401)
