@@ -51,7 +51,7 @@ from PIL import Image, ImageOps
 
 from .forms import ApiConfigurationForm, BotSubscriptionChannelForm, BranchForm, DeveloperTaskForm, EmployeeProfileForm, ExternalApiConnectionForm, IntakeRequestForm, LoginForm, ManagerAccountForm, OrganizationForm, PlatformForm, PositionForm, SiteIntakeForm, SiteRoleForm, SiteSettingsForm, StationForm, StyledPasswordChangeForm, UserForm, UserInfoForm, UserProfileForm, WebPlatformForm
 from .excel_utils import build_xlsx, parse_xlsx, truthy
-from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, Platform, Position, SecurityThrottle, SiteLog, SiteRole, SiteSettings, Station, TelegramAccountLink, TelegramPasswordReset, UserProfile, WebPlatform, WebPlatformFavorite
+from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, IntakeRequestHistory, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, Platform, Position, SecurityThrottle, SiteLog, SiteRole, SiteSettings, Station, TelegramAccountLink, TelegramPasswordReset, UserProfile, WebPlatform, WebPlatformFavorite
 from .site_logs import write_site_log
 from .security import clear_failures, consume_rate_limit, is_locked, record_failure
 from .middleware import get_platform_version
@@ -355,6 +355,13 @@ def index(request):
                 telegram_id=0,
                 lang=lang_code,
                 hrm_payload={"found": False, "message": "HRM integration disabled.", "raw": {"disabled": True}},
+            )
+            IntakeRequestHistory.objects.create(
+                request=item,
+                actor=request.user if request.user.is_authenticated else None,
+                event=IntakeRequestHistory.Event.CREATED,
+                changes={"Статус": {"old": "—", "new": item.get_status_display()}},
+                to_status=item.status,
             )
             write_site_log(
                 request,
@@ -1281,6 +1288,12 @@ def request_edit(request, pk):
             messages.success(request, "Заявка удалена.")
             return redirect("requests")
 
+        tracked_fields = [
+            "pnfl", "full_name", "company", "department", "position",
+            "passport", "phone", "telegram_id", "platform", "cause", "status",
+        ]
+        before = {field: getattr(item, field) for field in tracked_fields}
+
         form = IntakeRequestForm(request.POST, instance=item, user=request.user)
 
         if form.is_valid():
@@ -1363,6 +1376,84 @@ def request_edit(request, pk):
 
             item.save()
 
+            field_labels = {
+                "pnfl": "ПНФЛ",
+                "full_name": "Ф.И.О",
+                "company": "Предприятие",
+                "department": "Подразделение",
+                "position": "Должность",
+                "passport": "Паспорт",
+                "phone": "Телефон",
+                "telegram_id": "Telegram ID",
+                "platform": "Платформа",
+                "cause": "Причина",
+                "status": "Статус",
+            }
+            status_labels = dict(IntakeRequest.Status.choices)
+            changes = {}
+            for field in tracked_fields:
+                old_value = before[field]
+                new_value = getattr(item, field)
+                if old_value == new_value:
+                    continue
+                if field == "status":
+                    old_value = status_labels.get(old_value, old_value)
+                    new_value = status_labels.get(new_value, new_value)
+                elif field in {"pnfl", "passport", "phone", "telegram_id"}:
+                    old_value = mask_value(old_value, 2)
+                    new_value = mask_value(new_value, 2)
+                changes[field_labels[field]] = {
+                    "old": str(old_value or "—"),
+                    "new": str(new_value or "—"),
+                }
+
+            credentials_changed = action in {"generate", "create_user", "save_credentials"}
+            status_changed = before["status"] != item.status
+            history = None
+            if changes or credentials_changed:
+                event = (
+                    IntakeRequestHistory.Event.STATUS
+                    if status_changed
+                    else IntakeRequestHistory.Event.CREDENTIALS
+                    if credentials_changed
+                    else IntakeRequestHistory.Event.UPDATED
+                )
+                if credentials_changed:
+                    changes.setdefault("Данные доступа", {"old": "—", "new": "Обновлены"})
+                history = IntakeRequestHistory.objects.create(
+                    request=item,
+                    actor=request.user,
+                    event=event,
+                    changes=changes,
+                    from_status=before["status"] if status_changed else "",
+                    to_status=item.status if status_changed else "",
+                )
+
+            if status_changed and item.telegram_id:
+                language = item.lang if item.lang in {"ru", "uz", "uz-cyrl", "en"} else "ru"
+                status_label = status_labels.get(item.status, item.status)
+                messages_by_language = {
+                    "ru": f"Статус заявки #{item.pk} изменён.\nНовый статус: <b>{status_label}</b>",
+                    "uz": f"#{item.pk} ariza holati o‘zgardi.\nYangi holat: <b>{status_label}</b>",
+                    "uz-cyrl": f"#{item.pk} ариза ҳолати ўзгарди.\nЯнги ҳолат: <b>{status_label}</b>",
+                    "en": f"Request #{item.pk} status changed.\nNew status: <b>{status_label}</b>",
+                }
+                try:
+                    telegram_result = send_telegram_message(item.telegram_id, messages_by_language[language])
+                    notified = bool(telegram_result.get("ok"))
+                    notification_error = "" if notified else str(telegram_result.get("description") or "Telegram API error")[:500]
+                except Exception as exc:
+                    notified = False
+                    notification_error = str(exc)[:500]
+                if history:
+                    history.telegram_notified = notified
+                    history.telegram_error = notification_error
+                    history.save(update_fields=["telegram_notified", "telegram_error"])
+                if notified:
+                    messages.success(request, "Пользователь уведомлён о новом статусе в Telegram.")
+                else:
+                    messages.warning(request, "Статус сохранён, но Telegram-уведомление отправить не удалось.")
+
             if action == "send_credentials" and item.generated_login and item.generated_password:
 
                 password = _get_plain_request_password(request, item)
@@ -1408,6 +1499,8 @@ def request_edit(request, pk):
         "item": item,
         "plain_generated_password": plain_generated_password,
         "password_is_hashed": _is_django_password_hash(item.generated_password),
+        "request_history": item.history.select_related("actor").all()[:100],
+        "request_status_labels": dict(IntakeRequest.Status.choices),
     })
 
 
@@ -3555,6 +3648,12 @@ def telegram_intake_api(request):
         station=selected_station,
 
     )
+    IntakeRequestHistory.objects.create(
+        request=item,
+        event=IntakeRequestHistory.Event.CREATED,
+        changes={"Статус": {"old": "—", "new": item.get_status_display()}},
+        to_status=item.status,
+    )
 
     message = "Ваша заявка принята. Администратор обработает ее в ближайшее время."
     telegram_notified = False
@@ -3832,6 +3931,13 @@ def react_public_api(request):
             company=data["company"], position=data["position"], full_name=data["full_name"],
             passport=data["passport"], phone=data["phone"], telegram_id=0, lang=lang_code,
             hrm_payload={"found": False, "message": "HRM integration disabled.", "raw": {"disabled": True}},
+        )
+        IntakeRequestHistory.objects.create(
+            request=item,
+            actor=request.user if request.user.is_authenticated else None,
+            event=IntakeRequestHistory.Event.CREATED,
+            changes={"Статус": {"old": "—", "new": item.get_status_display()}},
+            to_status=item.status,
         )
         write_site_log(
             request, source="site", action="site_intake_create",

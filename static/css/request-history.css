@@ -1,0 +1,149 @@
+.request-history-card {
+  margin-top: 18px;
+  padding: 22px;
+}
+
+.request-history-head,
+.request-history-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.request-history-head h2 {
+  margin: 4px 0 0;
+}
+
+.request-history-count {
+  display: grid;
+  min-width: 38px;
+  height: 38px;
+  padding: 0 10px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--panel-2);
+  color: var(--brand);
+  font-weight: 900;
+}
+
+.request-history-list {
+  display: grid;
+  gap: 0;
+  margin-top: 18px;
+}
+
+.request-history-entry {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 12px;
+  padding: 0 0 18px;
+}
+
+.request-history-entry:not(:last-child) .request-history-marker::after {
+  content: "";
+  position: absolute;
+  top: 17px;
+  bottom: -21px;
+  left: 6px;
+  width: 2px;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.request-history-marker {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  margin-top: 4px;
+  border: 3px solid color-mix(in srgb, var(--brand) 30%, var(--panel));
+  border-radius: 50%;
+  background: var(--brand);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 10%, transparent);
+}
+
+.request-history-marker.status-blocked {
+  border-color: color-mix(in srgb, var(--danger) 30%, var(--panel));
+  background: var(--danger);
+}
+
+.request-history-marker.status-done {
+  border-color: color-mix(in srgb, #65d9a8 35%, var(--panel));
+  background: #65d9a8;
+}
+
+.request-history-content {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--panel-2) 72%, transparent);
+}
+
+.request-history-title time,
+.request-history-actor {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.request-history-actor {
+  margin: 4px 0 0;
+}
+
+.request-history-changes {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.request-history-changes > div {
+  display: grid;
+  grid-template-columns: minmax(110px, .6fr) minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  padding: 9px 10px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--panel) 68%, transparent);
+  font-size: 12px;
+}
+
+.request-history-changes span {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.request-history-changes del,
+.request-history-changes ins {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.request-history-changes del {
+  color: color-mix(in srgb, var(--danger) 78%, var(--text));
+}
+
+.request-history-changes ins {
+  color: var(--brand);
+  font-weight: 800;
+}
+
+.request-history-telegram {
+  margin-top: 11px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.request-history-telegram.is-sent { color: var(--brand); }
+.request-history-telegram.is-error { color: var(--danger); }
+.request-history-empty { padding: 28px 12px; color: var(--muted); text-align: center; }
+
+@media (max-width: 620px) {
+  .request-history-card { padding: 15px; }
+  .request-history-title { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .request-history-changes > div { grid-template-columns: 1fr; gap: 4px; }
+  .request-history-changes b { display: none; }
+  .request-history-changes del::before { content: "Было: "; color: var(--muted); }
+  .request-history-changes ins::before { content: "Стало: "; color: var(--muted); }
+}
