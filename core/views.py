@@ -2939,6 +2939,10 @@ def users_view(request):
             return redirect("users")
         else:
             post_data = request.POST.copy()
+            password_change_requested = instance is None or post_data.get("change_password") == "1"
+            existing_password_hash = instance.password if instance is not None else ""
+            if instance is not None and not password_change_requested:
+                post_data["password"] = ""
             selected_account_type = (post_data.get("account_type") or "user").strip()
             manager_role = None
             if selected_account_type == "branch_manager" and not user_is_branch_manager(request.user):
@@ -2977,8 +2981,10 @@ def users_view(request):
                 else:
                     user = form.save(commit=False)
                     password = form.cleaned_data.get("password")
-                    if password:
+                    if password and password_change_requested:
                         user.set_password(password)
+                    elif instance is not None:
+                        user.password = existing_password_hash
                     elif instance is None:
                         password = generate_password()
                         user.set_password(password)

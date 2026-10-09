@@ -83,3 +83,36 @@ class PeopleToolsTests(TestCase):
         self.assertFalse(manager.is_superuser)
         self.assertEqual(manager.profile.organization, organization.name)
         self.assertTrue(manager.profile.roles.filter(code="organization_manager").exists())
+
+    def test_edit_keeps_password_until_change_is_explicitly_requested(self):
+        user = User.objects.create_user("editable-user", password="OriginalPass123!")
+
+        response = self.client.post(reverse("users"), {
+            "action": "save",
+            "id": user.pk,
+            "username": user.username,
+            "first_name": "Новое имя",
+            "password": "BrowserAutofillMustBeIgnored!",
+            "change_password": "0",
+            "is_active": "on",
+        })
+
+        self.assertRedirects(response, reverse("users"))
+        user.refresh_from_db()
+        self.assertEqual(user.first_name, "Новое имя")
+        self.assertTrue(user.check_password("OriginalPass123!"))
+        self.assertFalse(user.check_password("BrowserAutofillMustBeIgnored!"))
+
+        response = self.client.post(reverse("users"), {
+            "action": "save",
+            "id": user.pk,
+            "username": user.username,
+            "first_name": user.first_name,
+            "password": "RequestedPass456!",
+            "change_password": "1",
+            "is_active": "on",
+        })
+
+        self.assertRedirects(response, reverse("users"))
+        user.refresh_from_db()
+        self.assertTrue(user.check_password("RequestedPass456!"))
