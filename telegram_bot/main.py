@@ -1,6 +1,6 @@
 ﻿import logging
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters
-from app.config import BOT_TOKEN
+from app.config import BOT_TOKEN, SITE_API_KEY, SITE_BASE_URL
 from app.handlers.start import start
 from app.handlers.menu import menu_router
 from app.handlers.request_flow import request_router
@@ -12,6 +12,9 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 def main():
     if not BOT_TOKEN:
         raise RuntimeError("BOT_TOKEN is empty")
+    if not SITE_API_KEY or SITE_API_KEY == "change-me-api-key":
+        raise RuntimeError("TELEGRAM_API_KEY is not configured")
+    logging.getLogger(__name__).info("Telegram bot site API: %s", SITE_BASE_URL)
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(menu_router, pattern="^(lang:|check_subscription|settings)"))
