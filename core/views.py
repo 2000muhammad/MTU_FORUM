@@ -132,8 +132,8 @@ def _public_web_platform_context():
 
 
 def _allowed_intake_platform_values(user):
-    """Return platform names/codes visible to a user, or None for a superuser."""
-    if user.is_superuser or user_is_branch_manager(user) or user_is_organization_manager(user):
+    """Return platform names/codes visible to a user, or None for administrators/managers."""
+    if user_can_administer(user) or user_is_branch_manager(user) or user_is_organization_manager(user):
         return None
     profile = getattr(user, "profile", None)
     if not profile:
@@ -148,8 +148,8 @@ def _allowed_intake_platform_values(user):
 
 
 def _allowed_intake_company_values(user):
-    """Return enterprise names/codes visible to a user, or None for a superuser."""
-    if user.is_superuser:
+    """Return enterprise names/codes visible to a user, or None for administrators."""
+    if user_can_administer(user):
         return None
     profile = getattr(user, "profile", None)
     if not profile:
@@ -187,25 +187,16 @@ def _allowed_intake_company_values(user):
 
 def _allowed_intake_position_values(user):
     """Return position names visible to a user, or None when directory scope grants all."""
-    if user.is_superuser:
+    if user_can_administer(user):
         return None
     profile = getattr(user, "profile", None)
     if not profile:
         return set()
-    positions = Position.objects.filter(is_active=True)
-    if user_is_organization_manager(user):
-        if not profile.organization:
-            return set()
-        positions = positions.filter(organization__name=profile.organization)
-        if profile.branch:
-            positions = positions.filter(branch__name=profile.branch)
-        values = set(positions.values_list("name", flat=True))
-        return values or None
-    if user_is_branch_manager(user):
-        if not profile.branch:
-            return set()
-        values = set(positions.filter(branch__name=profile.branch).values_list("name", flat=True))
-        return values or None
+    # Manager scope is determined by the selected enterprise. Position values in
+    # older, Telegram and HRM requests are free text and may not exactly match the
+    # current directory, so applying both filters can hide valid branch requests.
+    if user_is_organization_manager(user) or user_is_branch_manager(user):
+        return None
     if not profile.positions_access_configured:
         return None
     return set(profile.allowed_positions.values_list("name", flat=True))
