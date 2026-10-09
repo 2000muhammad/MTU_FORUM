@@ -1433,6 +1433,17 @@ def request_edit(request, pk):
                     from_status=before["status"] if status_changed else "",
                     to_status=item.status if status_changed else "",
                 )
+                write_site_log(
+                    request,
+                    source="requests",
+                    action="request_status_change" if status_changed else "request_update",
+                    message=f"Заявка #{item.pk}: {history.get_event_display()}",
+                    meta={
+                        "request_id": item.pk,
+                        "event": event,
+                        "changes": changes,
+                    },
+                )
 
             if status_changed and item.telegram_id:
                 language = item.lang if item.lang in {"ru", "uz", "uz-cyrl", "en"} else "ru"
@@ -2550,6 +2561,45 @@ USER_EXCEL_HEADERS = [
     "branch", "organization", "department", "position", "role_code",
     "is_active", "password",
 ]
+
+
+def _user_audit_snapshot(user):
+    if not user:
+        return {}
+    profile = _ensure_user_profile(user)
+    values = {
+        "Логин": user.username,
+        "Имя": user.first_name,
+        "Фамилия": user.last_name,
+        "Email": user.email,
+        "Активен": "Да" if user.is_active else "Нет",
+    }
+    profile_labels = {
+        "pnfl": "ПНФЛ",
+        "middle_name": "Отчество",
+        "phone": "Телефон",
+        "birth_date": "Дата рождения",
+        "employee_pinfl": "ПИНФЛ сотрудника",
+        "branch": "Филиал",
+        "organization": "Организация",
+        "department": "Подразделение",
+        "position": "Должность",
+    }
+    for field, label in profile_labels.items():
+        values[label] = str(getattr(profile, field, "") or "")
+    values["Роли"] = ", ".join(profile.roles.order_by("name").values_list("name", flat=True))
+    values["Платформы"] = ", ".join(profile.allowed_platforms.order_by("name").values_list("name", flat=True))
+    values["Предприятия"] = ", ".join(profile.allowed_stations.order_by("name").values_list("name", flat=True))
+    values["Должности доступа"] = ", ".join(profile.allowed_positions.order_by("name").values_list("name", flat=True))
+    return values
+
+
+def _audit_changes(before, after):
+    return {
+        label: {"old": str(before.get(label) or "—"), "new": str(value or "—")}
+        for label, value in after.items()
+        if before.get(label) != value
+    }
 MANAGER_EXCEL_HEADERS = [
     "username", "first_name", "last_name", "email", "phone",
     "manager_type", "branch", "organization", "is_active", "password",
@@ -2865,6 +2915,7 @@ def users_view(request):
         user_id = request.POST.get("id")
         instance_qs = _scope_users_for_actor(User.objects.all(), request.user)
         instance = get_object_or_404(instance_qs, pk=user_id) if user_id else None
+        user_before = _user_audit_snapshot(instance)
 
         if action.startswith("bulk_"):
             selected_ids = request.POST.getlist("selected_users")
@@ -3020,7 +3071,14 @@ def users_view(request):
                     user.save()
                     _save_user_profile_from_form(user, form)
                     event = "user_update" if instance else "user_create"
-                    write_site_log(request, source="people", action=event, message=f"Saved user {user.username}", meta={"target_user_id": user.pk})
+                    user_changes = _audit_changes(user_before, _user_audit_snapshot(user))
+                    write_site_log(
+                        request,
+                        source="people",
+                        action=event,
+                        message=f"Saved user {user.username}",
+                        meta={"target_user_id": user.pk, "changes": user_changes},
+                    )
                     _notify_user_telegram(user, "Настройки и права доступа вашего аккаунта MTU FORUM были обновлены.")
                     if instance is None and password:
                         messages.success(request, f"Пользователь сохранен. Пароль: {password}")
@@ -3395,6 +3453,29 @@ def site_logs_view(request, category="all"):
 
     paginator = Paginator(logs, 50)
     page_obj = paginator.get_page(request.GET.get("page"))
+    for log in page_obj.object_list:
+        full_name = log.user.get_full_name().strip() if log.user else ""
+        log.actor_display = full_name or log.username or "Система"
+        log.actor_login = log.username if full_name and log.username else ""
+        profile = UserProfile.objects.filter(user=log.user).first() if log.user else None
+        log.actor_roles = ", ".join(profile.roles.values_list("name", flat=True)) if profile else ""
+        meta = log.meta if isinstance(log.meta, dict) else {}
+        raw_changes = meta.get("changes") if isinstance(meta.get("changes"), dict) else {}
+        log.change_items = []
+        for label, values in raw_changes.items():
+            if isinstance(values, dict):
+                log.change_items.append({
+                    "label": label,
+                    "old": values.get("old", "—"),
+                    "new": values.get("new", "—"),
+                })
+        if not log.change_items:
+            if meta.get("field"):
+                log.change_items.append({"label": "Поле", "old": "—", "new": meta["field"]})
+            elif meta.get("request_id"):
+                log.change_items.append({"label": "Заявка", "old": "—", "new": f"#{meta['request_id']}"})
+            elif meta.get("target_user_id"):
+                log.change_items.append({"label": "Пользователь", "old": "—", "new": f"ID {meta['target_user_id']}"})
     category_tabs = []
     for key, item in categories.items():
         category_tabs.append({
