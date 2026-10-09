@@ -3333,18 +3333,52 @@ def database_import_view(request):
 
 @login_required
 @user_passes_test(user_can_logs)
-def site_logs_view(request):
+def site_logs_view(request, category="all"):
+    categories = {
+        "all": {"label": "Все события", "filter": Q()},
+        "requests": {
+            "label": "Заявки",
+            "filter": Q(source="requests") | Q(action__startswith="request_") | Q(action="site_intake_create") | Q(action="send_intake_response"),
+        },
+        "users": {
+            "label": "Пользователи",
+            "filter": Q(source="people") | Q(action__startswith="user_") | Q(path__contains="/users/"),
+        },
+        "auth": {
+            "label": "Авторизация",
+            "filter": Q(source__in=["auth", "oneid", "face_id"]) | Q(action__icontains="login") | Q(action__icontains="password_reset"),
+        },
+        "telegram": {
+            "label": "Telegram и чаты",
+            "filter": Q(source="telegram") | Q(path__contains="/chats/") | Q(path__contains="/messages/"),
+        },
+        "api": {
+            "label": "API и интеграции",
+            "filter": Q(source__in=["external_api", "hrm"]) | Q(path__startswith="/api/"),
+        },
+        "system": {
+            "label": "Система",
+            "filter": Q(source__in=["system", "django", "admin", "maintenance"]),
+        },
+    }
+    if category not in categories:
+        category = "all"
+    category_filter = categories[category]["filter"]
+    category_logs = SiteLog.objects.select_related("user").filter(category_filter)
+
     if request.method == "POST" and request.POST.get("action") == "clear":
-        deleted_count = SiteLog.objects.count()
-        SiteLog.objects.all().delete()
-        write_site_log(request, source="admin", action="logs_clear", message=f"Cleared site logs: {deleted_count}")
+        deleted_count = category_logs.count()
+        category_logs.delete()
+        write_site_log(request, source="admin", action="logs_clear", message=f"Cleared {category} logs: {deleted_count}")
         messages.success(request, f"Логи очищены. Удалено записей: {deleted_count}.")
-        return redirect("site_logs")
+        if category == "all":
+            return redirect("site_logs")
+        return redirect("site_logs_category", category=category)
 
     query = request.GET.get("q", "").strip()
     level = request.GET.get("level", "").strip()
     source = request.GET.get("source", "").strip()
-    logs = SiteLog.objects.select_related("user").all()
+    logs = category_logs
 
     if query:
         logs = logs.filter(
@@ -3361,6 +3395,14 @@ def site_logs_view(request):
 
     paginator = Paginator(logs, 50)
     page_obj = paginator.get_page(request.GET.get("page"))
+    category_tabs = []
+    for key, item in categories.items():
+        category_tabs.append({
+            "key": key,
+            "label": item["label"],
+            "count": SiteLog.objects.filter(item["filter"]).count(),
+            "url": reverse("site_logs") if key == "all" else reverse("site_logs_category", kwargs={"category": key}),
+        })
     return render(request, "site_logs.html", {
         "page_obj": page_obj,
         "levels": SiteLog.Level.choices,
@@ -3369,6 +3411,9 @@ def site_logs_view(request):
         "selected_source": source,
         "query": query,
         "total_logs": logs.count(),
+        "category_tabs": category_tabs,
+        "selected_category": category,
+        "category_label": categories[category]["label"],
     })
 
 

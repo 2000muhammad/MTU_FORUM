@@ -59,6 +59,7 @@ urlpatterns += i18n_patterns(
     path("site-settings/database/import/", views.database_import_view, name="database_import"),
     path("settings/<str:section>/", views.settings_view, name="settings_section"),
     path("logs/", views.site_logs_view, name="site_logs"),
+    path("logs/<slug:category>/", views.site_logs_view, name="site_logs_category"),
     path("users/", views.users_view, name="users"),
     path("users/excel/<str:mode>/", views.users_excel_view, name="users_excel"),
     path("users/<int:pk>/history/", views.user_history_view, name="user_history"),
