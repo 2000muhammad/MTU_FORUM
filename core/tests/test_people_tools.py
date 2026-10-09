@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core.excel_utils import build_xlsx
-from core.models import PeopleImportJob, UserPresence
+from core.models import Branch, Organization, PeopleImportJob, UserPresence
 from core.views import USER_EXCEL_HEADERS, _run_user_import_job
 
 
@@ -45,3 +45,41 @@ class PeopleToolsTests(TestCase):
         UserPresence.objects.filter(user=self.admin).update(last_seen_at=timezone.now() - timedelta(minutes=2))
         state = self.client.get(reverse("user_presence_state_api")).json()
         self.assertFalse(next(item for item in state["users"] if item["id"] == self.admin.id)["online"])
+
+    def test_user_form_can_create_branch_manager(self):
+        branch = Branch.objects.create(name="Ташкентский филиал")
+        response = self.client.post(reverse("users"), {
+            "action": "save",
+            "username": "branch-manager",
+            "first_name": "Менеджер",
+            "branch": branch.name,
+            "account_type": "branch_manager",
+            "is_active": "on",
+        })
+
+        self.assertRedirects(response, reverse("users"))
+        manager = User.objects.get(username="branch-manager")
+        self.assertTrue(manager.is_staff)
+        self.assertFalse(manager.is_superuser)
+        self.assertEqual(manager.profile.branch, branch.name)
+        self.assertTrue(manager.profile.roles.filter(code="branch_manager").exists())
+
+    def test_user_form_can_create_organization_manager(self):
+        branch = Branch.objects.create(name="Самаркандский филиал")
+        organization = Organization.objects.create(branch=branch, name="Станция Самарканд")
+        response = self.client.post(reverse("users"), {
+            "action": "save",
+            "username": "organization-manager",
+            "first_name": "Менеджер",
+            "branch": branch.name,
+            "organization": organization.name,
+            "account_type": "organization_manager",
+            "is_active": "on",
+        })
+
+        self.assertRedirects(response, reverse("users"))
+        manager = User.objects.get(username="organization-manager")
+        self.assertTrue(manager.is_staff)
+        self.assertFalse(manager.is_superuser)
+        self.assertEqual(manager.profile.organization, organization.name)
+        self.assertTrue(manager.profile.roles.filter(code="organization_manager").exists())
