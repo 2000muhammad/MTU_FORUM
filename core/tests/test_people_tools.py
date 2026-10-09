@@ -7,8 +7,8 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core.excel_utils import build_xlsx
-from core.models import UserPresence
-from core.views import USER_EXCEL_HEADERS
+from core.models import PeopleImportJob, UserPresence
+from core.views import USER_EXCEL_HEADERS, _run_user_import_job
 
 
 class PeopleToolsTests(TestCase):
@@ -28,7 +28,10 @@ class PeopleToolsTests(TestCase):
         upload = BytesIO(build_xlsx(USER_EXCEL_HEADERS, [values]))
         upload.name = "users.xlsx"
         response = self.client.post(reverse("users_excel", args=["import"]), {"excel_file": upload})
-        self.assertRedirects(response, reverse("users"))
+        self.assertEqual(response.status_code, 200)
+        job = PeopleImportJob.objects.get()
+        self.assertEqual(job.status, PeopleImportJob.Status.PREVIEW)
+        _run_user_import_job(job.pk)
         user = User.objects.get(username="imported")
         self.assertTrue(user.check_password("SafePass123!"))
         export = self.client.get(reverse("users_excel", args=["export"]))

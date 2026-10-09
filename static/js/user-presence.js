@@ -27,6 +27,26 @@
     form.querySelector('[data-excel-import-button]')?.addEventListener('click', () => input?.click());
     input?.addEventListener('change', () => { if (input.files.length) form.submit(); });
   });
+  const selectAll = document.querySelector('[data-select-all-users]');
+  const userChecks = [...document.querySelectorAll('[data-user-select]')];
+  selectAll?.addEventListener('change', () => userChecks.forEach((item) => { item.checked = selectAll.checked; }));
+  document.querySelector('[data-bulk-users-form]')?.addEventListener('submit', (event) => {
+    if (!userChecks.some((item) => item.checked)) { event.preventDefault(); window.alert('Выберите хотя бы одного пользователя.'); return; }
+    if (event.submitter?.matches('[data-bulk-delete]') && !window.confirm('Удалить выбранных пользователей?')) event.preventDefault();
+  });
+  const importJobs = [...document.querySelectorAll('[data-import-job-id]')];
+  const pollImportJobs = async () => {
+    await Promise.all(importJobs.map(async (item) => {
+      try {
+        const response = await fetch(`/api/people-import/${item.dataset.importJobId}/`, {headers:{Accept:'application/json'}});
+        if (!response.ok) return;
+        const data = await response.json();
+        item.querySelector('[data-import-job-status]').textContent = {preview:'Предпросмотр',queued:'В очереди',running:'Выполняется',completed:'Завершён',failed:'Ошибка'}[data.status] || data.status;
+        const progress = item.querySelector('progress'); if (progress) { progress.max = data.total || 1; progress.value = data.processed || 0; }
+      } catch (_) {}
+    }));
+  };
+  if (importJobs.length) { pollImportJobs(); window.setInterval(pollImportJobs, 3000); }
   heartbeat(); updatePresence();
   window.setInterval(heartbeat, 20000);
   window.setInterval(updatePresence, 15000);

@@ -92,13 +92,28 @@
   </div>
   <form method="get" class="users-search-form">
     <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="{% tr 'users_search_placeholder' %}">
+    <select class="form-select" name="presence"><option value="">Все статусы</option><option value="online" {% if presence_filter == 'online' %}selected{% endif %}>Онлайн</option><option value="offline" {% if presence_filter == 'offline' %}selected{% endif %}>Офлайн</option></select>
     <button class="btn btn-outline-info">{% tr 'search_users' %}</button>
     {% if query %}<a class="btn btn-outline-light" href="{% url 'users' %}">{% tr 'reset_filter' %}</a>{% endif %}
   </form>
 
+  <form method="post" id="bulk-users-form" class="people-bulk-toolbar" data-bulk-users-form>
+    {% csrf_token %}
+    <label><input type="checkbox" data-select-all-users> Выбрать всех на странице</label>
+    <select class="form-select" name="bulk_role"><option value="">Назначить роль…</option>{% for role in roles %}<option value="{{ role.id }}">{{ role.name }}</option>{% endfor %}</select>
+    <button class="btn btn-outline-info" name="action" value="bulk_role">Применить роль</button>
+    <button class="btn btn-outline-success" name="action" value="bulk_activate">Активировать</button>
+    <button class="btn btn-outline-warning" name="action" value="bulk_deactivate">Заблокировать</button>
+    <button class="btn btn-outline-light" name="action" value="bulk_logout">Завершить сессии</button>
+    <button class="btn btn-outline-danger" name="action" value="bulk_delete" data-bulk-delete>Удалить</button>
+  </form>
+
+  {% if import_jobs %}<details class="people-import-log" open><summary>Журнал импорта</summary><div>{% for job in import_jobs %}<article data-import-job-id="{{ job.id }}"><strong>{{ job.filename }}</strong><span data-import-job-status>{{ job.get_status_display }}</span><progress max="{{ job.total_rows|default:1 }}" value="{{ job.processed_rows }}"></progress><small>{{ job.created_at|date:'d.m.Y H:i' }} · создано {{ job.created_count }}, обновлено {{ job.updated_count }}</small></article>{% endfor %}</div></details>{% endif %}
+
   <div class="user-card-grid">
     {% for u in users %}
     <article class="user-card {% if not u.is_active %}is-muted{% endif %}" data-user-presence-id="{{ u.id }}">
+      <label class="user-card-select"><input type="checkbox" name="selected_users" value="{{ u.id }}" form="bulk-users-form" data-user-select><span>Выбрать</span></label>
       <div class="user-card-main">
         <div class="user-avatar">
           {% if u.profile.avatar %}
@@ -165,6 +180,10 @@
         <button class="user-kebab" type="button" data-user-menu-toggle aria-label="Действия">⋮</button>
         <div class="user-action-menu">
           <button type="button" data-open-user-modal="user-edit-{{ u.id }}">Редактировать</button>
+          <a href="{% url 'user_history' u.id %}">История изменений</a>
+          <form method="post" data-confirm-form data-confirm-message="Завершить все активные сессии пользователя?" data-confirm-yes="Да" data-confirm-no="Нет">
+            {% csrf_token %}<input type="hidden" name="id" value="{{ u.id }}"><input type="hidden" name="action" value="terminate_sessions"><button type="submit">Выйти со всех устройств</button>
+          </form>
           <form method="post" data-confirm-form data-confirm-message="Вы точно хотите сбросить пароль?" data-confirm-yes="Да" data-confirm-no="Нет">
             {% csrf_token %}
             <input type="hidden" name="id" value="{{ u.id }}">
@@ -313,6 +332,7 @@
     <div class="empty-state user-empty-state">{% tr 'no_records' %}</div>
     {% endfor %}
   </div>
+  {% if page_obj.has_other_pages %}<nav class="pagination-line">{% if page_obj.has_previous %}<a class="btn btn-outline-light" href="?page={{ page_obj.previous_page_number }}&q={{ query|urlencode }}&presence={{ presence_filter }}">Назад</a>{% endif %}<span>{{ page_obj.number }} / {{ page_obj.paginator.num_pages }} · {{ page_obj.paginator.count }} пользователей</span>{% if page_obj.has_next %}<a class="btn btn-outline-light" href="?page={{ page_obj.next_page_number }}&q={{ query|urlencode }}&presence={{ presence_filter }}">Вперёд</a>{% endif %}</nav>{% endif %}
 </section>
 
 <div class="confirm-modal" id="user-confirm-modal" hidden>

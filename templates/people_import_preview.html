@@ -1,0 +1,14 @@
+{% extends 'base.html' %}{% load ui_i18n %}
+{% block page_title %}Предпросмотр импорта{% endblock %}
+{% block content %}
+<section class="glass-card import-preview-hero">
+  <div><span class="eyebrow">XLSX · {{ job.filename }}</span><h1>Предпросмотр импорта</h1><p>Проверьте данные до запуска фоновой обработки.</p></div>
+  <div class="import-preview-count"><strong>{{ job.total_rows }}</strong><span>строк</span></div>
+</section>
+{% if job.errors %}<section class="glass-card import-error-panel"><h2>Найдены ошибки</h2>{% for error in job.errors %}<p>{{ error }}</p>{% endfor %}</section>{% endif %}
+<section class="glass-card import-preview-table-wrap"><table class="table"><thead><tr>{% for header in headers %}<th>{{ header }}</th>{% endfor %}</tr></thead><tbody>{% for row in rows %}<tr>{% for header in headers %}<td>{{ row|get_item:header|default:'-' }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></section>
+<div class="import-preview-actions">
+  <a class="btn btn-outline-light" href="{{ back_url }}">Назад</a>
+  {% if not job.errors %}<form method="post" action="{{ confirm_url }}">{% csrf_token %}<input type="hidden" name="job_id" value="{{ job.id }}"><button class="btn btn-primary" type="submit">Запустить импорт</button></form>{% endif %}
+</div>
+{% endblock %}

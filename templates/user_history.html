@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block page_title %}История пользователя{% endblock %}
+{% block content %}
+<section class="glass-card import-preview-hero"><div><span class="eyebrow">Пользователь</span><h1>{{ target_user.get_full_name|default:target_user.username }}</h1><p>{{ target_user.username }} · история действий и изменений аккаунта</p></div><a class="btn btn-outline-light" href="{% url 'users' %}">Назад</a></section>
+<section class="glass-card user-history-list">
+  {% for log in page_obj %}<article><time>{{ log.created_at|date:'d.m.Y H:i:s' }}</time><div><strong>{{ log.action|default:'Событие' }}</strong><p>{{ log.message }}</p></div><span>{{ log.username|default:'Система' }}</span></article>{% empty %}<div class="empty-state">История пока пуста.</div>{% endfor %}
+</section>
+{% if page_obj.has_other_pages %}<nav class="pagination-line">{% if page_obj.has_previous %}<a class="btn btn-outline-light" href="?page={{ page_obj.previous_page_number }}">Назад</a>{% endif %}<span>{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>{% if page_obj.has_next %}<a class="btn btn-outline-light" href="?page={{ page_obj.next_page_number }}">Вперёд</a>{% endif %}</nav>{% endif %}
+{% endblock %}

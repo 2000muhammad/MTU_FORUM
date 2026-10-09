@@ -13,6 +13,7 @@ urlpatterns = [
     path("notifications/state/", views.notification_state_api, name="notification_state_api"),
     path("presence/heartbeat/", views.user_presence_heartbeat_api, name="user_presence_heartbeat_api"),
     path("presence/state/", views.user_presence_state_api, name="user_presence_state_api"),
+    path("people-import/<int:pk>/", views.people_import_job_state_api, name="people_import_job_state_api"),
     path("react/bootstrap/", views.react_bootstrap_api, name="react_bootstrap_api"),
     path("react/public/", views.react_public_api, name="react_public_api"),
     path("react/captcha/", views.react_captcha_api, name="react_captcha_api"),
