@@ -258,6 +258,40 @@ select {
   color: var(--brand);
   opacity: 0.55;
 }
+.metric-grid article:has(.metric-mini-chart) { min-height: 154px; padding-bottom: 51px; }
+.metric-grid article:has(.metric-mini-chart) > svg { bottom: 53px; }
+.metric-mini-chart {
+  position: absolute;
+  right: 18px;
+  bottom: 13px;
+  left: 18px;
+  display: flex;
+  height: 25px;
+  align-items: end;
+  gap: 5px;
+  opacity: .92;
+}
+.metric-mini-chart::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: var(--line);
+}
+.metric-mini-chart i {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-width: 3px;
+  border-radius: 4px 4px 1px 1px;
+  background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 28%, transparent));
+  transition: height .55s cubic-bezier(.2,.8,.2,1);
+}
+.metric-mini-chart.is-done i {
+  background: linear-gradient(180deg, var(--brand), color-mix(in srgb, var(--brand) 28%, transparent));
+}
 .panel {
   padding: 20px;
   border: 1px solid var(--line);

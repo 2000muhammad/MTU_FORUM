@@ -436,6 +436,21 @@ function Layout({ boot, config, children }) {
   );
 }
 
+function MiniBarChart({ rows = [], label, tone }) {
+  const maximum = Math.max(1, ...rows.map((row) => row.value));
+  return (
+    <div className={`metric-mini-chart is-${tone}`} aria-label={label} role="img">
+      {rows.map((row) => (
+        <i
+          key={row.date}
+          style={{ height: `${Math.max(10, (row.value / maximum) * 100)}%` }}
+          title={`${row.date}: ${row.value}`}
+        />
+      ))}
+    </div>
+  );
+}
+
 function Dashboard({ boot }) {
   const tr = createTranslator(boot.language);
   const stats = boot.dashboard.stats;
@@ -477,11 +492,21 @@ function Dashboard({ boot }) {
               <span>{tr("Заявки сегодня")}</span>
               <strong>{stats.today ?? 0}</strong>
               <ClipboardList />
+              <MiniBarChart
+                rows={boot.dashboard.activity?.today}
+                label={tr("Заявки за последние 7 дней")}
+                tone="new"
+              />
             </article>
             <article>
               <span>{tr("Выполнено за 7 дней")}</span>
               <strong>{stats.done_week ?? 0}</strong>
               <CheckCircle2 />
+              <MiniBarChart
+                rows={boot.dashboard.activity?.done}
+                label={tr("Выполненные заявки за последние 7 дней")}
+                tone="done"
+              />
             </article>
             <article>
               <span>{tr("Пользователи онлайн")}</span>
