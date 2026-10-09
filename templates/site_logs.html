@@ -38,7 +38,7 @@
     <table class="table align-middle request-table log-table">
       <thead>
         <tr>
-          <th>{% tr 'date' %}</th><th>{% tr 'level' %}</th><th>{% tr 'source' %}</th><th>{% tr 'action' %}</th><th>{% tr 'user' %}</th><th>{% tr 'method' %}</th><th>{% tr 'status' %}</th><th>{% tr 'path' %}</th><th>{% tr 'ip' %}</th><th>{% tr 'message' %}</th>
+          <th>{% tr 'date' %}</th><th>{% tr 'level' %}</th><th>{% tr 'source' %}</th><th>{% tr 'action' %}</th><th>Кто изменил</th><th>Что изменилось</th><th>{% tr 'method' %}</th><th>{% tr 'status' %}</th><th>{% tr 'path' %}</th><th>{% tr 'ip' %}</th><th>{% tr 'message' %}</th>
         </tr>
       </thead>
       <tbody>
@@ -48,7 +48,12 @@
           <td><span class="log-level log-{{ log.level }}">{{ log.get_level_display }}</span></td>
           <td>{{ log.source }}</td>
           <td>{{ log.action|default:'-' }}</td>
-          <td>{{ log.username|default:'system' }}</td>
+          <td class="log-actor"><strong>{{ log.actor_display }}</strong>{% if log.actor_login %}<small>@{{ log.actor_login }}</small>{% endif %}{% if log.actor_roles %}<span>{{ log.actor_roles }}</span>{% endif %}</td>
+          <td class="log-changes">
+            {% for change in log.change_items %}
+            <div><b>{{ change.label }}</b><span>{{ change.old }}</span><i>→</i><strong>{{ change.new }}</strong></div>
+            {% empty %}<span class="text-secondary">—</span>{% endfor %}
+          </td>
           <td>{{ log.method|default:'-' }}</td>
           <td>{{ log.status_code|default:'-' }}</td>
           <td class="log-path">{{ log.path|default:'-' }}</td>
@@ -56,7 +61,7 @@
           <td class="log-message">{{ log.message }}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="10" class="text-center text-secondary py-5">{% tr 'no_logs' %}</td></tr>
+        <tr><td colspan="11" class="text-center text-secondary py-5">{% tr 'no_logs' %}</td></tr>
         {% endfor %}
       </tbody>
     </table>

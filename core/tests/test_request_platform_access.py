@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from core.forms import IntakeRequestForm
-from core.models import AdminChatMessage, Branch, IntakeRequest, Organization, Platform, Position, SiteRole, Station, UserProfile
+from core.models import AdminChatMessage, Branch, IntakeRequest, Organization, Platform, Position, SiteLog, SiteRole, Station, UserProfile
 
 
 class RequestPlatformAccessTests(TestCase):
@@ -132,6 +132,10 @@ class RequestPlatformAccessTests(TestCase):
         self.assertEqual(self.alpha_request.generated_login, "updated.login")
         self.assertNotEqual(self.alpha_request.generated_password, "Secure-8421")
         self.assertTrue(check_password("Secure-8421", self.alpha_request.generated_password))
+        audit_log = SiteLog.objects.get(source="requests", action="request_update")
+        self.assertEqual(audit_log.username, self.operator.username)
+        self.assertEqual(audit_log.meta["request_id"], self.alpha_request.pk)
+        self.assertIn("Данные доступа", audit_log.meta["changes"])
 
     def test_notification_tracks_only_assigned_platforms(self):
         response = self.client.get(reverse("notification_state_api"))
