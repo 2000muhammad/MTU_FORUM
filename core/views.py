@@ -3484,12 +3484,20 @@ def notification_state_api(request):
 
 
 def _api_key_valid(request):
-
     config = ApiConfiguration.load()
+    supplied_key = request.headers.get("X-API-KEY", "")
+    if not supplied_key:
+        return False
 
-    configured_key = config.telegram_api_key or settings.TELEGRAM_API_KEY
-
-    return bool(configured_key) and request.headers.get("X-API-KEY") == configured_key
+    # Keep the environment key valid during key rotation. The Telegram bot reads
+    # its key from the environment when it starts, while administrators can save
+    # a replacement in the database before the bot process is restarted.
+    configured_keys = {
+        key
+        for key in (config.telegram_api_key, settings.TELEGRAM_API_KEY)
+        if key and key != "change-me-api-key"
+    }
+    return any(secrets.compare_digest(supplied_key, key) for key in configured_keys)
 
 
 
