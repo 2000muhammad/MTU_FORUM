@@ -341,3 +341,16 @@ class ManagerRequestScopeTests(TestCase):
         )
         denied = self.client.get(reverse("request_edit", kwargs={"pk": self.sibling_request.pk}))
         self.assertEqual(denied.status_code, 404)
+
+    def test_branch_manager_inherits_organization_manager_request_scope(self):
+        self.client.force_login(self.organization_manager)
+        organization_rows = self.client.get(reverse("dashboard_requests_api")).json()["rows"]
+        organization_request_ids = {row["id"] for row in organization_rows}
+
+        self.client.force_login(self.branch_manager)
+        branch_rows = self.client.get(reverse("dashboard_requests_api")).json()["rows"]
+        branch_request_ids = {row["id"] for row in branch_rows}
+
+        self.assertTrue(organization_request_ids)
+        self.assertTrue(organization_request_ids.issubset(branch_request_ids))
+        self.assertNotIn(self.outside_request.id, branch_request_ids)
