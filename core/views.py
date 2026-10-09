@@ -1079,6 +1079,18 @@ def dashboard(request):
 
         "chats": AdminChatMessage.objects.filter(direction=AdminChatMessage.Direction.IN, is_read=False).count() if can_chats else 0,
 
+        "today": visible_requests.filter(created_at__date=timezone.localdate()).count() if can_requests else 0,
+
+        "done_week": visible_requests.filter(
+            status=IntakeRequest.Status.DONE,
+            updated_at__gte=timezone.now() - timedelta(days=7),
+        ).count() if can_requests else 0,
+
+        "online": UserPresence.objects.filter(
+            user__is_active=True,
+            last_seen_at__gte=timezone.now() - timedelta(seconds=70),
+        ).count(),
+
     }
 
     favorite_platform_ids = set(WebPlatformFavorite.objects.filter(user=request.user).values_list("platform_id", flat=True))
@@ -4687,6 +4699,15 @@ def _react_dashboard_payload(user):
             "done": visible_requests.filter(status=IntakeRequest.Status.DONE).count() if can_requests else 0,
             "blocked": visible_requests.filter(status=IntakeRequest.Status.BLOCKED).count() if can_requests else 0,
             "chats": AdminChatMessage.objects.filter(direction=AdminChatMessage.Direction.IN, is_read=False).count() if can_chats else 0,
+            "today": visible_requests.filter(created_at__date=timezone.localdate()).count() if can_requests else 0,
+            "done_week": visible_requests.filter(
+                status=IntakeRequest.Status.DONE,
+                updated_at__gte=timezone.now() - timedelta(days=7),
+            ).count() if can_requests else 0,
+            "online": UserPresence.objects.filter(
+                user__is_active=True,
+                last_seen_at__gte=timezone.now() - timedelta(seconds=70),
+            ).count(),
         },
         "platforms": platform_rows,
         "web_platforms": web_platforms,

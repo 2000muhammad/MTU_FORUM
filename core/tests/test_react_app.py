@@ -198,6 +198,8 @@ class ReactAppTests(TestCase):
         self.assertEqual(payload["language"], "ru")
         self.assertTrue(payload["permissions"]["directories"])
         self.assertIn("stats", payload["dashboard"])
+        for metric in ("today", "done_week", "online", "chats"):
+            self.assertIn(metric, payload["dashboard"]["stats"])
         self.assertEqual(
             payload["version_links"]["old"],
             f'{reverse("dashboard")}?legacy=1',
