@@ -1116,7 +1116,8 @@ html[data-theme="light"] .secret-modal-backdrop {
   top: calc(100% + 12px);
   right: 0;
   z-index: 40;
-  width: 330px;
+  width: min(330px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
   padding: 16px;
   border: 1px solid var(--line);
   border-radius: 18px;
@@ -1204,9 +1205,10 @@ html[data-theme="light"] .secret-modal-backdrop {
   color: var(--brand);
 }
 .access-popover {
-  width: 380px;
-  max-height: calc(100vh - 110px);
+  width: min(380px, calc(100vw - 24px));
+  max-height: min(calc(100dvh - 110px), 680px);
   overflow: auto;
+  overscroll-behavior: contain;
 }
 .access-view-options {
   display: grid;
@@ -2074,6 +2076,8 @@ html[data-theme="light"] .secret-modal-backdrop {
   .human-check-row { grid-template-columns: minmax(88px, 1fr) auto 70px 38px; }
   .sso-grid { grid-template-columns: 1fr; }
   .public-services a { min-width: min(265px, calc(100vw - 38px)); }
+  .access-view-options { grid-template-columns: 1fr; }
+  .react-popover { padding: 13px; border-radius: 16px; }
 }
 
 /* Keep the public controls inside iPhone/Android viewports, including 421-620px. */
