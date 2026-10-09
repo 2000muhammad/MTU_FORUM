@@ -5,6 +5,11 @@ from django.utils.translation import get_language
 register = template.Library()
 
 
+@register.filter
+def get_item(mapping, key):
+    return mapping.get(key, "") if isinstance(mapping, dict) else ""
+
+
 UI = {
     "ru": {
         "dashboard": "Dashboard",

@@ -5,6 +5,7 @@ import json
 import os
 import secrets
 import tempfile
+import threading
 
 from collections import defaultdict
 from datetime import timedelta
@@ -22,13 +23,14 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.hashers import identify_hasher, make_password
 
 from django.contrib.auth.models import User
+from django.contrib.sessions.models import Session
 
 from django.contrib.auth.views import LoginView as DjangoLoginView
 from django.core.exceptions import RequestDataTooBig
 from django.core.files.base import ContentFile
 from django.core.management import call_command
 from django.core.paginator import Paginator
-from django.db import transaction
+from django.db import close_old_connections, transaction
 from django.db.models import Count, F, Max, Q
 from django.db.models.deletion import ProtectedError
 from django.http import HttpResponse, JsonResponse
@@ -51,7 +53,7 @@ from PIL import Image, ImageOps
 
 from .forms import ApiConfigurationForm, BotSubscriptionChannelForm, BranchForm, DeveloperTaskForm, EmployeeProfileForm, ExternalApiConnectionForm, IntakeRequestForm, LoginForm, ManagerAccountForm, OrganizationForm, PlatformForm, PositionForm, SiteIntakeForm, SiteRoleForm, SiteSettingsForm, StationForm, StyledPasswordChangeForm, UserForm, UserInfoForm, UserProfileForm, WebPlatformForm
 from .excel_utils import build_xlsx, parse_xlsx, truthy
-from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, IntakeRequestHistory, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, Platform, Position, SecurityThrottle, SiteLog, SiteRole, SiteSettings, Station, TelegramAccountLink, TelegramPasswordReset, UserPresence, UserProfile, WebPlatform, WebPlatformFavorite
+from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, IntakeRequestHistory, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, PeopleImportJob, Platform, Position, SecurityThrottle, SiteLog, SiteRole, SiteSettings, Station, TelegramAccountLink, TelegramPasswordReset, UserPresence, UserProfile, WebPlatform, WebPlatformFavorite
 from .site_logs import write_site_log
 from .security import clear_failures, consume_rate_limit, is_locked, record_failure
 from .middleware import get_platform_version
@@ -2539,6 +2541,146 @@ def _import_error_message(errors):
     return f"Импорт не выполнен: {preview}" + (f"; ещё ошибок: {len(errors) - 5}" if len(errors) > 5 else "")
 
 
+def _user_duplicate_errors(*, username="", email="", phone="", pnfl="", exclude_user=None):
+    errors = []
+    users = User.objects.all()
+    profiles = UserProfile.objects.all()
+    if exclude_user:
+        users = users.exclude(pk=exclude_user.pk)
+        profiles = profiles.exclude(user=exclude_user)
+    if username and users.filter(username__iexact=username).exists():
+        errors.append("логин уже используется")
+    if email and users.filter(email__iexact=email).exists():
+        errors.append("email уже используется")
+    if phone and profiles.filter(phone=phone).exists():
+        errors.append("телефон уже используется")
+    if pnfl and profiles.filter(Q(pnfl=pnfl) | Q(employee_pinfl=pnfl)).exists():
+        errors.append("ПИНФЛ уже используется")
+    return errors
+
+
+def _validate_user_import_rows(rows, actor):
+    errors = []
+    allowed_branches = set(Branch.objects.filter(is_active=True).values_list("name", flat=True))
+    allowed_organizations = set(_scope_organizations_for_actor(
+        Organization.objects.filter(is_active=True), actor,
+    ).values_list("name", flat=True))
+    seen = {"username": set(), "email": set(), "phone": set(), "pnfl": set()}
+    for number, row in enumerate(rows, start=2):
+        username = str(row.get("username", "")).strip()
+        email = str(row.get("email", "")).strip()
+        phone = str(row.get("phone", "")).strip()
+        pnfl = str(row.get("pnfl", "")).strip()
+        existing = User.objects.filter(username__iexact=username).first() if username else None
+        if not username:
+            errors.append(f"строка {number}: нет username")
+            continue
+        if existing and not _scope_users_for_actor(User.objects.filter(pk=existing.pk), actor).exists():
+            errors.append(f"строка {number}: нет доступа к {username}")
+        for field, value in (("username", username.lower()), ("email", email.lower()), ("phone", phone), ("pnfl", pnfl)):
+            if value and value in seen[field]:
+                errors.append(f"строка {number}: повторяется {field} в файле")
+            seen[field].add(value)
+        duplicate_errors = _user_duplicate_errors(
+            username="" if existing else username, email=email, phone=phone, pnfl=pnfl, exclude_user=existing,
+        )
+        errors.extend(f"строка {number}: {error}" for error in duplicate_errors)
+        branch = str(row.get("branch", "")).strip()
+        organization = str(row.get("organization", "")).strip()
+        if branch and branch not in allowed_branches:
+            errors.append(f"строка {number}: филиал не найден")
+        if organization and organization not in allowed_organizations:
+            errors.append(f"строка {number}: организация недоступна")
+        role_code = str(row.get("role_code", "")).strip()
+        if role_code and not SiteRole.objects.filter(code=role_code, is_active=True).exists():
+            errors.append(f"строка {number}: роль {role_code} не найдена")
+    return errors
+
+
+def _run_user_import_job(job_id):
+    close_old_connections()
+    job = PeopleImportJob.objects.select_related("created_by").get(pk=job_id)
+    job.status = PeopleImportJob.Status.RUNNING
+    job.started_at = timezone.now()
+    job.save(update_fields=["status", "started_at"])
+    try:
+        created = updated = 0
+        with transaction.atomic():
+            for index, row in enumerate(job.rows, start=1):
+                username = str(row.get("username", "")).strip()
+                user = User.objects.filter(username__iexact=username).first()
+                is_new = user is None
+                if is_new:
+                    user = User(username=username)
+                user.first_name = str(row.get("first_name", "")).strip()
+                user.last_name = str(row.get("last_name", "")).strip()
+                user.email = str(row.get("email", "")).strip()
+                user.is_active = truthy(row.get("is_active", "yes"))
+                password = str(row.get("password", "")).strip()
+                if password:
+                    user.set_password(password)
+                elif is_new:
+                    user.set_password(generate_password())
+                user.save()
+                profile = _ensure_user_profile(user)
+                for field in ("phone", "pnfl", "branch", "organization", "department", "position"):
+                    setattr(profile, field, str(row.get(field, "")).strip())
+                profile.save()
+                role_code = str(row.get("role_code", "")).strip()
+                role = SiteRole.objects.filter(code=role_code, is_active=True).first() if role_code else None
+                if role:
+                    profile.roles.set([role])
+                    user.is_staff = role.is_staff_role
+                    user.is_superuser = role.is_admin_role
+                    user.save(update_fields=["is_staff", "is_superuser"])
+                created += int(is_new)
+                updated += int(not is_new)
+                PeopleImportJob.objects.filter(pk=job_id).update(processed_rows=index)
+                write_site_log(None, source="people", action="user_import_create" if is_new else "user_import_update",
+                               message=f"{username} imported", meta={"target_user_id": user.pk, "job_id": job_id, "actor_id": job.created_by_id})
+        job.status = PeopleImportJob.Status.COMPLETED
+        job.created_count = created
+        job.updated_count = updated
+        job.finished_at = timezone.now()
+        job.save(update_fields=["status", "created_count", "updated_count", "finished_at"])
+    except Exception as exc:
+        job.status = PeopleImportJob.Status.FAILED
+        job.errors = [str(exc)]
+        job.finished_at = timezone.now()
+        job.save(update_fields=["status", "errors", "finished_at"])
+    finally:
+        close_old_connections()
+
+
+def _start_user_import_job(job_id):
+    threading.Thread(target=_run_user_import_job, args=(job_id,), daemon=True, name=f"user-import-{job_id}").start()
+
+
+def _terminate_user_sessions(user):
+    closed = 0
+    for session in Session.objects.filter(expire_date__gte=timezone.now()):
+        try:
+            if str(session.get_decoded().get("_auth_user_id")) == str(user.pk):
+                session.delete()
+                closed += 1
+        except Exception:
+            continue
+    UserPresence.objects.filter(user=user).delete()
+    return closed
+
+
+def _notify_user_telegram(user, text):
+    profile = _ensure_user_profile(user)
+    if not profile.telegram_id:
+        return False
+    try:
+        send_telegram_message(profile.telegram_id, text)
+        return True
+    except Exception as exc:
+        write_site_log(None, level=SiteLog.Level.ERROR, source="telegram", action="user_account_notification", message=str(exc), meta={"target_user_id": user.pk})
+        return False
+
+
 @login_required
 @user_passes_test(user_can_manage_people)
 def users_excel_view(request, mode):
@@ -2561,6 +2703,16 @@ def users_excel_view(request, mode):
             "12345678901234", "Филиал", "Организация", "Отдел", "Специалист",
             "employee", "yes", "ChangeMe123!",
         ]], USER_EXCEL_HEADERS)
+    if mode == "confirm" and request.method == "POST":
+        job = get_object_or_404(PeopleImportJob, pk=request.POST.get("job_id"), kind=PeopleImportJob.Kind.USERS, created_by=request.user, status=PeopleImportJob.Status.PREVIEW)
+        if job.errors:
+            messages.error(request, "Сначала исправьте ошибки в файле и загрузите его повторно.")
+            return redirect("users")
+        job.status = PeopleImportJob.Status.QUEUED
+        job.save(update_fields=["status"])
+        _start_user_import_job(job.pk)
+        messages.success(request, "Импорт запущен в фоне. Прогресс отображается в журнале импорта.")
+        return redirect("users")
     if mode != "import" or request.method != "POST":
         return HttpResponse(status=405)
     upload = request.FILES.get("excel_file")
@@ -2572,62 +2724,16 @@ def users_excel_view(request, mode):
     except Exception:
         messages.error(request, "Не удалось прочитать XLSX-файл.")
         return redirect("users")
-    errors = []
-    prepared = []
-    allowed_branches = set(Branch.objects.filter(is_active=True).values_list("name", flat=True))
-    allowed_organizations = set(_scope_organizations_for_actor(Organization.objects.filter(is_active=True), request.user).values_list("name", flat=True))
-    for number, row in enumerate(rows, start=2):
-        username = str(row.get("username", "")).strip()
-        if not username:
-            errors.append(f"строка {number}: нет username")
-            continue
-        existing = User.objects.filter(username=username).first()
-        if existing and not _scope_users_for_actor(User.objects.filter(pk=existing.pk), request.user).exists():
-            errors.append(f"строка {number}: нет доступа к {username}")
-            continue
-        branch = str(row.get("branch", "")).strip()
-        organization = str(row.get("organization", "")).strip()
-        if branch and branch not in allowed_branches:
-            errors.append(f"строка {number}: филиал не найден")
-        if organization and organization not in allowed_organizations:
-            errors.append(f"строка {number}: организация недоступна")
-        role_code = str(row.get("role_code", "")).strip()
-        role = SiteRole.objects.filter(code=role_code, is_active=True).first() if role_code else None
-        if role_code and not role:
-            errors.append(f"строка {number}: роль {role_code} не найдена")
-        prepared.append((row, existing, role))
-    if errors:
-        messages.error(request, _import_error_message(errors))
-        return redirect("users")
-    created = updated = 0
-    with transaction.atomic():
-        for row, user, role in prepared:
-            is_new = user is None
-            if is_new:
-                user = User(username=str(row["username"]).strip())
-            user.first_name = str(row.get("first_name", "")).strip()
-            user.last_name = str(row.get("last_name", "")).strip()
-            user.email = str(row.get("email", "")).strip()
-            user.is_active = truthy(row.get("is_active", "yes"))
-            password = str(row.get("password", "")).strip()
-            if password:
-                user.set_password(password)
-            elif is_new:
-                user.set_password(generate_password())
-            user.save()
-            profile = _ensure_user_profile(user)
-            for field in ("phone", "pnfl", "branch", "organization", "department", "position"):
-                setattr(profile, field, str(row.get(field, "")).strip())
-            profile.save()
-            if role:
-                profile.roles.set([role])
-                user.is_staff = role.is_staff_role
-                user.is_superuser = role.is_admin_role
-                user.save(update_fields=["is_staff", "is_superuser"])
-            created += int(is_new)
-            updated += int(not is_new)
-    messages.success(request, f"Импорт завершён: создано {created}, обновлено {updated}.")
-    return redirect("users")
+    errors = _validate_user_import_rows(rows, request.user)
+    job = PeopleImportJob.objects.create(
+        kind=PeopleImportJob.Kind.USERS, filename=upload.name[:255], rows=rows,
+        errors=errors, total_rows=len(rows), created_by=request.user,
+    )
+    preview_rows = [{**row, "password": "••••••" if row.get("password") else ""} for row in rows[:100]]
+    return render(request, "people_import_preview.html", {
+        "job": job, "rows": preview_rows, "headers": USER_EXCEL_HEADERS,
+        "confirm_url": reverse("users_excel", args=["confirm"]), "back_url": reverse("users"),
+    })
 
 
 @login_required
@@ -2722,6 +2828,7 @@ def manager_accounts_excel_view(request, mode):
 def users_view(request):
     user_form = UserForm(actor=request.user)
     query = request.GET.get("q", "").strip()
+    presence_filter = request.GET.get("presence", "").strip()
 
     if request.method == "POST":
         action = request.POST.get("action") or "save"
@@ -2729,11 +2836,49 @@ def users_view(request):
         instance_qs = _scope_users_for_actor(User.objects.all(), request.user)
         instance = get_object_or_404(instance_qs, pk=user_id) if user_id else None
 
+        if action.startswith("bulk_"):
+            selected_ids = request.POST.getlist("selected_users")
+            targets = instance_qs.filter(pk__in=selected_ids).exclude(pk=request.user.pk)
+            count = targets.count()
+            if action == "bulk_activate":
+                for target in targets:
+                    target.is_active = True
+                    target.save(update_fields=["is_active"])
+                    _notify_user_telegram(target, "Ваш аккаунт MTU FORUM активирован.")
+            elif action == "bulk_deactivate":
+                for target in targets:
+                    target.is_active = False
+                    target.save(update_fields=["is_active"])
+                    _notify_user_telegram(target, "Ваш аккаунт MTU FORUM временно заблокирован.")
+            elif action == "bulk_delete":
+                for target in targets:
+                    _notify_user_telegram(target, "Ваш аккаунт MTU FORUM удалён администратором.")
+                targets.delete()
+            elif action == "bulk_role":
+                role = SiteRole.objects.filter(pk=request.POST.get("bulk_role"), is_active=True).first()
+                if role:
+                    for target in targets:
+                        profile = _ensure_user_profile(target)
+                        profile.roles.set([role])
+                        target.is_staff = role.is_staff_role
+                        target.is_superuser = role.is_admin_role
+                        target.save(update_fields=["is_staff", "is_superuser"])
+                        _notify_user_telegram(target, f"В MTU FORUM вам назначена роль: {role.name}.")
+            elif action == "bulk_logout":
+                for target in targets:
+                    _terminate_user_sessions(target)
+                    _notify_user_telegram(target, "Все активные сессии вашего аккаунта MTU FORUM завершены администратором.")
+            write_site_log(request, source="people", action=action, message=f"Bulk action for {count} users", meta={"user_ids": selected_ids})
+            messages.success(request, f"Массовая операция выполнена для {count} пользователей.")
+            return redirect("users")
+
         if action == "delete" and instance:
             if instance == request.user:
                 messages.error(request, "Нельзя удалить текущего пользователя.")
             else:
                 username = instance.username
+                _notify_user_telegram(instance, "Ваш аккаунт MTU FORUM удалён администратором.")
+                write_site_log(request, source="people", action="user_delete", message=f"Deleted user {username}", meta={"target_user_id": instance.pk})
                 instance.delete()
                 messages.success(request, f"Пользователь {username} удален.")
             return redirect("users")
@@ -2742,7 +2887,15 @@ def users_view(request):
             new_password = generate_password()
             instance.set_password(new_password)
             instance.save(update_fields=["password"])
+            _notify_user_telegram(instance, "Пароль вашего аккаунта MTU FORUM был сброшен администратором.")
+            write_site_log(request, source="people", action="user_password_reset", message=f"Password reset for {instance.username}", meta={"target_user_id": instance.pk})
             messages.success(request, f"Новый пароль пользователя {instance.username}: {new_password}")
+            return redirect("users")
+
+        if action == "terminate_sessions" and instance:
+            closed = _terminate_user_sessions(instance)
+            write_site_log(request, source="people", action="user_sessions_terminated", message=f"Closed {closed} sessions for {instance.username}", meta={"target_user_id": instance.pk})
+            messages.success(request, f"Завершено сессий пользователя {instance.username}: {closed}.")
             return redirect("users")
 
         if action in {"hrm_lookup", "hrm_sync"}:
@@ -2794,27 +2947,48 @@ def users_view(request):
                         break
             form = UserForm(post_data, request.FILES, instance=instance, actor=request.user)
             if form.is_valid():
-                user = form.save(commit=False)
-                password = form.cleaned_data.get("password")
-                if password:
-                    user.set_password(password)
-                elif instance is None:
-                    password = generate_password()
-                    user.set_password(password)
-                user.save()
-                _save_user_profile_from_form(user, form)
-                if instance is None and password:
-                    messages.success(request, f"Пользователь сохранен. Пароль: {password}")
+                duplicate_errors = _user_duplicate_errors(
+                    email=form.cleaned_data.get("email", ""), phone=form.cleaned_data.get("phone", ""),
+                    pnfl=form.cleaned_data.get("pnfl", "") or form.cleaned_data.get("employee_pinfl", ""),
+                    exclude_user=instance,
+                )
+                if duplicate_errors:
+                    messages.error(request, "Пользователь не сохранён: " + "; ".join(duplicate_errors) + ".")
+                    user_form = form if instance is None else UserForm(actor=request.user)
+                    form = None
                 else:
-                    messages.success(request, "Пользователь сохранен.")
-                return redirect("users")
-            user_form = form if instance is None else UserForm(actor=request.user)
-            messages.error(request, "Проверьте поля пользователя.")
+                    user = form.save(commit=False)
+                    password = form.cleaned_data.get("password")
+                    if password:
+                        user.set_password(password)
+                    elif instance is None:
+                        password = generate_password()
+                        user.set_password(password)
+                    user.save()
+                    _save_user_profile_from_form(user, form)
+                    event = "user_update" if instance else "user_create"
+                    write_site_log(request, source="people", action=event, message=f"Saved user {user.username}", meta={"target_user_id": user.pk})
+                    _notify_user_telegram(user, "Настройки и права доступа вашего аккаунта MTU FORUM были обновлены.")
+                    if instance is None and password:
+                        messages.success(request, f"Пользователь сохранен. Пароль: {password}")
+                    else:
+                        messages.success(request, "Пользователь сохранен.")
+                    return redirect("users")
+            if form is not None and not form.is_valid():
+                user_form = form if instance is None else UserForm(actor=request.user)
+                messages.error(request, "Проверьте поля пользователя.")
 
-    users = list(_scope_users_for_actor(
+    users_queryset = _scope_users_for_actor(
         _users_queryset(query).prefetch_related("profile__allowed_platforms", "profile__allowed_stations", "profile__allowed_positions"),
         request.user,
-    ))
+    )
+    online_ids = UserPresence.objects.filter(last_seen_at__gte=timezone.now() - timedelta(seconds=70)).values_list("user_id", flat=True)
+    if presence_filter == "online":
+        users_queryset = users_queryset.filter(pk__in=online_ids)
+    elif presence_filter == "offline":
+        users_queryset = users_queryset.exclude(pk__in=online_ids)
+    page_obj = Paginator(users_queryset, 20).get_page(request.GET.get("page"))
+    users = list(page_obj.object_list)
     for user in users:
         profile = _ensure_user_profile(user)
         selected_role = profile.roles.filter(is_active=True).order_by("sort_order", "name").first()
@@ -2837,8 +3011,11 @@ def users_view(request):
 
     return render(request, "users.html", {
         "users": users,
+        "page_obj": page_obj,
         "user_form": user_form,
         "query": query,
+        "presence_filter": presence_filter,
+        "import_jobs": PeopleImportJob.objects.filter(created_by=request.user, kind=PeopleImportJob.Kind.USERS)[:8],
         "roles": user_form.fields["roles"].queryset,
         "platforms": Platform.objects.filter(is_active=True).order_by("sort_order", "name"),
         "stations": stations,
@@ -3737,6 +3914,29 @@ def user_presence_state_api(request):
     return JsonResponse({
         "ok": True,
         "users": [{"id": user_id, "online": user_id in online_ids} for user_id in visible.values_list("id", flat=True)],
+    })
+
+
+@login_required
+@user_passes_test(user_can_manage_people)
+def user_history_view(request, pk):
+    user = get_object_or_404(_scope_users_for_actor(User.objects.select_related("profile"), request.user), pk=pk)
+    logs = SiteLog.objects.filter(
+        Q(meta__target_user_id=user.pk) | Q(user=user) | Q(username=user.username)
+    ).distinct().order_by("-created_at")
+    page_obj = Paginator(logs, 30).get_page(request.GET.get("page"))
+    return render(request, "user_history.html", {"target_user": user, "page_obj": page_obj})
+
+
+@login_required
+@require_GET
+def people_import_job_state_api(request, pk):
+    job = get_object_or_404(PeopleImportJob, pk=pk, created_by=request.user)
+    return JsonResponse({
+        "ok": True, "id": job.pk, "status": job.status,
+        "processed": job.processed_rows, "total": job.total_rows,
+        "created": job.created_count, "updated": job.updated_count,
+        "errors": job.errors,
     })
 
 

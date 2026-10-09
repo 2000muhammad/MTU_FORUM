@@ -61,6 +61,7 @@ urlpatterns += i18n_patterns(
     path("logs/", views.site_logs_view, name="site_logs"),
     path("users/", views.users_view, name="users"),
     path("users/excel/<str:mode>/", views.users_excel_view, name="users_excel"),
+    path("users/<int:pk>/history/", views.user_history_view, name="user_history"),
     path("managers/", views.manager_accounts_view, name="manager_accounts"),
     path("managers/excel/<str:mode>/", views.manager_accounts_excel_view, name="manager_accounts_excel"),
     path("requests/<int:pk>/edit/", views.request_edit, name="request_edit"),

@@ -646,6 +646,36 @@ class UserPresence(models.Model):
         return f"{self.user.username}: {self.last_seen_at:%Y-%m-%d %H:%M:%S}"
 
 
+class PeopleImportJob(models.Model):
+    class Kind(models.TextChoices):
+        USERS = "users", "Пользователи"
+        MANAGERS = "managers", "Менеджеры"
+
+    class Status(models.TextChoices):
+        PREVIEW = "preview", "Предпросмотр"
+        QUEUED = "queued", "В очереди"
+        RUNNING = "running", "Выполняется"
+        COMPLETED = "completed", "Завершён"
+        FAILED = "failed", "Ошибка"
+
+    kind = models.CharField(max_length=16, choices=Kind.choices)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.PREVIEW, db_index=True)
+    filename = models.CharField(max_length=255)
+    rows = models.JSONField(default=list)
+    errors = models.JSONField(default=list)
+    total_rows = models.PositiveIntegerField(default=0)
+    processed_rows = models.PositiveIntegerField(default=0)
+    created_count = models.PositiveIntegerField(default=0)
+    updated_count = models.PositiveIntegerField(default=0)
+    created_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name="people_import_jobs")
+    created_at = models.DateTimeField(default=timezone.now)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
 class ApiConfiguration(models.Model):
     site_base_url = models.URLField(default="http://127.0.0.1:8000")
 
