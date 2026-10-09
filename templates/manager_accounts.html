@@ -54,6 +54,17 @@
 </section>
 
 <section class="glass-card manager-list-panel">
+  <div class="people-data-toolbar">
+    <div><strong>Работа с Excel</strong><span>Импорт и выгрузка аккаунтов менеджеров</span></div>
+    <div class="people-data-actions">
+      <a class="btn btn-outline-info" href="{% url 'manager_accounts_excel' 'export' %}">Экспорт</a>
+      <a class="btn btn-outline-light" href="{% url 'manager_accounts_excel' 'sample' %}">Образец</a>
+      <form method="post" enctype="multipart/form-data" action="{% url 'manager_accounts_excel' 'import' %}" data-excel-import>
+        {% csrf_token %}<input type="file" name="excel_file" accept=".xlsx" hidden required>
+        <button class="btn btn-primary" type="button" data-excel-import-button>Импорт</button>
+      </form>
+    </div>
+  </div>
   <div class="section-head manager-list-head">
     <div>
       <h2>{% tr 'created_managers' %}</h2>

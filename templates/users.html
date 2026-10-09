@@ -79,6 +79,17 @@
 </section>
 
 <section class="glass-card users-list-panel user-directory-panel">
+  <div class="people-data-toolbar">
+    <div><strong>Работа с Excel</strong><span>Массовое добавление и резервная выгрузка пользователей</span></div>
+    <div class="people-data-actions">
+      <a class="btn btn-outline-info" href="{% url 'users_excel' 'export' %}">Экспорт</a>
+      <a class="btn btn-outline-light" href="{% url 'users_excel' 'sample' %}">Образец</a>
+      <form method="post" enctype="multipart/form-data" action="{% url 'users_excel' 'import' %}" data-excel-import>
+        {% csrf_token %}<input type="file" name="excel_file" accept=".xlsx" hidden required>
+        <button class="btn btn-primary" type="button" data-excel-import-button>Импорт</button>
+      </form>
+    </div>
+  </div>
   <form method="get" class="users-search-form">
     <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="{% tr 'users_search_placeholder' %}">
     <button class="btn btn-outline-info">{% tr 'search_users' %}</button>
@@ -87,7 +98,7 @@
 
   <div class="user-card-grid">
     {% for u in users %}
-    <article class="user-card {% if not u.is_active %}is-muted{% endif %}">
+    <article class="user-card {% if not u.is_active %}is-muted{% endif %}" data-user-presence-id="{{ u.id }}">
       <div class="user-card-main">
         <div class="user-avatar">
           {% if u.profile.avatar %}
@@ -101,6 +112,7 @@
         <div class="user-card-info">
           <div class="user-card-title">
             <strong>{{ u.username }}</strong>
+            <span class="presence-badge {% if u.is_online %}is-online{% else %}is-offline{% endif %}" data-presence-label>{% if u.is_online %}Онлайн{% else %}Офлайн{% endif %}</span>
             {% if u.is_active %}
               <span class="user-status is-active">Активен</span>
             {% else %}

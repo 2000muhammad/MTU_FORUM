@@ -187,6 +187,21 @@ function Layout({ boot, config, children }) {
     document.documentElement.lang = boot.language || "ru";
   }, [boot.language]);
   useEffect(() => {
+    if (!boot.user) return undefined;
+    const heartbeat = () => {
+      if (document.visibilityState === "visible") {
+        api("/api/presence/heartbeat/", { method: "POST" }).catch(() => {});
+      }
+    };
+    heartbeat();
+    const timer = window.setInterval(heartbeat, 20000);
+    document.addEventListener("visibilitychange", heartbeat);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", heartbeat);
+    };
+  }, [boot.user]);
+  useEffect(() => {
     window.localStorage.setItem(
       "mtu-sidebar-collapsed",
       sidebarCollapsed ? "on" : "off",
