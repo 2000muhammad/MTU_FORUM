@@ -2076,6 +2076,75 @@ html[data-theme="light"] .secret-modal-backdrop {
   .public-services a { min-width: min(265px, calc(100vw - 38px)); }
 }
 
+/* Keep the public controls inside iPhone/Android viewports, including 421-620px. */
+@media (max-width: 620px) {
+  .public-react-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 10px;
+    min-height: auto;
+    padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 12px max(12px, env(safe-area-inset-left));
+  }
+  .public-react-brand {
+    grid-column: 1;
+    margin-right: 0;
+  }
+  .public-header-action {
+    grid-column: 3;
+    width: 43px;
+    min-width: 43px;
+    padding: 0;
+    justify-content: center;
+    font-size: 0;
+  }
+  .public-tools {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) repeat(3, 42px);
+    width: 100%;
+    min-width: 0;
+    margin-left: 0;
+    gap: 6px;
+  }
+  .public-tools .version-toggle {
+    width: 100% !important;
+    min-width: 0;
+  }
+  .public-tools > .icon-button,
+  .public-tools > .tool-menu,
+  .public-tools > .tool-menu > .icon-button {
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+  }
+  .public-tools .language-button {
+    padding: 0;
+    justify-content: center;
+  }
+  .public-tools .language-button span {
+    display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .public-tools {
+    grid-template-columns: minmax(0, 1fr) repeat(3, 38px);
+  }
+  .public-tools > .icon-button,
+  .public-tools > .tool-menu,
+  .public-tools > .tool-menu > .icon-button {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+  }
+  .public-tools .version-toggle > a,
+  .public-tools .version-toggle-current {
+    padding-inline: 5px;
+    font-size: 10px;
+  }
+}
+
 /* Variant 3: categorized two-level sidebar. */
 .side.side-v3 {
   width: 304px;
