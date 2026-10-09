@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from core.forms import IntakeRequestForm
-from core.models import AdminChatMessage, Branch, IntakeRequest, Organization, Platform, SiteRole, Station, UserProfile
+from core.models import AdminChatMessage, Branch, IntakeRequest, Organization, Platform, Position, SiteRole, Station, UserProfile
 
 
 class RequestPlatformAccessTests(TestCase):
@@ -256,6 +256,56 @@ class ManagerRequestScopeTests(TestCase):
             company=outside_station.name,
             pnfl="40000000000003",
             telegram_id=403,
+        )
+
+    def test_branch_manager_scope_does_not_drop_requests_with_free_text_positions(self):
+        Position.objects.create(
+            name="Directory position",
+            branch=Branch.objects.get(name="Branch one"),
+            organization=Organization.objects.get(name="Organization one"),
+        )
+        self.organization_request.position = "Position received from Telegram"
+        self.organization_request.save(update_fields=["position"])
+        self.client.force_login(self.branch_manager)
+
+        response = self.client.get(reverse("dashboard_requests_api"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(self.organization_request.id, {row["id"] for row in response.json()["rows"]})
+
+    def test_organization_manager_scope_does_not_drop_blank_positions(self):
+        Position.objects.create(
+            name="Directory position",
+            branch=Branch.objects.get(name="Branch one"),
+            organization=Organization.objects.get(name="Organization one"),
+        )
+        self.organization_request.position = ""
+        self.organization_request.save(update_fields=["position"])
+        self.client.force_login(self.organization_manager)
+
+        response = self.client.get(reverse("dashboard_requests_api"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([row["id"] for row in response.json()["rows"]], [self.organization_request.id])
+
+    def test_site_admin_role_sees_all_requests_without_manual_assignments(self):
+        admin_role = SiteRole.objects.create(
+            name="Site administrator",
+            code="site-administrator",
+            is_admin_role=True,
+            can_requests=True,
+        )
+        admin = User.objects.create_user("site-admin", password="test-password")
+        admin_profile = UserProfile.objects.create(user=admin)
+        admin_profile.roles.add(admin_role)
+        self.client.force_login(admin)
+
+        response = self.client.get(reverse("dashboard_requests_api"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            {row["id"] for row in response.json()["rows"]},
+            {self.organization_request.id, self.sibling_request.id, self.outside_request.id},
         )
 
     def test_branch_manager_sees_only_own_branch(self):
