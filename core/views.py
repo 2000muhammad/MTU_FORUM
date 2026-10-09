@@ -2829,6 +2829,7 @@ def users_view(request):
     user_form = UserForm(actor=request.user)
     query = request.GET.get("q", "").strip()
     presence_filter = request.GET.get("presence", "").strip()
+    selected_account_type = "user"
 
     if request.method == "POST":
         action = request.POST.get("action") or "save"
@@ -2938,6 +2939,16 @@ def users_view(request):
             return redirect("users")
         else:
             post_data = request.POST.copy()
+            selected_account_type = (post_data.get("account_type") or "user").strip()
+            manager_role = None
+            if selected_account_type == "branch_manager" and not user_is_branch_manager(request.user):
+                manager_role = _manager_role(ManagerAccountForm.MANAGER_BRANCH)
+            elif selected_account_type == "organization_manager":
+                manager_role = _manager_role(ManagerAccountForm.MANAGER_ORGANIZATION)
+            if manager_role:
+                post_data.setlist("roles", [str(manager_role.pk)])
+                if not (post_data.get("position") or "").strip():
+                    post_data["position"] = manager_role.name
             birth_date = (post_data.get("birth_date") or "").strip()
             if birth_date and not parse_date(birth_date):
                 for separator in (".", "/", "-"):
@@ -2946,7 +2957,14 @@ def users_view(request):
                         post_data["birth_date"] = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
                         break
             form = UserForm(post_data, request.FILES, instance=instance, actor=request.user)
-            if form.is_valid():
+            form_is_valid = form.is_valid()
+            if instance is None and selected_account_type in {"branch_manager", "organization_manager"} and not (post_data.get("branch") or "").strip():
+                form.add_error("branch", "Для менеджера выберите филиал.")
+                form_is_valid = False
+            if instance is None and selected_account_type == "organization_manager" and not (post_data.get("organization") or "").strip():
+                form.add_error("organization", "Для менеджера организации выберите организацию.")
+                form_is_valid = False
+            if form_is_valid:
                 duplicate_errors = _user_duplicate_errors(
                     email=form.cleaned_data.get("email", ""), phone=form.cleaned_data.get("phone", ""),
                     pnfl=form.cleaned_data.get("pnfl", "") or form.cleaned_data.get("employee_pinfl", ""),
@@ -2974,7 +2992,7 @@ def users_view(request):
                     else:
                         messages.success(request, "Пользователь сохранен.")
                     return redirect("users")
-            if form is not None and not form.is_valid():
+            if form is not None and not form_is_valid:
                 user_form = form if instance is None else UserForm(actor=request.user)
                 messages.error(request, "Проверьте поля пользователя.")
 
@@ -3015,6 +3033,7 @@ def users_view(request):
         "user_form": user_form,
         "query": query,
         "presence_filter": presence_filter,
+        "selected_account_type": selected_account_type,
         "import_jobs": PeopleImportJob.objects.filter(created_by=request.user, kind=PeopleImportJob.Kind.USERS)[:8],
         "roles": user_form.fields["roles"].queryset,
         "platforms": Platform.objects.filter(is_active=True).order_by("sort_order", "name"),

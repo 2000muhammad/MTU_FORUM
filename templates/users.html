@@ -36,6 +36,14 @@
         <button class="secret-toggle-btn" type="button" data-secret-toggle data-show="{% tr 'show' %}" data-hide="{% tr 'hide' %}">{% tr 'show' %}</button>
       </span>
     </label>
+    <label class="account-type-field">Тип аккаунта
+      <select class="form-select" name="account_type" data-account-type-select>
+        <option value="user" {% if selected_account_type == 'user' %}selected{% endif %}>Пользователь</option>
+        {% if not ui_user_is_branch_manager %}<option value="branch_manager" {% if selected_account_type == 'branch_manager' %}selected{% endif %}>Менеджер филиала</option>{% endif %}
+        <option value="organization_manager" {% if selected_account_type == 'organization_manager' %}selected{% endif %}>Менеджер организации</option>
+      </select>
+      <small>Роль и права будут назначены автоматически.</small>
+    </label>
     <div class="role-picker role-picker-create">
       <button class="role-picker-toggle" type="button" data-role-toggle data-default-label="Роли">Роли</button>
       <div class="role-picker-panel">
