@@ -2,9 +2,17 @@
 {% load ui_i18n %}
 {% block page_title %}{% tr 'site_logs_title' %}{% endblock %}
 {% block content %}
+<nav class="log-category-nav" aria-label="Категории журнала">
+  {% for item in category_tabs %}
+  <a href="{{ item.url }}" class="{% if selected_category == item.key %}is-active{% endif %}">
+    <span>{{ item.label }}</span><b>{{ item.count }}</b>
+  </a>
+  {% endfor %}
+</nav>
 <section class="glass-card log-toolbar">
   <div>
-    <h2>{% tr 'event_journal' %}</h2>
+    <span class="log-category-eyebrow">ЖУРНАЛ</span>
+    <h2>{{ category_label }}</h2>
     <p class="text-secondary mb-0">{% tr 'total_logs' %}: {{ total_logs }}</p>
   </div>
   <form method="get" class="log-filters">
@@ -21,7 +29,7 @@
   </form>
   <form method="post" onsubmit="return confirm('{% tr 'clear_logs_confirm' %}')">
     {% csrf_token %}<input type="hidden" name="action" value="clear">
-    <button class="btn btn-outline-danger">{% tr 'clear_logs' %}</button>
+    <button class="btn btn-outline-danger">{% tr 'clear_logs' %}: {{ category_label }}</button>
   </form>
 </section>
 

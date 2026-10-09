@@ -73,3 +73,34 @@ class AutomatedMaintenanceTests(TestCase):
             self.assertEqual(len(list((Path(directory) / "backups").glob("mtu-forum-*.json"))), 1)
         self.assertTrue(SiteLog.objects.filter(action="automatic_backup").exists())
         self.assertTrue(SiteLog.objects.filter(action="telegram_health").exists())
+
+
+class SiteLogCategoryTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser("log-admin", password="test-password")
+        SiteLog.objects.create(source="requests", action="request_delete", message="Request removed")
+        SiteLog.objects.create(source="people", action="user_delete", message="User removed")
+        SiteLog.objects.create(source="auth", action="login_failed", message="Login failed")
+        self.client.force_login(self.admin)
+
+    def test_request_log_page_only_contains_request_events(self):
+        response = self.client.get(reverse("site_logs_category", kwargs={"category": "requests"}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Request removed")
+        self.assertNotContains(response, "User removed")
+        self.assertContains(response, "Заявки")
+
+    def test_user_log_page_only_contains_user_events(self):
+        response = self.client.get(reverse("site_logs_category", kwargs={"category": "users"}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "User removed")
+        self.assertNotContains(response, "Request removed")
+
+    def test_unknown_category_falls_back_to_all_events(self):
+        response = self.client.get(reverse("site_logs_category", kwargs={"category": "unknown"}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Request removed")
+        self.assertContains(response, "User removed")
