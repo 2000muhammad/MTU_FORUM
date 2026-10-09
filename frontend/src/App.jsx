@@ -452,6 +452,10 @@ function Dashboard({ boot }) {
   const doneEnd = requestTotal
     ? ((stats.new + stats.done) / requestTotal) * 360
     : 0;
+  const completionRate = requestTotal
+    ? Math.round((stats.done / requestTotal) * 100)
+    : 0;
+  const needsAttention = stats.new + stats.blocked;
   return (
     <div className="page-stack">
       <section className="hero">
@@ -474,24 +478,24 @@ function Dashboard({ boot }) {
         <>
           <section className="metric-grid">
             <article>
-              <span>{tr("Новые заявки")}</span>
-              <strong>{stats.new}</strong>
-              <ClipboardList />
-            </article>
-            <article>
-              <span>{tr("Выполнено")}</span>
-              <strong>{stats.done}</strong>
+              <span>{tr("Процент выполнения")}</span>
+              <strong>{completionRate}%</strong>
               <CheckCircle2 />
             </article>
             <article>
-              <span>{tr("Заблокировано")}</span>
-              <strong>{stats.blocked}</strong>
-              <XCircle />
+              <span>{tr("Платформы с заявками")}</span>
+              <strong>{boot.dashboard.platforms.length}</strong>
+              <BarChart3 />
             </article>
             <article>
-              <span>{tr("Непрочитанные чаты")}</span>
-              <strong>{stats.chats}</strong>
-              <Users />
+              <span>{tr("WEB-сервисы")}</span>
+              <strong>{boot.dashboard.web_platforms.length}</strong>
+              <ExternalLink />
+            </article>
+            <article>
+              <span>{tr("Требуют внимания")}</span>
+              <strong>{needsAttention}</strong>
+              <ShieldCheck />
             </article>
           </section>
           <section className="request-chart-panel" aria-label={tr("Статистика заявок")}>
