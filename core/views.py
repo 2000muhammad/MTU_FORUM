@@ -2519,6 +2519,32 @@ def _scope_branch_directory_for_actor(queryset, actor):
     return queryset
 
 
+def _request_activity_series(queryset, enabled):
+    if not enabled:
+        return {"today": [], "done": []}
+    end_date = timezone.localdate()
+    dates = [end_date - timedelta(days=offset) for offset in range(6, -1, -1)]
+    created_counts = {
+        row["created_at__date"]: row["total"]
+        for row in queryset.filter(created_at__date__range=(dates[0], dates[-1]))
+        .values("created_at__date")
+        .annotate(total=Count("id"))
+    }
+    done_counts = {
+        row["updated_at__date"]: row["total"]
+        for row in queryset.filter(
+            status=IntakeRequest.Status.DONE,
+            updated_at__date__range=(dates[0], dates[-1]),
+        )
+        .values("updated_at__date")
+        .annotate(total=Count("id"))
+    }
+    return {
+        "today": [{"date": day.isoformat(), "value": created_counts.get(day, 0)} for day in dates],
+        "done": [{"date": day.isoformat(), "value": done_counts.get(day, 0)} for day in dates],
+    }
+
+
 USER_EXCEL_HEADERS = [
     "username", "first_name", "last_name", "email", "phone", "pnfl",
     "branch", "organization", "department", "position", "role_code",
@@ -4645,6 +4671,7 @@ def _react_dashboard_payload(user):
     can_requests = user_can_requests(user)
     can_chats = user_can_chats(user)
     visible_requests = _intake_requests_for_user(user)
+    activity = _request_activity_series(visible_requests, can_requests)
     allowed_platform_values = _allowed_intake_platform_values(user)
     allowed_company_values = _allowed_intake_company_values(user)
     deleted_by_platform = defaultdict(int)
@@ -4711,6 +4738,7 @@ def _react_dashboard_payload(user):
         },
         "platforms": platform_rows,
         "web_platforms": web_platforms,
+        "activity": activity,
     }
 
 

@@ -200,6 +200,8 @@ class ReactAppTests(TestCase):
         self.assertIn("stats", payload["dashboard"])
         for metric in ("today", "done_week", "online", "chats"):
             self.assertIn(metric, payload["dashboard"]["stats"])
+        self.assertEqual(len(payload["dashboard"]["activity"]["today"]), 7)
+        self.assertEqual(len(payload["dashboard"]["activity"]["done"]), 7)
         self.assertEqual(
             payload["version_links"]["old"],
             f'{reverse("dashboard")}?legacy=1',
