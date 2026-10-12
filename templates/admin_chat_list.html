@@ -6,13 +6,12 @@
   <div class="editor-head">
     <div>
       <h2>Создать чат Telegram</h2>
-      <p class="hint mb-0">Откройте новую сессию чата с пользователем по Telegram ID.</p>
+      <p class="hint mb-0">Введите Telegram ID или @nickname пользователя, который уже взаимодействовал с ботом.</p>
     </div>
   </div>
-  <form method="post" class="log-filters">
+  <form method="post" class="log-filters chat-create-form">
     {% csrf_token %}
-    <input class="form-control" name="telegram_id" placeholder="Telegram ID" required>
-    <input class="form-control" name="telegram_username" placeholder="Telegram nickname, например @username">
+    <input class="form-control" name="telegram_identity" placeholder="Telegram ID или @nickname" autocomplete="off" required>
     <input class="form-control" name="full_name" placeholder="Имя пользователя">
     <input class="form-control" name="title" placeholder="Название чата">
     <button class="btn btn-primary" type="submit">Создать</button>
