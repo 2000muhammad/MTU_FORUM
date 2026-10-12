@@ -258,40 +258,6 @@ select {
   color: var(--brand);
   opacity: 0.55;
 }
-.metric-grid article:has(.metric-mini-chart) { min-height: 154px; padding-bottom: 51px; }
-.metric-grid article:has(.metric-mini-chart) > svg { bottom: 53px; }
-.metric-mini-chart {
-  position: absolute;
-  right: 18px;
-  bottom: 13px;
-  left: 18px;
-  display: flex;
-  height: 25px;
-  align-items: end;
-  gap: 5px;
-  opacity: .92;
-}
-.metric-mini-chart::before {
-  content: "";
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 1px;
-  background: var(--line);
-}
-.metric-mini-chart i {
-  position: relative;
-  z-index: 1;
-  flex: 1;
-  min-width: 3px;
-  border-radius: 4px 4px 1px 1px;
-  background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 28%, transparent));
-  transition: height .55s cubic-bezier(.2,.8,.2,1);
-}
-.metric-mini-chart.is-done i {
-  background: linear-gradient(180deg, var(--brand), color-mix(in srgb, var(--brand) 28%, transparent));
-}
 .panel {
   padding: 20px;
   border: 1px solid var(--line);
@@ -651,22 +617,6 @@ select,
 .platform-stack-3d .is-done { background: linear-gradient(180deg, #7ce8d0, #27a991); }
 .platform-stack-3d .is-new { background: linear-gradient(180deg, #8bcbff, #4b9ee1); }
 .platform-stack-3d .is-blocked { background: linear-gradient(180deg, #ff94a3, #db5368); }
-.efficiency-panel { padding: 24px; border: 1px solid var(--line); border-radius: 24px; background: radial-gradient(circle at 50% 120%, color-mix(in srgb, var(--brand) 16%, transparent), transparent 42%), var(--surface); box-shadow: 0 22px 52px rgba(0,0,0,.13); }
-.efficiency-panel > header { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
-.efficiency-panel > header span { color: var(--brand); font-size: 10px; font-weight: 900; letter-spacing: .13em; }
-.efficiency-panel > header h2 { margin: 5px 0 0; font-size: 22px; }
-.efficiency-panel > header p { max-width: 430px; margin: 0; color: var(--muted); font-size: 13px; text-align: right; }
-.efficiency-gauges { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 22px; perspective: 900px; }
-.efficiency-gauge { --gauge-color: #51d3b5; display: grid; justify-items: center; min-width: 0; padding: 19px 12px 15px; border: 1px solid color-mix(in srgb, var(--gauge-color) 20%, var(--line)); border-radius: 18px; background: linear-gradient(145deg, color-mix(in srgb, var(--gauge-color) 7%, var(--surface)), var(--surface)); transition: transform .24s ease, border-color .24s ease; }
-.efficiency-gauge:hover { border-color: color-mix(in srgb, var(--gauge-color) 55%, var(--line)); transform: translateY(-4px) rotateX(2deg); }
-.efficiency-gauge > div { position: relative; display: grid; width: min(150px, 75%); aspect-ratio: 1; place-items: center; border-radius: 50%; background: conic-gradient(var(--gauge-color) 0 var(--gauge-value), color-mix(in srgb, var(--line) 55%, transparent) var(--gauge-value) 360deg); box-shadow: 0 18px 30px color-mix(in srgb, var(--gauge-color) 16%, transparent), inset 0 1px rgba(255,255,255,.2); transform: rotateX(9deg); }
-.efficiency-gauge > div::before { content: ""; position: absolute; inset: 14%; border-radius: 50%; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line), 0 8px 18px rgba(0,0,0,.2); }
-.efficiency-gauge strong, .efficiency-gauge span { position: relative; z-index: 1; }
-.efficiency-gauge strong { align-self: end; font-size: 28px; line-height: 1; }
-.efficiency-gauge span { align-self: start; margin-top: 4px; color: var(--muted); font-size: 10px; }
-.efficiency-gauge h3 { margin: 13px 0 0; font-size: 14px; text-align: center; }
-.efficiency-gauge.is-new { --gauge-color: #63b8ff; }
-.efficiency-gauge.is-blocked { --gauge-color: #ff7185; }
 .secret-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -958,14 +908,6 @@ html[data-theme="light"] .secret-modal-backdrop {
   .column-3d-pair { gap: 4px; }
   .column-3d { width: 9px; }
   .platform-bar-3d-row { grid-template-columns: minmax(74px, .9fr) minmax(100px, 1.5fr) 26px; gap: 8px; }
-  .efficiency-panel { padding: 18px 14px; }
-  .efficiency-panel > header { display: grid; gap: 7px; }
-  .efficiency-panel > header p { text-align: left; }
-  .efficiency-gauges { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
-  .efficiency-gauge { padding: 12px 5px; }
-  .efficiency-gauge > div { width: min(92px, 90%); }
-  .efficiency-gauge strong { font-size: 21px; }
-  .efficiency-gauge h3 { font-size: 11px; }
   html,
   body,
   #root {
