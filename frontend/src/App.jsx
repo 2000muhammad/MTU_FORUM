@@ -187,6 +187,16 @@ function Layout({ boot, config, children }) {
     document.documentElement.lang = boot.language || "ru";
   }, [boot.language]);
   useEffect(() => {
+    if (!boot.site?.favicon_url) return;
+    let icon = document.querySelector("link[rel='icon']");
+    if (!icon) {
+      icon = document.createElement("link");
+      icon.rel = "icon";
+      document.head.appendChild(icon);
+    }
+    icon.href = boot.site.favicon_url;
+  }, [boot.site?.favicon_url]);
+  useEffect(() => {
     if (!boot.user) return undefined;
     const heartbeat = () => {
       if (document.visibilityState === "visible") {
@@ -244,7 +254,14 @@ function Layout({ boot, config, children }) {
       >
         <div className="side-head">
           <NavLink to="/" className="brand" title={boot.site.name}>
-            <img src="/static/img/mtu-forum-mark.svg" alt="" />
+            <img
+              src={boot.site.logo_url || "/static/img/mtu-forum-mark.svg"}
+              alt={boot.site.name}
+              onError={(event) => {
+                event.currentTarget.onerror = null;
+                event.currentTarget.src = "/static/img/mtu-forum-mark.svg";
+              }}
+            />
             <span>{boot.site.name}</span>
           </NavLink>
           <button

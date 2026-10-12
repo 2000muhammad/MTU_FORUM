@@ -113,7 +113,16 @@ function PublicFrame({ data, children, page }) {
   const tr = createTranslator(language);
   useEffect(() => {
     document.documentElement.lang = language;
-  }, [language]);
+    if (data?.site?.favicon_url) {
+      let icon = document.querySelector("link[rel='icon']");
+      if (!icon) {
+        icon = document.createElement("link");
+        icon.rel = "icon";
+        document.head.appendChild(icon);
+      }
+      icon.href = data.site.favicon_url;
+    }
+  }, [language, data?.site?.favicon_url]);
   return (
     <div className="public-react-shell">
       <header className="public-react-header">
@@ -121,7 +130,14 @@ function PublicFrame({ data, children, page }) {
           className="public-react-brand"
           href={`/app/public/?lang=${language}`}
         >
-          <img src="/static/img/mtu-forum-mark.svg" />
+          <img
+            src={data?.site?.logo_url || "/static/img/mtu-forum-mark.svg"}
+            alt={data?.site?.name || "MTU FORUM"}
+            onError={(event) => {
+              event.currentTarget.onerror = null;
+              event.currentTarget.src = "/static/img/mtu-forum-mark.svg";
+            }}
+          />
           <strong>{data?.site?.name || "MTU FORUM"}</strong>
         </a>
         <PublicTools

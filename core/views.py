@@ -4558,7 +4558,7 @@ def react_public_api(request):
         for item in WebPlatform.objects.filter(is_active=True).order_by("sort_order", "name")
     ]
     return JsonResponse({
-        "site": {"name": settings_obj.site_name or "MTU FORUM", "description": settings_obj.site_description or ""},
+        "site": _react_site_payload(settings_obj),
         "language": lang_code,
         "texts": form.texts,
         "choices": {
@@ -4868,6 +4868,16 @@ def _react_dashboard_payload(user):
     }
 
 
+def _react_site_payload(settings_obj):
+    return {
+        "name": settings_obj.site_name or "MTU FORUM",
+        "description": settings_obj.site_description or "",
+        "logo_url": settings_obj.site_logo.url if settings_obj.site_logo else "",
+        "favicon_url": settings_obj.site_favicon.url if settings_obj.site_favicon else "",
+        "image_url": settings_obj.site_image.url if settings_obj.site_image else "",
+    }
+
+
 @require_GET
 def react_bootstrap_api(request):
     if not request.user.is_authenticated:
@@ -4907,7 +4917,7 @@ def react_bootstrap_api(request):
             legacy_links[key] = reverse(route_name)
 
     return JsonResponse({
-        "site": {"name": settings_obj.site_name or "MTU FORUM"},
+        "site": _react_site_payload(settings_obj),
         "language": getattr(request, "LANGUAGE_CODE", "ru"),
         "page_title": "MTU FORUM",
         "user": {

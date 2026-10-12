@@ -61,6 +61,8 @@ class ReactAppTests(TestCase):
         public_response = self.client.get(reverse("react_public_api"), {"lang": "ru"})
         self.assertEqual(public_response.status_code, 200)
         self.assertIn("choices", public_response.json())
+        self.assertIn("logo_url", public_response.json()["site"])
+        self.assertIn("favicon_url", public_response.json()["site"])
 
         captcha_response = self.client.get(reverse("react_captcha_api"))
         self.assertEqual(captcha_response.status_code, 200)
@@ -195,6 +197,8 @@ class ReactAppTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(payload["user"]["username"], self.admin.username)
+        self.assertIn("logo_url", payload["site"])
+        self.assertIn("favicon_url", payload["site"])
         self.assertEqual(payload["language"], "ru")
         self.assertTrue(payload["permissions"]["directories"])
         self.assertIn("stats", payload["dashboard"])
