@@ -502,13 +502,41 @@ function Platform3DChart({ platforms = [], tr }) {
         {rows.map((row, index) => (
           <div className="platform-bar-3d-row" key={row.name} title={`${row.name}: ${row.total}`}>
             <span>{row.name}</span>
-            <div><i style={{ "--bar-width": `${Math.max(4, row.total / maximum * 100)}%`, "--bar-index": index }} /></div>
+            <div>
+              <i className="platform-stack-3d" style={{ "--bar-width": `${Math.max(4, row.total / maximum * 100)}%`, "--bar-index": index }}>
+                <b className="is-done" style={{ flex: row.done }} title={`${tr("Выполнено")}: ${row.done}`} />
+                <b className="is-new" style={{ flex: Math.max(0, row.total - row.done - row.blocked) }} title={`${tr("Новые")}: ${Math.max(0, row.total - row.done - row.blocked)}`} />
+                <b className="is-blocked" style={{ flex: row.blocked }} title={`${tr("Заблокировано")}: ${row.blocked}`} />
+              </i>
+            </div>
             <strong>{row.total}</strong>
           </div>
         ))}
         {!rows.length && <p>{tr("Нет доступных платформ.")}</p>}
       </div>
     </article>
+  );
+}
+
+function Efficiency3D({ stats, tr }) {
+  const total = stats.new + stats.done + stats.blocked;
+  const items = [
+    { key: "done", label: tr("Процент выполнения"), value: stats.done, percent: total ? Math.round(stats.done / total * 100) : 0 },
+    { key: "new", label: tr("В очереди"), value: stats.new, percent: total ? Math.round(stats.new / total * 100) : 0 },
+    { key: "blocked", label: tr("Требуют внимания"), value: stats.blocked, percent: total ? Math.round(stats.blocked / total * 100) : 0 },
+  ];
+  return (
+    <section className="efficiency-panel">
+      <header><div><span>{tr("КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ")}</span><h2>{tr("Эффективность обработки")}</h2></div><p>{tr("Доля каждого статуса от общего количества заявок.")}</p></header>
+      <div className="efficiency-gauges">
+        {items.map((item) => (
+          <article className={`efficiency-gauge is-${item.key}`} key={item.key} style={{ "--gauge-value": `${item.percent * 3.6}deg` }} title={`${item.label}: ${item.value} (${item.percent}%)`}>
+            <div><strong>{item.percent}%</strong><span>{item.value} {tr("Заявки")}</span></div>
+            <h3>{item.label}</h3>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -653,40 +681,9 @@ function Dashboard({ boot }) {
             <Activity3DChart today={boot.dashboard.activity?.today || []} done={boot.dashboard.activity?.done || []} tr={tr} />
             <Platform3DChart platforms={boot.dashboard.platforms} tr={tr} />
           </section>
+          <Efficiency3D stats={stats} tr={tr} />
         </>
       )}
-      <section className="panel">
-        <div className="panel-head">
-          <div>
-            <span>{tr("ПО ПЛАТФОРМАМ")}</span>
-            <h2>{tr("Статистика заявок")}</h2>
-          </div>
-        </div>
-        <div className="platform-grid">
-          {boot.dashboard.platforms.map((item) => (
-            <article className="platform-card" key={item.name}>
-              <h3>{item.name}</h3>
-              <div>
-                <span>
-                  {tr("Всего")} <b>{item.total}</b>
-                </span>
-                <span>
-                  {tr("Готово")} <b>{item.done}</b>
-                </span>
-                <span>
-                  {tr("Блок")} <b>{item.blocked}</b>
-                </span>
-                <span>
-                  {tr("Удалено")} <b>{item.deleted}</b>
-                </span>
-              </div>
-            </article>
-          ))}
-          {!boot.dashboard.platforms.length && (
-            <p className="muted">{tr("Нет доступных платформ.")}</p>
-          )}
-        </div>
-      </section>
       <section className="panel">
         <div className="panel-head">
           <div>
