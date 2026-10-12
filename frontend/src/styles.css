@@ -581,6 +581,40 @@ select,
 .request-donut > div { position: relative; z-index: 1; display: grid; place-items: center; }
 .request-donut small, .request-donut span { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .request-donut strong { margin: 2px 0; color: var(--text); font-size: clamp(42px, 6vw, 64px); line-height: 1; }
+.request-chart-tooltip {
+  position: absolute;
+  z-index: 4;
+  display: grid;
+  min-width: 142px;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, currentColor 36%, var(--line));
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .24);
+  color: var(--text);
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 13px));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.request-chart-tooltip::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 9px;
+  height: 9px;
+  background: inherit;
+  border-right: 1px solid color-mix(in srgb, currentColor 36%, var(--line));
+  border-bottom: 1px solid color-mix(in srgb, currentColor 36%, var(--line));
+  transform: translateX(-50%) rotate(45deg);
+}
+.request-chart-tooltip b { font-size: 13px; white-space: nowrap; }
+.request-chart-tooltip span { color: var(--muted); font-size: 12px; font-weight: 750; letter-spacing: 0; text-transform: none; }
+.request-chart-tooltip.is-new { color: var(--chart-new); }
+.request-chart-tooltip.is-done { color: var(--chart-done); }
+.request-chart-tooltip.is-blocked { color: var(--chart-blocked); }
 .secret-modal-backdrop {
   position: fixed;
   inset: 0;

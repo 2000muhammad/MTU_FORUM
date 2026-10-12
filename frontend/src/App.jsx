@@ -453,6 +453,7 @@ function MiniBarChart({ rows = [], label, tone }) {
 
 function Dashboard({ boot }) {
   const tr = createTranslator(boot.language);
+  const [activeChartSegment, setActiveChartSegment] = useState(null);
   const stats = boot.dashboard.stats;
   const requestTotal = stats.new + stats.done + stats.blocked;
   const requestChart = [
@@ -467,6 +468,26 @@ function Dashboard({ boot }) {
   const doneEnd = requestTotal
     ? ((stats.new + stats.done) / requestTotal) * 360
     : 0;
+  const inspectChartSegment = (event) => {
+    if (!requestTotal) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - bounds.left;
+    const y = event.clientY - bounds.top;
+    const dx = x - bounds.width / 2;
+    const dy = y - bounds.height / 2;
+    const distance = Math.hypot(dx, dy);
+    if (distance < bounds.width * 0.33 || distance > bounds.width * 0.5) {
+      setActiveChartSegment(null);
+      return;
+    }
+    const angle = (Math.atan2(dy, dx) * 180 / Math.PI + 450) % 360;
+    const item = angle < newEnd
+      ? requestChart[0]
+      : angle < doneEnd
+        ? requestChart[1]
+        : requestChart[2];
+    setActiveChartSegment({ ...item, x, y });
+  };
   return (
     <div className="page-stack">
       <section className="hero">
@@ -548,12 +569,23 @@ function Dashboard({ boot }) {
               }}
               role="img"
               aria-label={`${tr("Всего")}: ${requestTotal}`}
+              onPointerMove={inspectChartSegment}
+              onPointerLeave={() => setActiveChartSegment(null)}
             >
               <div>
-                <small>{tr("Всего")}</small>
-                <strong>{requestTotal}</strong>
+                <small>{activeChartSegment?.label || tr("Всего")}</small>
+                <strong>{activeChartSegment?.value ?? requestTotal}</strong>
                 <span>{tr("Заявки")}</span>
               </div>
+              {activeChartSegment && (
+                <output
+                  className={`request-chart-tooltip is-${activeChartSegment.key}`}
+                  style={{ left: activeChartSegment.x, top: activeChartSegment.y }}
+                >
+                  <b>{activeChartSegment.label}</b>
+                  <span>{activeChartSegment.value} · {activeChartSegment.percent}%</span>
+                </output>
+              )}
             </div>
           </section>
         </>
