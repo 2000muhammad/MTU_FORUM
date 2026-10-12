@@ -453,21 +453,6 @@ function Layout({ boot, config, children }) {
   );
 }
 
-function MiniBarChart({ rows = [], label, tone }) {
-  const maximum = Math.max(1, ...rows.map((row) => row.value));
-  return (
-    <div className={`metric-mini-chart is-${tone}`} aria-label={label} role="img">
-      {rows.map((row) => (
-        <i
-          key={row.date}
-          style={{ height: `${Math.max(10, (row.value / maximum) * 100)}%` }}
-          title={`${row.date}: ${row.value}`}
-        />
-      ))}
-    </div>
-  );
-}
-
 function Activity3DChart({ today = [], done = [], tr }) {
   const values = today.map((row, index) => ({ date: row.date, created: row.value, done: done[index]?.value || 0 }));
   const maximum = Math.max(1, ...values.flatMap((row) => [row.created, row.done]));
@@ -515,28 +500,6 @@ function Platform3DChart({ platforms = [], tr }) {
         {!rows.length && <p>{tr("Нет доступных платформ.")}</p>}
       </div>
     </article>
-  );
-}
-
-function Efficiency3D({ stats, tr }) {
-  const total = stats.new + stats.done + stats.blocked;
-  const items = [
-    { key: "done", label: tr("Процент выполнения"), value: stats.done, percent: total ? Math.round(stats.done / total * 100) : 0 },
-    { key: "new", label: tr("В очереди"), value: stats.new, percent: total ? Math.round(stats.new / total * 100) : 0 },
-    { key: "blocked", label: tr("Требуют внимания"), value: stats.blocked, percent: total ? Math.round(stats.blocked / total * 100) : 0 },
-  ];
-  return (
-    <section className="efficiency-panel">
-      <header><div><span>{tr("КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ")}</span><h2>{tr("Эффективность обработки")}</h2></div><p>{tr("Доля каждого статуса от общего количества заявок.")}</p></header>
-      <div className="efficiency-gauges">
-        {items.map((item) => (
-          <article className={`efficiency-gauge is-${item.key}`} key={item.key} style={{ "--gauge-value": `${item.percent * 3.6}deg` }} title={`${item.label}: ${item.value} (${item.percent}%)`}>
-            <div><strong>{item.percent}%</strong><span>{item.value} {tr("Заявки")}</span></div>
-            <h3>{item.label}</h3>
-          </article>
-        ))}
-      </div>
-    </section>
   );
 }
 
@@ -602,21 +565,11 @@ function Dashboard({ boot }) {
               <span>{tr("Заявки сегодня")}</span>
               <strong>{stats.today ?? 0}</strong>
               <ClipboardList />
-              <MiniBarChart
-                rows={boot.dashboard.activity?.today}
-                label={tr("Заявки за последние 7 дней")}
-                tone="new"
-              />
             </article>
             <article>
               <span>{tr("Выполнено за 7 дней")}</span>
               <strong>{stats.done_week ?? 0}</strong>
               <CheckCircle2 />
-              <MiniBarChart
-                rows={boot.dashboard.activity?.done}
-                label={tr("Выполненные заявки за последние 7 дней")}
-                tone="done"
-              />
             </article>
             <article>
               <span>{tr("Пользователи онлайн")}</span>
@@ -633,7 +586,7 @@ function Dashboard({ boot }) {
             <div className="request-chart-copy">
               <span>{tr("ОБЗОР СИСТЕМЫ")}</span>
               <h2>{tr("Статистика заявок")}</h2>
-              <p>{tr("Актуальное состояние заявок и быстрый доступ к рабочим сервисам.")}</p>
+              <p>{tr("Распределение текущих заявок по статусам.")}</p>
               <div className="request-chart-legend">
                 {requestChart.map((item) => (
                   <div className={`request-chart-row is-${item.key}`} key={item.key}>
@@ -681,7 +634,6 @@ function Dashboard({ boot }) {
             <Activity3DChart today={boot.dashboard.activity?.today || []} done={boot.dashboard.activity?.done || []} tr={tr} />
             <Platform3DChart platforms={boot.dashboard.platforms} tr={tr} />
           </section>
-          <Efficiency3D stats={stats} tr={tr} />
         </>
       )}
       <section className="panel">
