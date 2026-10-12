@@ -1529,11 +1529,37 @@ def request_edit(request, pk):
 
 def admin_chat_list(request):
     if request.method == "POST":
-        telegram_id = request.POST.get("telegram_id", "").strip()
+        identity = request.POST.get("telegram_identity", request.POST.get("telegram_id", "")).strip()
         title = request.POST.get("title", "").strip()
         full_name = request.POST.get("full_name", "").strip()
-        telegram_username = request.POST.get("telegram_username", "").strip().lstrip("@")
-        if telegram_id:
+        telegram_id = None
+        telegram_username = ""
+        if identity.lstrip("-").isdigit():
+            telegram_id = int(identity)
+            profile = UserProfile.objects.filter(telegram_id=telegram_id).first()
+            known_thread = AdminChatThread.objects.filter(telegram_id=telegram_id).order_by("-updated_at").first()
+            telegram_username = (
+                (profile.telegram_username if profile else "")
+                or (known_thread.telegram_username if known_thread else "")
+            )
+        elif identity:
+            telegram_username = identity.lstrip("@").strip()
+            profile = UserProfile.objects.filter(
+                telegram_username__iexact=telegram_username,
+                telegram_id__isnull=False,
+            ).select_related("user").first()
+            known_thread = AdminChatThread.objects.filter(
+                telegram_username__iexact=telegram_username,
+            ).order_by("-updated_at").first()
+            known_message = AdminChatMessage.objects.filter(
+                telegram_username__iexact=telegram_username,
+            ).order_by("-created_at").first()
+            source = profile or known_thread or known_message
+            telegram_id = source.telegram_id if source else None
+            telegram_username = getattr(source, "telegram_username", "") or telegram_username
+            if not full_name:
+                full_name = profile.user.get_full_name() if profile else (getattr(source, "full_name", "") if source else "")
+        if telegram_id is not None:
             thread = AdminChatThread.objects.create(
                 telegram_id=telegram_id,
                 telegram_username=telegram_username,
@@ -1542,6 +1568,10 @@ def admin_chat_list(request):
                 created_by=request.user,
             )
             return redirect("admin_chat_thread_detail", thread_id=thread.pk)
+        messages.error(
+            request,
+            "Пользователь не найден. Введите Telegram ID или nickname пользователя, который уже писал боту.",
+        )
 
     grouped = AdminChatMessage.objects.values("telegram_id").annotate(
 
