@@ -451,6 +451,50 @@ function MiniBarChart({ rows = [], label, tone }) {
   );
 }
 
+function Activity3DChart({ today = [], done = [], tr }) {
+  const values = today.map((row, index) => ({ date: row.date, created: row.value, done: done[index]?.value || 0 }));
+  const maximum = Math.max(1, ...values.flatMap((row) => [row.created, row.done]));
+  return (
+    <article className="analytics-3d-card">
+      <header>
+        <div><span>{tr("АНАЛИТИКА")}</span><h3>{tr("Динамика за 7 дней")}</h3><p>{tr("Новые и выполненные заявки по дням.")}</p></div>
+        <div className="chart-key"><span className="is-new">{tr("Новые")}</span><span className="is-done">{tr("Выполнено")}</span></div>
+      </header>
+      <div className="columns-3d" role="img" aria-label={tr("Динамика за 7 дней")}>
+        {values.map((row) => (
+          <div className="column-3d-group" key={row.date}>
+            <div className="column-3d-pair">
+              <i className="column-3d is-new" style={{ "--bar-height": `${Math.max(5, row.created / maximum * 100)}%` }} data-tooltip={`${tr("Новые")}: ${row.created}`} />
+              <i className="column-3d is-done" style={{ "--bar-height": `${Math.max(5, row.done / maximum * 100)}%` }} data-tooltip={`${tr("Выполнено")}: ${row.done}`} />
+            </div>
+            <span>{row.date}</span>
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function Platform3DChart({ platforms = [], tr }) {
+  const rows = [...platforms].sort((a, b) => b.total - a.total).slice(0, 5);
+  const maximum = Math.max(1, ...rows.map((row) => row.total));
+  return (
+    <article className="analytics-3d-card">
+      <header><div><span>{tr("АНАЛИТИКА")}</span><h3>{tr("Распределение по платформам")}</h3><p>{tr("Сравнение количества заявок по платформам.")}</p></div></header>
+      <div className="platform-bars-3d">
+        {rows.map((row, index) => (
+          <div className="platform-bar-3d-row" key={row.name} title={`${row.name}: ${row.total}`}>
+            <span>{row.name}</span>
+            <div><i style={{ "--bar-width": `${Math.max(4, row.total / maximum * 100)}%`, "--bar-index": index }} /></div>
+            <strong>{row.total}</strong>
+          </div>
+        ))}
+        {!rows.length && <p>{tr("Нет доступных платформ.")}</p>}
+      </div>
+    </article>
+  );
+}
+
 function Dashboard({ boot }) {
   const tr = createTranslator(boot.language);
   const [activeChartSegment, setActiveChartSegment] = useState(null);
@@ -587,6 +631,10 @@ function Dashboard({ boot }) {
                 </output>
               )}
             </div>
+          </section>
+          <section className="analytics-3d-grid">
+            <Activity3DChart today={boot.dashboard.activity?.today || []} done={boot.dashboard.activity?.done || []} tr={tr} />
+            <Platform3DChart platforms={boot.dashboard.platforms} tr={tr} />
           </section>
         </>
       )}
