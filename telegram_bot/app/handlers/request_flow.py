@@ -30,6 +30,7 @@ from app.keyboards import (
     language_keyboard,
     main_menu,
     new_chat_label,
+    platform_inline_keyboard,
     subscription_keyboard,
 )
 from app.subscription import missing_channels
@@ -179,10 +180,32 @@ async def _ask_pnfl(update, lang):
         await update.message.reply_text(prompt, reply_markup=back_keyboard(lang))
 
 
+async def _ask_pnfl_from_message(message, lang):
+    prompt = t(lang, "send_pnfl")
+    if PINFL_HINT_IMAGE.exists():
+        photo = BytesIO(PINFL_HINT_IMAGE.read_bytes())
+        photo.name = f"pinfl_hint_{PINFL_HINT_IMAGE.stat().st_mtime_ns}.jpg"
+        await message.reply_photo(photo=photo, caption=prompt, reply_markup=back_keyboard(lang))
+    else:
+        await message.reply_text(prompt, reply_markup=back_keyboard(lang))
+
+
+async def _send_platform_step(message, context, lang):
+    platforms = get_platforms()
+    context.user_data["platform_choices"] = [item.get("name", "") for item in platforms]
+    if platforms:
+        await message.reply_text(
+            t(lang, "send_platform"),
+            reply_markup=platform_inline_keyboard(platforms, lang),
+        )
+    else:
+        await message.reply_text(t(lang, "send_platform"), reply_markup=back_keyboard(lang))
+
+
 async def _send_request_step(update, context, lang, state):
     context.user_data["state"] = state
     if state == states.PLATFORM:
-        await update.message.reply_text(t(lang, "send_platform"), reply_markup=_choices_markup(get_platforms(), lang))
+        await _send_platform_step(update.message, context, lang)
     elif state == states.PNFL:
         await _ask_pnfl(update, lang)
     elif state == states.FULL_NAME:
@@ -229,6 +252,44 @@ async def _start_request(update, context, lang):
     context.user_data["lang"] = lang
     context.user_data["state"] = states.PLATFORM
     await _send_request_step(update, context, lang, states.PLATFORM)
+
+
+async def platform_router(update, context):
+    query = update.callback_query
+    if query is None or context.user_data is None:
+        return
+
+    await query.answer()
+    lang = context.user_data.get("lang", "ru")
+    if context.user_data.get("state") != states.PLATFORM:
+        await query.edit_message_reply_markup(reply_markup=None)
+        return
+
+    choice = query.data.split(":", 1)[1]
+    if choice == "back":
+        context.user_data.clear()
+        context.user_data["lang"] = lang
+        context.user_data["state"] = states.MENU
+        await query.edit_message_reply_markup(reply_markup=None)
+        await query.message.reply_text(t(lang, "welcome"), reply_markup=main_menu(lang))
+        return
+
+    choices = context.user_data.get("platform_choices", [])
+    try:
+        platform = choices[int(choice)]
+    except (ValueError, IndexError, TypeError):
+        await query.message.reply_text(t(lang, "send_platform"))
+        return
+
+    if not platform:
+        await query.message.reply_text(t(lang, "send_platform"))
+        return
+
+    context.user_data["platform"] = platform
+    context.user_data["state"] = states.PNFL
+    context.user_data.pop("platform_choices", None)
+    await query.edit_message_reply_markup(reply_markup=None)
+    await _ask_pnfl_from_message(query.message, lang)
 
 
 async def _show_chat_selection(update, context, lang):

@@ -73,6 +73,16 @@ def choice_keyboard(items, lang="ru", include_back=False):
     return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
 
 
+def platform_inline_keyboard(items, lang="ru"):
+    rows = [
+        [InlineKeyboardButton(item["name"], callback_data=f"platform:{index}")]
+        for index, item in enumerate(items)
+        if item.get("name")
+    ]
+    rows.append([InlineKeyboardButton(back_label(lang), callback_data="platform:back")])
+    return InlineKeyboardMarkup(rows)
+
+
 def contact_keyboard(lang="ru", include_back=False):
     rows = [[KeyboardButton(t(lang, "share_contact"), request_contact=True)]]
     if include_back:
