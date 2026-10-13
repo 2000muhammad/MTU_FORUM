@@ -6,6 +6,13 @@ from django.urls import reverse
 
 
 class PublicDocumentViewerTests(TestCase):
+    def test_document_has_short_canonical_address(self):
+        response = self.client.get(reverse("public_document_root"))
+
+        self.assertEqual(reverse("public_document_root"), "/document/ax")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ахборот хавфсизлиги сиёсати")
+
     def test_document_page_is_available_without_authentication(self):
         response = self.client.get("/document/%D0%90%D1%85%D0%B1%D0%BE%D1%80%D0%BE%D1%82%20%D1%85%D0%B0%D0%B2%D1%84%D1%81%D0%B8%D0%B7%D0%BB%D0%B8%D0%B3%D0%B8%20%D1%81%D0%B8%D1%91%D1%81%D0%B0%D1%82%D0%B8/")
 
