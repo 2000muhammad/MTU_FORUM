@@ -4573,10 +4573,11 @@ def _docx_to_html(uploaded_file):
     return "".join(parts) or "<p>Документ не содержит распознаваемого текста.</p>"
 
 
-def _document_navigation():
-    documents = [{"title": PUBLIC_DOCUMENT_TITLE, "url": reverse("public_document_root"), "slug": "ax"}]
+def _document_navigation(embedded=False):
+    suffix = "?embedded=1" if embedded else ""
+    documents = [{"title": PUBLIC_DOCUMENT_TITLE, "url": f'{reverse("public_document_root")}{suffix}', "slug": "ax"}]
     documents.extend(
-        {"title": item.title, "url": reverse("public_document_short", args=[item.slug]), "slug": item.slug}
+        {"title": item.title, "url": f'{reverse("public_document_short", args=[item.slug])}{suffix}', "slug": item.slug}
         for item in PublicDocument.objects.filter(is_published=True)
     )
     return documents
@@ -4614,7 +4615,7 @@ def public_document_view(request, slug=""):
             "document_base_url": "/static/documents/security-policy/" if is_builtin else "/",
             "stats_url": reverse("public_document_stats_api", args=[document_slug]),
             "event_url": reverse("public_document_event_api", args=[document_slug]),
-            "available_documents": _document_navigation(),
+            "available_documents": _document_navigation(request.GET.get("embedded") == "1"),
             "can_import_documents": request.user.is_authenticated and request.user.is_superuser,
             "import_url": reverse("public_document_import"),
         },

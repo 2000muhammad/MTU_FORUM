@@ -43,6 +43,8 @@ class ReactAppTests(TestCase):
         self.assertEqual(legacy.status_code, 200)
         self.assertContains(legacy, f'{reverse("public_document_root")}?embedded=1')
         self.assertContains(legacy, "Документы")
+        self.assertContains(legacy, 'width="100%"')
+        self.assertContains(legacy, 'min-height:720px')
 
         bootstrap = self.client.get(reverse("react_bootstrap_api")).json()
         self.assertEqual(bootstrap["legacy_links"]["documents"], reverse("legacy_documents"))

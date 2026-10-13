@@ -5,12 +5,15 @@
 {% block page_title %}{% tr 'documents' %}{% endblock %}
 
 {% block content %}
-<section class="legacy-documents-shell" aria-label="{% tr 'documents' %}">
+<section class="legacy-documents-shell" aria-label="{% tr 'documents' %}" style="min-height:calc(100vh - 145px);overflow:hidden;border-radius:22px;">
   <iframe
     class="legacy-documents-frame"
     src="{{ documents_url }}"
     title="{% tr 'documents' %}"
     loading="eager"
+    width="100%"
+    height="900"
+    style="display:block;width:100%;height:calc(100vh - 147px);min-height:720px;border:0;background:#f6fbfb;"
   ></iframe>
 </section>
 {% endblock %}
