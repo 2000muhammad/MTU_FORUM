@@ -602,6 +602,7 @@ select,
 .column-3d:hover { filter: brightness(1.12); transform: translateY(-3px); }
 .column-3d:hover::after { opacity: 1; transform: translate(-50%, 0); }
 .column-3d.is-done { --bar-color: #51d3b5; }
+.column-3d.is-empty { height: 0; visibility: hidden; box-shadow: none; }
 .platform-bars-3d { display: grid; gap: 15px; margin-top: 24px; perspective: 850px; }
 .platform-bar-3d-row { display: grid; grid-template-columns: minmax(90px, 1.15fr) minmax(110px, 2fr) 32px; align-items: center; gap: 12px; }
 .platform-bar-3d-row > span { overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }

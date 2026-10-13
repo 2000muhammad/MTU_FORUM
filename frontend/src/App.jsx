@@ -462,6 +462,7 @@ function Layout({ boot, config, children }) {
 function Activity3DChart({ today = [], done = [], tr }) {
   const values = today.map((row, index) => ({ date: row.date, created: row.value, done: done[index]?.value || 0 }));
   const maximum = Math.max(1, ...values.flatMap((row) => [row.created, row.done]));
+  const barHeight = (value) => value > 0 ? Math.max(5, value / maximum * 100) : 0;
   return (
     <article className="analytics-3d-card">
       <header>
@@ -472,8 +473,8 @@ function Activity3DChart({ today = [], done = [], tr }) {
         {values.map((row) => (
           <div className="column-3d-group" key={row.date}>
             <div className="column-3d-pair">
-              <i className="column-3d is-new" style={{ "--bar-height": `${Math.max(5, row.created / maximum * 100)}%` }} data-tooltip={`${tr("Новые")}: ${row.created}`} />
-              <i className="column-3d is-done" style={{ "--bar-height": `${Math.max(5, row.done / maximum * 100)}%` }} data-tooltip={`${tr("Выполнено")}: ${row.done}`} />
+              <i className={`column-3d is-new ${row.created === 0 ? "is-empty" : ""}`} style={{ "--bar-height": `${barHeight(row.created)}%` }} data-tooltip={`${tr("Новые")}: ${row.created}`} />
+              <i className={`column-3d is-done ${row.done === 0 ? "is-empty" : ""}`} style={{ "--bar-height": `${barHeight(row.done)}%` }} data-tooltip={`${tr("Выполнено")}: ${row.done}`} />
             </div>
             <span>{row.date}</span>
           </div>
