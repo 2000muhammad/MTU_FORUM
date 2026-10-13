@@ -514,6 +514,12 @@ function Dashboard({ boot }) {
   const tr = createTranslator(boot.language);
   const [activeChartSegment, setActiveChartSegment] = useState(null);
   const stats = boot.dashboard.stats;
+  const formatDuration = (seconds) => {
+    if (!seconds) return "—";
+    if (seconds < 3600) return `${Math.max(1, Math.round(seconds / 60))} ${tr("мин.")}`;
+    if (seconds < 86400) return `${Math.round(seconds / 3600)} ${tr("ч.")}`;
+    return `${Math.round(seconds / 86400)} ${tr("дн.")}`;
+  };
   const requestTotal = stats.new + stats.done + stats.blocked;
   const requestChart = [
     { key: "new", label: tr("Новые заявки"), value: stats.new },
@@ -574,9 +580,9 @@ function Dashboard({ boot }) {
               <ClipboardList />
             </article>
             <article>
-              <span>{tr("Всего пользователей")}</span>
-              <strong>{stats.users_total ?? 0}</strong>
-              <UserCircle />
+              <span>{tr("Среднее время обработки")}</span>
+              <strong>{formatDuration(stats.average_processing_seconds)}</strong>
+              <CheckCircle2 />
             </article>
             <article>
               <span>{tr("Пользователи онлайн")}</span>

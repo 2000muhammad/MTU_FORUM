@@ -5065,6 +5065,14 @@ def _react_dashboard_payload(user):
         }
         for item in WebPlatform.objects.filter(is_active=True).annotate(favorite_count=Count("favorites"))
     ]
+    completed_durations = [
+        max(0, (updated_at - created_at).total_seconds())
+        for created_at, updated_at in visible_requests.filter(status=IntakeRequest.Status.DONE).values_list(
+            "created_at", "updated_at"
+        )
+        if created_at and updated_at
+    ] if can_requests else []
+    average_processing_seconds = round(sum(completed_durations) / len(completed_durations)) if completed_durations else 0
     return {
         "stats": {
             "new": visible_requests.filter(status=IntakeRequest.Status.NEW).count() if can_requests else 0,
@@ -5072,7 +5080,7 @@ def _react_dashboard_payload(user):
             "blocked": visible_requests.filter(status=IntakeRequest.Status.BLOCKED).count() if can_requests else 0,
             "chats": AdminChatMessage.objects.filter(direction=AdminChatMessage.Direction.IN, is_read=False).count() if can_chats else 0,
             "today": visible_requests.filter(created_at__date=timezone.localdate()).count() if can_requests else 0,
-            "users_total": User.objects.filter(is_active=True).count(),
+            "average_processing_seconds": average_processing_seconds,
             "online": UserPresence.objects.filter(
                 user__is_active=True,
                 last_seen_at__gte=timezone.now() - timedelta(seconds=70),
