@@ -17,7 +17,9 @@ urlpatterns = [
     path("api/", include("core.api_urls")),
 
     path("document/ax", views.public_document_view, name="public_document_root"),
+    path("document/import", views.public_document_import, name="public_document_import"),
     path("document/", views.public_document_view, name="public_document_index"),
+    path("document/<slug:slug>", views.public_document_view, name="public_document_short"),
     path("document/<path:slug>/", views.public_document_view, name="public_document_view"),
     path("api/public-documents/<slug:document_slug>/stats/", views.public_document_stats_api, name="public_document_stats_api"),
     path("api/public-documents/<slug:document_slug>/event/", views.public_document_event_api, name="public_document_event_api"),

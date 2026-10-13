@@ -22,3 +22,18 @@ body.embedded footer {
 body.embedded main {
   padding-top: 18px;
 }
+.document-messages p { margin: 0 0 12px; padding: 12px 16px; border-radius: 10px; background: #e5f4f1; color: #075f57; font-weight: 600; }
+.document-messages p.error { background: #fff0f1; color: #a33b49; }
+.import-panel { margin-bottom: 16px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
+.import-panel summary { cursor: pointer; color: var(--accent); font-weight: 800; }
+.import-panel form { display: grid; grid-template-columns: 1.4fr 1fr 1.4fr auto; align-items: end; gap: 12px; margin-top: 16px; }
+.import-panel label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 700; }
+.import-panel input { min-width: 0; height: 42px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 9px; background: #fff; }
+.import-panel input[type="file"] { padding: 7px; }
+.import-panel button { height: 42px; padding: 0 18px; border: 0; border-radius: 9px; background: var(--accent); color: #fff; font-weight: 800; cursor: pointer; }
+.import-panel small { display: block; margin-top: 10px; color: var(--muted); }
+.document-library { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; }
+.document-library a { flex: 0 0 auto; padding: 9px 13px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink); text-decoration: none; font-size: 13px; font-weight: 700; }
+.document-library a:hover { border-color: var(--accent); color: var(--accent); }
+.document-pdf { width: 100%; min-height: 72vh; border: 0; }
+@media (max-width: 850px) { .import-panel form { grid-template-columns: 1fr; } }
