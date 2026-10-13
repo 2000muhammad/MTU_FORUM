@@ -574,9 +574,9 @@ function Dashboard({ boot }) {
               <ClipboardList />
             </article>
             <article>
-              <span>{tr("Выполнено за 7 дней")}</span>
-              <strong>{stats.done_week ?? 0}</strong>
-              <CheckCircle2 />
+              <span>{tr("Всего пользователей")}</span>
+              <strong>{stats.users_total ?? 0}</strong>
+              <UserCircle />
             </article>
             <article>
               <span>{tr("Пользователи онлайн")}</span>

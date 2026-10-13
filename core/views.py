@@ -5072,10 +5072,7 @@ def _react_dashboard_payload(user):
             "blocked": visible_requests.filter(status=IntakeRequest.Status.BLOCKED).count() if can_requests else 0,
             "chats": AdminChatMessage.objects.filter(direction=AdminChatMessage.Direction.IN, is_read=False).count() if can_chats else 0,
             "today": visible_requests.filter(created_at__date=timezone.localdate()).count() if can_requests else 0,
-            "done_week": visible_requests.filter(
-                status=IntakeRequest.Status.DONE,
-                updated_at__gte=timezone.now() - timedelta(days=7),
-            ).count() if can_requests else 0,
+            "users_total": User.objects.filter(is_active=True).count(),
             "online": UserPresence.objects.filter(
                 user__is_active=True,
                 last_seen_at__gte=timezone.now() - timedelta(seconds=70),

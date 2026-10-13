@@ -217,8 +217,9 @@ class ReactAppTests(TestCase):
         self.assertEqual(payload["language"], "ru")
         self.assertTrue(payload["permissions"]["directories"])
         self.assertIn("stats", payload["dashboard"])
-        for metric in ("today", "done_week", "online", "chats"):
+        for metric in ("today", "users_total", "online", "chats"):
             self.assertIn(metric, payload["dashboard"]["stats"])
+        self.assertNotIn("done_week", payload["dashboard"]["stats"])
         self.assertEqual(len(payload["dashboard"]["activity"]["today"]), 7)
         self.assertEqual(len(payload["dashboard"]["activity"]["done"]), 7)
         self.assertEqual(
