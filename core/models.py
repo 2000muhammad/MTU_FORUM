@@ -862,3 +862,33 @@ class DeveloperTask(models.Model):
     def __str__(self):
         return self.title
 
+
+class PublicDocumentEvent(models.Model):
+    class Kind(models.TextChoices):
+        VIEW = "view", "Просмотр"
+        DOWNLOAD = "download", "Скачивание"
+
+    document_slug = models.SlugField(max_length=120, db_index=True)
+    visitor_id = models.UUIDField(db_index=True)
+    event_id = models.UUIDField(unique=True)
+    kind = models.CharField(max_length=16, choices=Kind.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["document_slug", "kind", "created_at"])]
+
+
+class PublicDocumentSession(models.Model):
+    document_slug = models.SlugField(max_length=120)
+    visitor_id = models.UUIDField()
+    last_seen = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["document_slug", "visitor_id"],
+                name="unique_public_document_visitor",
+            )
+        ]
+        indexes = [models.Index(fields=["document_slug", "last_seen"])]
+

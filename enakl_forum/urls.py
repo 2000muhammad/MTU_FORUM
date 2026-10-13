@@ -16,6 +16,11 @@ urlpatterns = [
 
     path("api/", include("core.api_urls")),
 
+    path("document/", views.public_document_view, name="public_document_root"),
+    path("document/<path:slug>/", views.public_document_view, name="public_document_view"),
+    path("api/public-documents/<slug:document_slug>/stats/", views.public_document_stats_api, name="public_document_stats_api"),
+    path("api/public-documents/<slug:document_slug>/event/", views.public_document_event_api, name="public_document_event_api"),
+
     path("app/", views.react_app_view, name="react_app_global"),
     path("app/<path:path>/", views.react_app_view, name="react_app_global_path"),
 

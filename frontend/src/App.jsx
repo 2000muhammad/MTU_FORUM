@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   ClipboardList,
   Code2,
+  FileText,
   ExternalLink,
   Languages,
   ListTodo,
@@ -59,6 +60,11 @@ const moduleMeta = {
     icon: MessageCircle,
   },
   tasks: { title: "Задания", subtitle: "Работа с заданиями", icon: ListTodo },
+  documents: {
+    title: "Документы",
+    subtitle: "Корпоративные документы",
+    icon: FileText,
+  },
   users: {
     title: "Пользователи",
     subtitle: "Управление сотрудниками",
@@ -150,7 +156,7 @@ function Layout({ boot, config, children }) {
   const location = useLocation();
   const routeCategory =
     location.pathname.startsWith("/requests") ||
-    location.pathname.startsWith("/modules/tasks")
+    /^\/modules\/(tasks|documents)/.test(location.pathname)
       ? "work"
       : /^\/modules\/(messages|chats)/.test(location.pathname)
         ? "communication"
@@ -316,7 +322,7 @@ function Layout({ boot, config, children }) {
                       {tr("Заявки")}
                     </NavLink>
                   )}
-                  {renderModuleLinks(["tasks"])}
+                  {renderModuleLinks(["tasks", "documents"])}
                 </>
               )}
               {navCategory === "communication" &&

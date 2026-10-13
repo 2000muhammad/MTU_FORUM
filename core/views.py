@@ -6,6 +6,7 @@ import os
 import secrets
 import tempfile
 import threading
+import uuid
 
 from collections import defaultdict
 from datetime import timedelta
@@ -53,7 +54,7 @@ from PIL import Image, ImageOps
 
 from .forms import ApiConfigurationForm, BotSubscriptionChannelForm, BranchForm, DeveloperTaskForm, EmployeeProfileForm, ExternalApiConnectionForm, IntakeRequestForm, LoginForm, ManagerAccountForm, OrganizationForm, PlatformForm, PositionForm, SiteIntakeForm, SiteRoleForm, SiteSettingsForm, StationForm, StyledPasswordChangeForm, UserForm, UserInfoForm, UserProfileForm, WebPlatformForm
 from .excel_utils import build_xlsx, parse_xlsx, truthy
-from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, IntakeRequestHistory, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, PeopleImportJob, Platform, Position, SecurityThrottle, SiteLog, SiteRole, SiteSettings, Station, TelegramAccountLink, TelegramPasswordReset, UserPresence, UserProfile, WebPlatform, WebPlatformFavorite
+from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, IntakeRequestHistory, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, PeopleImportJob, Platform, Position, PublicDocumentEvent, PublicDocumentSession, SecurityThrottle, SiteLog, SiteRole, SiteSettings, Station, TelegramAccountLink, TelegramPasswordReset, UserPresence, UserProfile, WebPlatform, WebPlatformFavorite
 from .site_logs import write_site_log
 from .security import clear_failures, consume_rate_limit, is_locked, record_failure
 from .middleware import get_platform_version
@@ -4524,6 +4525,82 @@ def public_subscription_channels_api(request):
     return JsonResponse({"results": list(qs)})
 
 
+PUBLIC_DOCUMENT_SLUG = "security-policy"
+
+
+def _public_document_stats(document_slug):
+    recent_cutoff = timezone.now() - timedelta(seconds=90)
+    events = PublicDocumentEvent.objects.filter(document_slug=document_slug)
+    return {
+        "views": events.filter(kind=PublicDocumentEvent.Kind.VIEW).count(),
+        "visitors": events.values("visitor_id").distinct().count(),
+        "downloads": events.filter(kind=PublicDocumentEvent.Kind.DOWNLOAD).count(),
+        "online": PublicDocumentSession.objects.filter(
+            document_slug=document_slug, last_seen__gte=recent_cutoff
+        ).count(),
+    }
+
+
+@ensure_csrf_cookie
+@require_GET
+def public_document_view(request, slug=""):
+    """A public document page that intentionally does not require a forum account."""
+    return render(
+        request,
+        "document_viewer.html",
+        {
+            "document_title": "Ахборот хавфсизлиги сиёсати",
+            "document_data_url": "/static/documents/security-policy/document.json",
+            "document_download_url": "/static/documents/security-policy/policy-2026.docx",
+            "stats_url": reverse("public_document_stats_api", args=[PUBLIC_DOCUMENT_SLUG]),
+            "event_url": reverse("public_document_event_api", args=[PUBLIC_DOCUMENT_SLUG]),
+        },
+    )
+
+
+@require_GET
+def public_document_stats_api(request, document_slug):
+    return JsonResponse(_public_document_stats(PUBLIC_DOCUMENT_SLUG))
+
+
+@csrf_exempt
+@require_POST
+def public_document_event_api(request, document_slug):
+    """Records anonymous public-page activity; no IP address or account data is stored."""
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+        visitor_id = uuid.UUID(str(payload.get("visitor_id", "")))
+        event_id = uuid.UUID(str(payload.get("event_id", "")))
+    except (UnicodeDecodeError, ValueError, TypeError, json.JSONDecodeError):
+        return JsonResponse({"detail": "Некорректные данные"}, status=400)
+
+    origin = request.headers.get("Origin")
+    expected_origin = f"{request.scheme}://{request.get_host()}"
+    if origin and origin != expected_origin:
+        return JsonResponse({"detail": "Недопустимый источник"}, status=403)
+
+    kind = payload.get("kind")
+    if kind not in {PublicDocumentEvent.Kind.VIEW, PublicDocumentEvent.Kind.DOWNLOAD, "presence"}:
+        return JsonResponse({"detail": "Некорректное событие"}, status=400)
+
+    now = timezone.now()
+    PublicDocumentSession.objects.update_or_create(
+        document_slug=PUBLIC_DOCUMENT_SLUG,
+        visitor_id=visitor_id,
+        defaults={"last_seen": now},
+    )
+    if kind != "presence":
+        PublicDocumentEvent.objects.get_or_create(
+            event_id=event_id,
+            defaults={
+                "document_slug": PUBLIC_DOCUMENT_SLUG,
+                "visitor_id": visitor_id,
+                "kind": kind,
+            },
+        )
+    return JsonResponse(_public_document_stats(PUBLIC_DOCUMENT_SLUG))
+
+
 @ensure_csrf_cookie
 def react_app_view(request, path=""):
     """Serve the exported Next.js app while Django keeps authentication and APIs."""
@@ -4929,7 +5006,11 @@ def react_bootstrap_api(request):
         "site_settings": user_can_site_settings(user),
         "programmers": user_can_programmers(user),
     }
-    legacy_links = {"profile": reverse("profile"), "logout": reverse("logout")}
+    legacy_links = {
+        "profile": reverse("profile"),
+        "logout": reverse("logout"),
+        "documents": reverse("public_document_root"),
+    }
     optional_links = {
         "messages": (permissions["messages"], "internal_messages"),
         "chats": (permissions["chats"], "admin_chat_list"),

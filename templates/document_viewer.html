@@ -1,0 +1,109 @@
+{% load static %}
+<!doctype html>
+<html lang="uz-Cyrl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ document_title }} | MTU Forum</title>
+  <link rel="stylesheet" href="{% static 'css/document-viewer.css' %}">
+</head>
+<body class="{% if request.GET.embedded %}embedded{% endif %}">
+  <header class="topbar">
+    <a class="brand" href="/">MTU <span>FORUM</span></a>
+    <div class="language-switcher" aria-label="Тилни танланг">
+      <button class="language active" data-language="cyrl">ЎЗ</button>
+      <button class="language" data-language="latin">UZ</button>
+      <button class="language" data-language="ru">РУ</button>
+      <button class="language" data-language="en">EN</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">ОЧИҚ ҲУЖЖАТ</p>
+        <h1 id="document-title">{{ document_title }}</h1>
+        <p class="subtitle">Ҳужжатни киришсиз ўқинг, қидиринг ва юклаб олинг.</p>
+      </div>
+      <a class="download" id="download-link" href="{{ document_download_url }}" download>Word ҳужжатни юклаш <span>↓</span></a>
+    </section>
+
+    <section class="statistics" aria-label="Ҳужжат статистикаси">
+      <div><strong id="online-count">—</strong><span>ҳозир онлайн</span></div>
+      <div><strong id="views-count">—</strong><span>кўришлар</span></div>
+      <div><strong id="visitors-count">—</strong><span>ноёб ташрифлар</span></div>
+      <div><strong id="downloads-count">—</strong><span>юклаб олишлар</span></div>
+    </section>
+
+    <section class="reader-shell">
+      <div class="reader-tools">
+        <label class="search"><span>⌕</span><input id="search" type="search" placeholder="Ҳужжатдан қидириш"></label>
+        <span id="search-result" aria-live="polite"></span>
+      </div>
+      <div id="document-content" class="document-content" aria-live="polite"><p>Ҳужжат юкланмоқда…</p></div>
+    </section>
+  </main>
+
+  <footer>MTU Forum · {{ document_title }}</footer>
+
+  <script>
+    const dataUrl = "{{ document_data_url }}";
+    const statsUrl = "{{ stats_url }}";
+    const eventUrl = "{{ event_url }}";
+    const storageKey = "mtu-public-document-visitor";
+    const originalTitle = "{{ document_title|escapejs }}";
+    const content = document.getElementById("document-content");
+    const title = document.getElementById("document-title");
+    let originalHtml = "";
+    let activeLanguage = "cyrl";
+
+    function visitorId() {
+      let id = localStorage.getItem(storageKey);
+      if (!id) { id = crypto.randomUUID(); localStorage.setItem(storageKey, id); }
+      return id;
+    }
+    function eventId() { return crypto.randomUUID(); }
+    function showStats(stats) {
+      document.getElementById("online-count").textContent = stats.online;
+      document.getElementById("views-count").textContent = stats.views;
+      document.getElementById("visitors-count").textContent = stats.visitors;
+      document.getElementById("downloads-count").textContent = stats.downloads;
+    }
+    async function record(kind) {
+      try {
+        const response = await fetch(eventUrl, { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({kind, visitor_id: visitorId(), event_id: eventId()}) });
+        if (response.ok) showStats(await response.json());
+      } catch (_) { /* The document remains readable if statistics are unavailable. */ }
+    }
+    async function refreshStats() {
+      try { const response = await fetch(statsUrl); if (response.ok) showStats(await response.json()); } catch (_) {}
+    }
+    const latinMap = {"А":"A","а":"a","Б":"B","б":"b","В":"V","в":"v","Г":"G","г":"g","Ғ":"Gʻ","ғ":"gʻ","Д":"D","д":"d","Е":"E","е":"e","Ё":"Yo","ё":"yo","Ж":"J","ж":"j","З":"Z","з":"z","И":"I","и":"i","Й":"Y","й":"y","К":"K","к":"k","Қ":"Q","қ":"q","Л":"L","л":"l","М":"M","м":"m","Н":"N","н":"n","О":"O","о":"o","П":"P","п":"p","Р":"R","р":"r","С":"S","с":"s","Т":"T","т":"t","У":"U","у":"u","Ў":"Oʻ","ў":"oʻ","Ф":"F","ф":"f","Х":"X","х":"x","Ҳ":"H","ҳ":"h","Ц":"Ts","ц":"ts","Ч":"Ch","ч":"ch","Ш":"Sh","ш":"sh","Ъ":"","ъ":"","Ь":"","ь":"","Э":"E","э":"e","Ю":"Yu","ю":"yu","Я":"Ya","я":"ya"};
+    function toLatin(value) { return value.replace(/[А-Яа-яЎўҚқҒғҲҳ]/g, char => latinMap[char] || char); }
+    function restoreCyrillic() { content.innerHTML = originalHtml; title.textContent = originalTitle; }
+    function applyLanguage(language) {
+      activeLanguage = language;
+      document.querySelectorAll(".language").forEach(button => button.classList.toggle("active", button.dataset.language === language));
+      if (language === "cyrl") { restoreCyrillic(); return; }
+      if (language === "latin") { restoreCyrillic(); content.innerHTML = toLatin(content.innerHTML); title.textContent = toLatin(originalTitle); return; }
+      const target = language === "ru" ? "ru" : "en";
+      window.open("https://translate.google.com/translate?sl=uz&tl=" + target + "&u=" + encodeURIComponent(window.location.href), "_blank", "noopener");
+    }
+    document.querySelectorAll(".language").forEach(button => button.addEventListener("click", () => applyLanguage(button.dataset.language)));
+    document.getElementById("download-link").addEventListener("click", () => record("download"));
+    document.getElementById("search").addEventListener("input", event => {
+      const query = event.target.value.trim().toLocaleLowerCase();
+      const text = content.innerText.toLocaleLowerCase();
+      const result = document.getElementById("search-result");
+      if (!query) { result.textContent = ""; return; }
+      const found = text.indexOf(query) !== -1;
+      result.textContent = found ? "Топилди" : "Топилмади";
+      if (found) content.querySelector("p, h1, h2, h3, td")?.scrollIntoView({behavior: "smooth", block: "center"});
+    });
+    fetch(dataUrl).then(response => response.json()).then(data => { originalHtml = data.html; restoreCyrillic(); }).catch(() => { content.innerHTML = "<p>Ҳужжатни юклаб бўлмади. Илтимос, саҳифани янгиланг.</p>"; });
+    record("view");
+    refreshStats();
+    setInterval(() => { record("presence"); refreshStats(); }, 30000);
+  </script>
+</body>
+</html>
