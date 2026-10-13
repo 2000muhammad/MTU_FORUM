@@ -1,11 +1,42 @@
 import json
 import uuid
 
+from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
+from core.models import PublicDocument
+
 
 class PublicDocumentViewerTests(TestCase):
+    def test_superuser_can_import_text_document(self):
+        admin = User.objects.create_superuser("doc-admin", password="Strong-pass-123")
+        self.client.force_login(admin)
+
+        response = self.client.post(
+            reverse("public_document_import"),
+            {
+                "title": "Регламент отдела",
+                "slug": "reglament",
+                "document": SimpleUploadedFile("reglament.txt", "Первый раздел\nВторой раздел".encode(), content_type="text/plain"),
+            },
+        )
+
+        document = PublicDocument.objects.get(slug="reglament")
+        self.assertRedirects(response, reverse("public_document_short", args=["reglament"]))
+        self.assertIn("Первый раздел", document.content_html)
+        self.assertContains(self.client.get(reverse("public_document_short", args=["reglament"])), "Регламент отдела")
+
+    def test_regular_user_cannot_import_document(self):
+        user = User.objects.create_user("employee", password="Strong-pass-123")
+        self.client.force_login(user)
+
+        response = self.client.post(reverse("public_document_import"))
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(PublicDocument.objects.exists())
+
     def test_document_has_short_canonical_address(self):
         response = self.client.get(reverse("public_document_root"))
 

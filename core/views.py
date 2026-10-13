@@ -7,9 +7,13 @@ import secrets
 import tempfile
 import threading
 import uuid
+import zipfile
+import xml.etree.ElementTree as ET
 
 from collections import defaultdict
 from datetime import timedelta
+from html import escape
+from pathlib import Path
 from decimal import Decimal, InvalidOperation
 from io import BytesIO, StringIO
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
@@ -41,6 +45,7 @@ from django.urls import reverse, reverse_lazy
 
 from django.utils import timezone
 from django.utils.dateparse import parse_date
+from django.utils.text import slugify
 
 from django.utils.decorators import method_decorator
 
@@ -54,7 +59,7 @@ from PIL import Image, ImageOps
 
 from .forms import ApiConfigurationForm, BotSubscriptionChannelForm, BranchForm, DeveloperTaskForm, EmployeeProfileForm, ExternalApiConnectionForm, IntakeRequestForm, LoginForm, ManagerAccountForm, OrganizationForm, PlatformForm, PositionForm, SiteIntakeForm, SiteRoleForm, SiteSettingsForm, StationForm, StyledPasswordChangeForm, UserForm, UserInfoForm, UserProfileForm, WebPlatformForm
 from .excel_utils import build_xlsx, parse_xlsx, truthy
-from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, IntakeRequestHistory, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, PeopleImportJob, Platform, Position, PublicDocumentEvent, PublicDocumentSession, SecurityThrottle, SiteLog, SiteRole, SiteSettings, Station, TelegramAccountLink, TelegramPasswordReset, UserPresence, UserProfile, WebPlatform, WebPlatformFavorite
+from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, IntakeRequestHistory, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, PeopleImportJob, Platform, Position, PublicDocument, PublicDocumentEvent, PublicDocumentSession, SecurityThrottle, SiteLog, SiteRole, SiteSettings, Station, TelegramAccountLink, TelegramPasswordReset, UserPresence, UserProfile, WebPlatform, WebPlatformFavorite
 from .site_logs import write_site_log
 from .security import clear_failures, consume_rate_limit, is_locked, record_failure
 from .middleware import get_platform_version
@@ -4526,6 +4531,47 @@ def public_subscription_channels_api(request):
 
 
 PUBLIC_DOCUMENT_SLUG = "security-policy"
+PUBLIC_DOCUMENT_TITLE = "Ахборот хавфсизлиги сиёсати"
+
+
+def _docx_to_html(uploaded_file):
+    namespace = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+    with zipfile.ZipFile(uploaded_file) as archive:
+        root = ET.fromstring(archive.read("word/document.xml"))
+    body = root.find("w:body", namespace)
+    parts = []
+    for child in list(body or []):
+        kind = child.tag.rsplit("}", 1)[-1]
+        if kind == "p":
+            text = "".join(node.text or "" for node in child.findall(".//w:t", namespace)).strip()
+            if not text:
+                continue
+            style = child.find(".//w:pStyle", namespace)
+            style_name = style.get(f"{{{namespace['w']}}}val", "") if style is not None else ""
+            tag = "h2" if style_name.lower().startswith("heading") else "p"
+            parts.append(f"<{tag}>{escape(text)}</{tag}>")
+        elif kind == "tbl":
+            rows = []
+            for row in child.findall("./w:tr", namespace):
+                cells = []
+                for cell in row.findall("./w:tc", namespace):
+                    text = " ".join(
+                        "".join(node.text or "" for node in paragraph.findall(".//w:t", namespace)).strip()
+                        for paragraph in cell.findall("./w:p", namespace)
+                    ).strip()
+                    cells.append(f"<td>{escape(text)}</td>")
+                rows.append(f"<tr>{''.join(cells)}</tr>")
+            parts.append(f"<div class=\"table-scroll\"><table>{''.join(rows)}</table></div>")
+    return "".join(parts) or "<p>Документ не содержит распознаваемого текста.</p>"
+
+
+def _document_navigation():
+    documents = [{"title": PUBLIC_DOCUMENT_TITLE, "url": reverse("public_document_root"), "slug": "ax"}]
+    documents.extend(
+        {"title": item.title, "url": reverse("public_document_short", args=[item.slug]), "slug": item.slug}
+        for item in PublicDocument.objects.filter(is_published=True)
+    )
+    return documents
 
 
 def _public_document_stats(document_slug):
@@ -4545,22 +4591,79 @@ def _public_document_stats(document_slug):
 @require_GET
 def public_document_view(request, slug=""):
     """A public document page that intentionally does not require a forum account."""
+    normalized_slug = (slug or "ax").strip("/")
+    is_builtin = normalized_slug in {"", "ax", PUBLIC_DOCUMENT_SLUG, PUBLIC_DOCUMENT_TITLE}
+    document = None if is_builtin else get_object_or_404(PublicDocument, slug=normalized_slug, is_published=True)
+    document_slug = PUBLIC_DOCUMENT_SLUG if is_builtin else document.slug
     return render(
         request,
         "document_viewer.html",
         {
-            "document_title": "Ахборот хавфсизлиги сиёсати",
-            "document_data_url": "/static/documents/security-policy/document.json",
-            "document_download_url": "/static/documents/security-policy/policy-2026.docx",
-            "stats_url": reverse("public_document_stats_api", args=[PUBLIC_DOCUMENT_SLUG]),
-            "event_url": reverse("public_document_event_api", args=[PUBLIC_DOCUMENT_SLUG]),
+            "document_title": PUBLIC_DOCUMENT_TITLE if is_builtin else document.title,
+            "document_data_url": "/static/documents/security-policy/document.json?v=2" if is_builtin else "",
+            "document_html": "" if is_builtin else document.content_html,
+            "document_download_url": "/static/documents/security-policy/policy-2026.docx" if is_builtin else document.source_file.url,
+            "document_base_url": "/static/documents/security-policy/" if is_builtin else "/",
+            "stats_url": reverse("public_document_stats_api", args=[document_slug]),
+            "event_url": reverse("public_document_event_api", args=[document_slug]),
+            "available_documents": _document_navigation(),
+            "can_import_documents": request.user.is_authenticated and request.user.is_superuser,
+            "import_url": reverse("public_document_import"),
         },
     )
 
 
+@login_required
+@require_POST
+def public_document_import(request):
+    if not request.user.is_superuser:
+        return JsonResponse({"detail": "Доступ запрещён"}, status=403)
+    uploaded = request.FILES.get("document")
+    title = request.POST.get("title", "").strip()
+    requested_slug = request.POST.get("slug", "").strip().lower()
+    if not uploaded or not title:
+        messages.error(request, "Укажите название и выберите документ.")
+        return redirect("public_document_root")
+    if uploaded.size > 25 * 1024 * 1024:
+        messages.error(request, "Размер документа не должен превышать 25 МБ.")
+        return redirect("public_document_root")
+    extension = Path(uploaded.name).suffix.lower()
+    if extension not in {".docx", ".pdf", ".txt"}:
+        messages.error(request, "Поддерживаются только DOCX, PDF и TXT.")
+        return redirect("public_document_root")
+    document_slug = slugify(requested_slug or title)[:120] or f"document-{uuid.uuid4().hex[:8]}"
+    if document_slug in {"ax", PUBLIC_DOCUMENT_SLUG} or PublicDocument.objects.filter(slug=document_slug).exists():
+        messages.error(request, "Такой короткий адрес уже используется.")
+        return redirect("public_document_root")
+    try:
+        if extension == ".docx":
+            content_html = _docx_to_html(uploaded)
+        elif extension == ".txt":
+            content_html = "".join(f"<p>{escape(line)}</p>" for line in uploaded.read().decode("utf-8-sig").splitlines() if line.strip())
+        else:
+            content_html = ""
+        uploaded.seek(0)
+        document = PublicDocument.objects.create(
+            title=title,
+            slug=document_slug,
+            source_file=uploaded,
+            file_type=extension.lstrip("."),
+            content_html=content_html,
+            created_by=request.user,
+        )
+        if extension == ".pdf":
+            document.content_html = f'<iframe class="document-pdf" src="{escape(document.source_file.url)}" title="{escape(title)}"></iframe>'
+            document.save(update_fields=["content_html"])
+    except (OSError, UnicodeDecodeError, zipfile.BadZipFile, KeyError, ET.ParseError):
+        messages.error(request, "Не удалось прочитать документ. Проверьте файл и повторите попытку.")
+        return redirect("public_document_root")
+    messages.success(request, "Документ успешно импортирован.")
+    return redirect("public_document_short", slug=document.slug)
+
+
 @require_GET
 def public_document_stats_api(request, document_slug):
-    return JsonResponse(_public_document_stats(PUBLIC_DOCUMENT_SLUG))
+    return JsonResponse(_public_document_stats(document_slug))
 
 
 @csrf_exempt
@@ -4585,7 +4688,7 @@ def public_document_event_api(request, document_slug):
 
     now = timezone.now()
     PublicDocumentSession.objects.update_or_create(
-        document_slug=PUBLIC_DOCUMENT_SLUG,
+        document_slug=document_slug,
         visitor_id=visitor_id,
         defaults={"last_seen": now},
     )
@@ -4593,12 +4696,12 @@ def public_document_event_api(request, document_slug):
         PublicDocumentEvent.objects.get_or_create(
             event_id=event_id,
             defaults={
-                "document_slug": PUBLIC_DOCUMENT_SLUG,
+                "document_slug": document_slug,
                 "visitor_id": visitor_id,
                 "kind": kind,
             },
         )
-    return JsonResponse(_public_document_stats(PUBLIC_DOCUMENT_SLUG))
+    return JsonResponse(_public_document_stats(document_slug))
 
 
 @ensure_csrf_cookie

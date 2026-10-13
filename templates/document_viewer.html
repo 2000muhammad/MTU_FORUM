@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <base href="/static/documents/security-policy/">
+  <base href="{{ document_base_url }}">
   <title>{{ document_title }} | MTU Forum</title>
   <link rel="stylesheet" href="{% static 'css/document-viewer.css' %}">
 </head>
@@ -20,6 +20,25 @@
   </header>
 
   <main>
+    {% if messages %}
+      <div class="document-messages">{% for message in messages %}<p class="{{ message.tags }}">{{ message }}</p>{% endfor %}</div>
+    {% endif %}
+    {% if can_import_documents %}
+      <details class="import-panel">
+        <summary>Импортировать документ</summary>
+        <form action="{{ import_url }}" method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <label>Название<input name="title" maxlength="240" required placeholder="Название документа"></label>
+          <label>Короткий адрес<input name="slug" maxlength="120" placeholder="например: reglament"></label>
+          <label>Файл<input name="document" type="file" accept=".docx,.pdf,.txt" required></label>
+          <button type="submit">Импортировать</button>
+        </form>
+        <small>Поддерживаются DOCX, PDF и TXT размером до 25 МБ.</small>
+      </details>
+    {% endif %}
+    <nav class="document-library" aria-label="Документы">
+      {% for item in available_documents %}<a href="{{ item.url }}">{{ item.title }}</a>{% endfor %}
+    </nav>
     <section class="hero">
       <div>
         <p class="eyebrow">ОЧИҚ ҲУЖЖАТ</p>
@@ -47,12 +66,14 @@
 
   <footer>MTU Forum · {{ document_title }}</footer>
 
+  {{ document_html|json_script:"document-html-data" }}
   <script>
     const dataUrl = "{{ document_data_url }}";
     const statsUrl = "{{ stats_url }}";
     const eventUrl = "{{ event_url }}";
     const storageKey = "mtu-public-document-visitor";
     const originalTitle = "{{ document_title|escapejs }}";
+    const inlineHtml = JSON.parse(document.getElementById("document-html-data").textContent);
     const content = document.getElementById("document-content");
     const title = document.getElementById("document-title");
     let originalHtml = "";
@@ -101,7 +122,12 @@
       result.textContent = found ? "Топилди" : "Топилмади";
       if (found) content.querySelector("p, h1, h2, h3, td")?.scrollIntoView({behavior: "smooth", block: "center"});
     });
-    fetch(dataUrl).then(response => response.json()).then(data => { originalHtml = data.html; restoreCyrillic(); }).catch(() => { content.innerHTML = "<p>Ҳужжатни юклаб бўлмади. Илтимос, саҳифани янгиланг.</p>"; });
+    if (inlineHtml) {
+      originalHtml = inlineHtml;
+      restoreCyrillic();
+    } else {
+      fetch(dataUrl).then(response => response.json()).then(data => { originalHtml = data.html; restoreCyrillic(); }).catch(() => { content.innerHTML = "<p>Ҳужжатни юклаб бўлмади. Илтимос, саҳифани янгиланг.</p>"; });
+    }
     record("view");
     refreshStats();
     setInterval(() => { record("presence"); refreshStats(); }, 30000);

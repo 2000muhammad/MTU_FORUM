@@ -892,3 +892,27 @@ class PublicDocumentSession(models.Model):
         ]
         indexes = [models.Index(fields=["document_slug", "last_seen"])]
 
+
+class PublicDocument(models.Model):
+    title = models.CharField(max_length=240)
+    slug = models.SlugField(max_length=120, unique=True)
+    source_file = models.FileField(upload_to="public_documents/%Y/%m/")
+    file_type = models.CharField(max_length=12)
+    content_html = models.TextField(blank=True)
+    is_published = models.BooleanField(default=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="imported_public_documents",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.title
+
