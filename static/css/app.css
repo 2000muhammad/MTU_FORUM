@@ -425,3 +425,27 @@ html[data-theme="light"] .credential-tools button,html[data-theme="light"] .cred
 html[data-theme="light"] .secret-confirm-backdrop{background:rgba(224,239,244,.46)!important;backdrop-filter:blur(30px) saturate(70%) brightness(92%)!important;-webkit-backdrop-filter:blur(30px) saturate(70%) brightness(92%)!important}
 
 .chat-create-form{grid-template-columns:minmax(280px,2fr) minmax(180px,1fr) minmax(180px,1fr) auto}.chat-create-form .btn{min-width:130px}@media(max-width:1050px){.chat-create-form{grid-template-columns:1fr 1fr}.chat-create-form .btn{width:100%}}@media(max-width:720px){.chat-create-form{grid-template-columns:1fr}}
+.legacy-documents-shell {
+  min-height: calc(100vh - 145px);
+  overflow: hidden;
+  border: 1px solid var(--border, rgba(21, 99, 92, .18));
+  border-radius: 22px;
+  background: rgba(255, 255, 255, .72);
+  box-shadow: 0 18px 45px rgba(14, 58, 66, .08);
+}
+
+.legacy-documents-frame {
+  display: block;
+  width: 100%;
+  min-height: calc(100vh - 147px);
+  border: 0;
+  background: #f6fbfb;
+}
+
+@media (max-width: 720px) {
+  .legacy-documents-shell,
+  .legacy-documents-frame {
+    min-height: calc(100vh - 112px);
+    border-radius: 16px;
+  }
+}

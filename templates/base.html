@@ -90,6 +90,7 @@
       {% if ui_can_tasks %}
       <a class="nav-link {% if current_url == 'developer_tasks' or current_url == 'developer_task_create' or current_url == 'developer_task_edit' %}active{% endif %}" href="{% url 'developer_tasks' %}" {% if current_url == 'developer_tasks' or current_url == 'developer_task_create' or current_url == 'developer_task_edit' %}aria-current="page"{% endif %}>{% tr 'tasks' %}</a>
       {% endif %}
+      <a class="nav-link {% if current_url == 'legacy_documents' %}active{% endif %}" href="{% url 'legacy_documents' %}" {% if current_url == 'legacy_documents' %}aria-current="page"{% endif %}>{% tr 'documents' %}</a>
       {% if ui_user_can_manage_people %}
       <a class="nav-link {% if current_url == 'users' %}active{% endif %}" href="{% url 'users' %}" {% if current_url == 'users' %}aria-current="page"{% endif %}>{% tr 'users' %}</a>
       {% endif %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load ui_i18n %}
+
+{% block title %}{% tr 'documents' %} | MTU FORUM{% endblock %}
+{% block page_title %}{% tr 'documents' %}{% endblock %}
+
+{% block content %}
+<section class="legacy-documents-shell" aria-label="{% tr 'documents' %}">
+  <iframe
+    class="legacy-documents-frame"
+    src="{{ documents_url }}"
+    title="{% tr 'documents' %}"
+    loading="eager"
+  ></iframe>
+</section>
+{% endblock %}
