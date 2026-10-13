@@ -1433,6 +1433,7 @@ UI["en"].update({
 UI["ru"].update({
     "programmers": "Программисты",
     "tasks": "Задание",
+    "documents": "Документы",
     "create_task": "Создать задание",
     "development_team": "Команда разработки",
     "programmers_summary": "Сводка по исполнителям, активным заданиям и задачам соисполнителей.",
@@ -1449,6 +1450,7 @@ UI["ru"].update({
 UI["uz"].update({
     "programmers": "Dasturchilar",
     "tasks": "Topshiriqlar",
+    "documents": "Hujjatlar",
     "create_task": "Topshiriq yaratish",
     "development_team": "Dasturchilar jamoasi",
     "programmers_summary": "Ijrochilar, faol topshiriqlar va hamijrochilar vazifalari bo'yicha umumiy ma'lumot.",
@@ -1465,6 +1467,7 @@ UI["uz"].update({
 UI["uz-cyrl"].update({
     "programmers": "Дастурчилар",
     "tasks": "Топшириқлар",
+    "documents": "Ҳужжатлар",
     "create_task": "Топшириқ яратиш",
     "development_team": "Дастурчилар жамоаси",
     "programmers_summary": "Ижрочилар, фаол топшириқлар ва ҳамижрочилар вазифалари бўйича умумий маълумот.",
@@ -1481,6 +1484,7 @@ UI["uz-cyrl"].update({
 UI["en"].update({
     "programmers": "Programmers",
     "tasks": "Tasks",
+    "documents": "Documents",
     "create_task": "Create task",
     "development_team": "Development team",
     "programmers_summary": "Summary of assignees, active tasks, and co-executor assignments.",

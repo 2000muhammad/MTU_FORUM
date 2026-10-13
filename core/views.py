@@ -2161,6 +2161,14 @@ def _developer_task_scope(user):
     return queryset.filter(Q(assignee=user) | Q(coexecutors=user) | Q(created_by=user)).distinct()
 
 
+@login_required
+def legacy_documents_view(request):
+    """Use the shared document library inside the legacy application shell."""
+    return render(request, "legacy_documents.html", {
+        "documents_url": f'{reverse("public_document_root")}?embedded=1',
+    })
+
+
 def _developer_task_user_can_touch(user, task):
     return (
         user_can_tasks(user)
@@ -5112,7 +5120,7 @@ def react_bootstrap_api(request):
     legacy_links = {
         "profile": reverse("profile"),
         "logout": reverse("logout"),
-        "documents": reverse("public_document_root"),
+        "documents": reverse("legacy_documents"),
     }
     optional_links = {
         "messages": (permissions["messages"], "internal_messages"),

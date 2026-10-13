@@ -38,6 +38,7 @@ urlpatterns += i18n_patterns(
     path("requests/", views.requests_view, name="requests"),
     path("programmers/", views.programmers_view, name="programmers"),
     path("tasks/", views.developer_tasks_view, name="developer_tasks"),
+    path("documents/", views.legacy_documents_view, name="legacy_documents"),
     path("tasks/create/", views.developer_task_create, name="developer_task_create"),
     path("tasks/<int:pk>/edit/", views.developer_task_edit, name="developer_task_edit"),
     path("tasks/<int:pk>/action/", views.developer_task_action, name="developer_task_action"),

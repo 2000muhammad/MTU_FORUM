@@ -34,6 +34,19 @@ class ReactAppTests(TestCase):
         self.assertContains(root, "/static/next/_next/")
         self.assertEqual(nested.status_code, 200)
 
+    def test_documents_are_shared_between_legacy_and_react_navigation(self):
+        anonymous = self.client.get(reverse("legacy_documents"))
+        self.assertEqual(anonymous.status_code, 302)
+
+        self.client.force_login(self.admin)
+        legacy = self.client.get(reverse("legacy_documents"))
+        self.assertEqual(legacy.status_code, 200)
+        self.assertContains(legacy, f'{reverse("public_document_root")}?embedded=1')
+        self.assertContains(legacy, "Документы")
+
+        bootstrap = self.client.get(reverse("react_bootstrap_api")).json()
+        self.assertEqual(bootstrap["legacy_links"]["documents"], reverse("legacy_documents"))
+
     def test_localized_app_redirects_to_global_next_app(self):
         self.client.force_login(self.admin)
 
