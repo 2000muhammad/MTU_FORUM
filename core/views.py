@@ -127,6 +127,45 @@ def _url_language(request):
     return code if code in {"ru", "uz", "uz-cyrl", "en"} else getattr(request, "LANGUAGE_CODE", "ru")
 
 
+@require_GET
+def pwa_manifest(request):
+    settings_obj = SiteSettings.load()
+    icon = request.build_absolute_uri(settings_obj.site_favicon.url) if settings_obj.site_favicon else "/static/img/mtu-forum-mark.svg"
+    return JsonResponse({
+        "name": settings_obj.site_name or "MTU FORUM",
+        "short_name": "MTU FORUM",
+        "description": settings_obj.site_description or "Корпоративная железнодорожная платформа",
+        "start_url": "/app/",
+        "scope": "/",
+        "display": "standalone",
+        "background_color": "#0b1d29",
+        "theme_color": "#0f766e",
+        "icons": [{"src": icon, "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}],
+    }, content_type="application/manifest+json")
+
+
+@require_GET
+def pwa_service_worker(request):
+    script = """
+const CACHE = 'mtu-forum-shell-v1';
+const SHELL = ['/app/', '/manifest.webmanifest', '/static/img/mtu-forum-mark.svg'];
+self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())));
+self.addEventListener('activate', event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())));
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET' || new URL(event.request.url).origin !== location.origin) return;
+  event.respondWith(fetch(event.request).then(response => {
+    const copy = response.clone();
+    caches.open(CACHE).then(cache => cache.put(event.request, copy));
+    return response;
+  }).catch(() => caches.match(event.request).then(response => response || caches.match('/app/'))));
+});
+""".strip()
+    response = HttpResponse(script, content_type="application/javascript")
+    response["Service-Worker-Allowed"] = "/"
+    response["Cache-Control"] = "no-cache"
+    return response
+
+
 def _public_web_platform_context():
     platforms = list(WebPlatform.objects.filter(is_active=True).order_by("sort_order", "name"))
     split_at = (len(platforms) + 1) // 2
@@ -5211,6 +5250,87 @@ def _react_dashboard_payload(user):
         "web_platforms": web_platforms,
         "activity": activity,
     }
+
+
+@require_GET
+@login_required
+def react_global_search_api(request):
+    query = (request.GET.get("q") or "").strip()
+    if len(query) < 2:
+        return JsonResponse({"query": query, "results": []})
+
+    results = []
+    if user_can_requests(request.user):
+        request_rows = _intake_requests_for_user(request.user).filter(
+            Q(full_name__icontains=query)
+            | Q(pnfl__icontains=query)
+            | Q(passport__icontains=query)
+            | Q(phone__icontains=query)
+            | Q(company__icontains=query)
+            | Q(platform__icontains=query)
+            | Q(cause__icontains=query)
+        ).order_by("-created_at")[:6]
+        results.extend({
+            "id": f"request-{item.pk}",
+            "type": "request",
+            "title": item.full_name or item.platform or f"Заявка #{item.pk}",
+            "subtitle": " · ".join(value for value in [item.platform, item.company, item.get_status_display()] if value),
+            "url": reverse("react_app_global_path", kwargs={"path": f"requests/{item.pk}/edit"}),
+        } for item in request_rows)
+
+    if user_can_manage_people(request.user):
+        user_rows = User.objects.filter(
+            Q(username__icontains=query)
+            | Q(first_name__icontains=query)
+            | Q(last_name__icontains=query)
+            | Q(email__icontains=query)
+            | Q(profile__phone__icontains=query)
+            | Q(profile__pnfl__icontains=query)
+        ).distinct().order_by("username")[:6]
+        results.extend({
+            "id": f"user-{item.pk}",
+            "type": "user",
+            "title": item.get_full_name().strip() or item.username,
+            "subtitle": f"@{item.username}",
+            "url": reverse("react_app_global_path", kwargs={"path": "modules/users"}),
+        } for item in user_rows)
+
+    document_rows = PublicDocument.objects.filter(is_published=True).filter(
+        Q(title__icontains=query) | Q(slug__icontains=query)
+    ).order_by("-updated_at")[:6]
+    results.extend({
+        "id": f"document-{item.pk}",
+        "type": "document",
+        "title": item.title,
+        "subtitle": item.file_type.upper(),
+        "url": reverse("public_document_short", kwargs={"slug": item.slug}),
+    } for item in document_rows)
+
+    platform_rows = WebPlatform.objects.filter(is_active=True, name__icontains=query).order_by("sort_order", "name")[:6]
+    favorite_ids = set(WebPlatformFavorite.objects.filter(user=request.user).values_list("platform_id", flat=True))
+    results.extend({
+        "id": f"platform-{item.pk}",
+        "type": "platform",
+        "title": item.name,
+        "subtitle": "WEB",
+        "url": reverse("open_web_platform", kwargs={"pk": item.pk}),
+        "favorite": item.pk in favorite_ids,
+    } for item in platform_rows)
+    return JsonResponse({"query": query, "results": results[:18]})
+
+
+@require_POST
+@login_required
+def react_platform_favorite_api(request, pk):
+    platform = get_object_or_404(WebPlatform, pk=pk, is_active=True)
+    favorite = WebPlatformFavorite.objects.filter(user=request.user, platform=platform).first()
+    if favorite:
+        favorite.delete()
+        enabled = False
+    else:
+        WebPlatformFavorite.objects.create(user=request.user, platform=platform)
+        enabled = True
+    return JsonResponse({"ok": True, "id": platform.pk, "favorite": enabled})
 
 
 def _react_site_payload(settings_obj):

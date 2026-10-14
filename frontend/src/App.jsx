@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   ClipboardList,
   Code2,
+  Download,
   FileText,
   ExternalLink,
   Languages,
@@ -32,6 +33,7 @@ import {
   Settings2,
   ShieldCheck,
   SlidersHorizontal,
+  Star,
   Sun,
   Sunrise,
   UserCircle,
@@ -156,6 +158,15 @@ function Layout({ boot, config, children }) {
   const [accessOpen, setAccessOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchBusy, setSearchBusy] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [pwaHelpOpen, setPwaHelpOpen] = useState(false);
+  const [favoriteLinks, setFavoriteLinks] = useState(() => {
+    try { return JSON.parse(window.localStorage.getItem("mtu-favorite-links") || "[]"); } catch { return []; }
+  });
   const [notifications, setNotifications] = useState(boot.notifications || { unread: 0, items: [] });
   const [permissionPromptOpen, setPermissionPromptOpen] = useState(false);
   const knownNotificationIds = useRef(new Set((boot.notifications?.items || []).map((item) => item.id)));
@@ -189,9 +200,41 @@ function Layout({ boot, config, children }) {
   const isModuleWorkspace =
     location.pathname.startsWith("/modules/") ||
     /^\/requests\/\d+\/edit/.test(location.pathname);
+  const currentFavoriteKey = `${location.pathname}${location.search}`;
+  const isCurrentFavorite = favoriteLinks.some((item) => item.url === currentFavoriteKey);
+  const toggleCurrentFavorite = () => {
+    const next = isCurrentFavorite
+      ? favoriteLinks.filter((item) => item.url !== currentFavoriteKey)
+      : [...favoriteLinks, { url: currentFavoriteKey, title: currentTitle }].slice(-8);
+    setFavoriteLinks(next);
+    window.localStorage.setItem("mtu-favorite-links", JSON.stringify(next));
+  };
+  const installPwa = async () => {
+    if (!installPrompt) { setPwaHelpOpen(!pwaHelpOpen); return; }
+    await installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  };
   useEffect(() => {
     setOpen(false);
   }, [location.pathname]);
+  useEffect(() => {
+    const rememberInstall = (event) => { event.preventDefault(); setInstallPrompt(event); };
+    window.addEventListener("beforeinstallprompt", rememberInstall);
+    return () => window.removeEventListener("beforeinstallprompt", rememberInstall);
+  }, []);
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (query.length < 2) { setSearchResults([]); setSearchBusy(false); return undefined; }
+    setSearchBusy(true);
+    const timer = window.setTimeout(() => {
+      api(`/api/react/search/?q=${encodeURIComponent(query)}`)
+        .then((data) => setSearchResults(data.results || []))
+        .catch(() => setSearchResults([]))
+        .finally(() => setSearchBusy(false));
+    }, 260);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
   useEffect(() => {
     setNavCategory(routeCategory);
   }, [routeCategory]);
@@ -370,6 +413,14 @@ function Layout({ boot, config, children }) {
               <strong>{categoryMeta[navCategory].label}</strong>
             </div>
             <nav aria-label={categoryMeta[navCategory].label}>
+              {favoriteLinks.length > 0 && (
+                <div className="favorite-nav-links">
+                  <small>{tr("ИЗБРАННОЕ")}</small>
+                  {favoriteLinks.map((item) => (
+                    <NavLink key={item.url} to={item.url}><Star />{item.title}</NavLink>
+                  ))}
+                </div>
+              )}
               {navCategory === "work" && (
                 <>
                   {boot.permissions.dashboard && (
@@ -438,6 +489,29 @@ function Layout({ boot, config, children }) {
             <h1>{currentTitle}</h1>
           </div>
           <div className="new-tools">
+            <div className="tool-menu global-search-tool">
+              <button type="button" className={`icon-button ${searchOpen ? "active" : ""}`} onClick={() => { setSearchOpen(!searchOpen); setNotificationsOpen(false); setAccessOpen(false); setLanguageOpen(false); }} aria-label={tr("Глобальный поиск")} title={tr("Глобальный поиск")}><Search /></button>
+              {searchOpen && (
+                <section className="react-popover global-search-popover" aria-label={tr("Глобальный поиск")}>
+                  <label><Search /><input autoFocus type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={tr("Найти заявку, пользователя, документ или платформу")} /></label>
+                  <div className="global-search-results">
+                    {searchBusy && <p>{tr("Поиск…")}</p>}
+                    {!searchBusy && searchQuery.trim().length >= 2 && !searchResults.length && <p>{tr("Ничего не найдено")}</p>}
+                    {searchResults.map((item) => (
+                      <a key={item.id} href={item.url} className={`search-result is-${item.type}`}>
+                        <i>{item.type === "document" ? <FileText /> : item.type === "platform" ? <ExternalLink /> : item.type === "user" ? <UserCircle /> : <ClipboardList />}</i>
+                        <span><strong>{item.title}</strong><small>{item.subtitle}</small></span>
+                      </a>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>
+            <button type="button" className={`icon-button ${isCurrentFavorite ? "active is-favorite" : ""}`} onClick={toggleCurrentFavorite} aria-label={tr(isCurrentFavorite ? "Удалить из избранного" : "Добавить в избранное")} title={tr(isCurrentFavorite ? "Удалить из избранного" : "Добавить в избранное")}><Star /></button>
+            <div className="tool-menu">
+              <button type="button" className={`icon-button pwa-install-button ${pwaHelpOpen ? "active" : ""}`} onClick={installPwa} aria-label={tr("Установить приложение")} title={tr("Установить приложение")}><Download /></button>
+              {pwaHelpOpen && !installPrompt && <section className="react-popover pwa-help-popover"><strong>{tr("Установить приложение")}</strong><p>{tr("Откройте меню браузера и выберите «Установить приложение» или «Добавить на главный экран».")}</p></section>}
+            </div>
             <div className="tool-menu notification-tool">
               <button
                 type="button"
@@ -669,6 +743,21 @@ const dashboardQuotes = {
 function Dashboard({ boot }) {
   const tr = createTranslator(boot.language);
   const [activeChartSegment, setActiveChartSegment] = useState(null);
+  const [dashboardSettingsOpen, setDashboardSettingsOpen] = useState(false);
+  const [webPlatforms, setWebPlatforms] = useState(boot.dashboard.web_platforms || []);
+  const [widgets, setWidgets] = useState(() => {
+    try { return { intro: true, metrics: true, sla: true, analytics: true, services: true, ...JSON.parse(window.localStorage.getItem("mtu-dashboard-widgets") || "{}") }; }
+    catch { return { intro: true, metrics: true, sla: true, analytics: true, services: true }; }
+  });
+  const toggleWidget = (key) => {
+    const next = { ...widgets, [key]: !widgets[key] };
+    setWidgets(next);
+    window.localStorage.setItem("mtu-dashboard-widgets", JSON.stringify(next));
+  };
+  const togglePlatformFavorite = async (platform) => {
+    const result = await api(`/api/react/favorites/platform/${platform.id}/`, { method: "POST" });
+    setWebPlatforms((current) => current.map((item) => item.id === platform.id ? { ...item, favorite: result.favorite } : item));
+  };
   const quotes = dashboardQuotes[boot.language] || dashboardQuotes.ru;
   const [quoteIndex, setQuoteIndex] = useState(() => new Date().getDate() % quotes.length);
   useEffect(() => {
@@ -720,6 +809,18 @@ function Dashboard({ boot }) {
   };
   return (
     <div className="page-stack">
+      <div className="dashboard-customize-bar">
+        <span>{tr("Настройте Dashboard под свою работу")}</span>
+        <button type="button" onClick={() => setDashboardSettingsOpen(!dashboardSettingsOpen)}><SlidersHorizontal />{tr("Настроить блоки")}</button>
+        {dashboardSettingsOpen && (
+          <div className="dashboard-widget-picker">
+            {[["intro", "Приветствие и цитата"], ["metrics", "Основные показатели"], ["sla", "SLA-контроль"], ["analytics", "Аналитика"], ["services", "WEB-платформы"]].map(([key, label]) => (
+              <label key={key}><input type="checkbox" checked={widgets[key]} onChange={() => toggleWidget(key)} /><span>{tr(label)}</span></label>
+            ))}
+          </div>
+        )}
+      </div>
+      {widgets.intro && (
       <section className="dashboard-intro-grid">
         <article className="hero">
           <div>
@@ -748,8 +849,10 @@ function Dashboard({ boot }) {
           </div>
         </article>
       </section>
+      )}
       {boot.permissions.requests && (
         <>
+          {widgets.metrics && (
           <section className="metric-grid">
             <article>
               <span>{tr("Заявки сегодня")}</span>
@@ -798,6 +901,8 @@ function Dashboard({ boot }) {
               <MessageCircle />
             </article>
           </section>
+          )}
+          {widgets.sla && (
           <section className="sla-panel">
             <div className="sla-heading">
               <div><span>{tr("КОНТРОЛЬ SLA")}</span><h2>{tr("Сроки обработки заявок")}</h2><p>{tr("Ближайшие сроки и просроченные заявки.")}</p></div>
@@ -823,6 +928,9 @@ function Dashboard({ boot }) {
               {!boot.dashboard.sla?.items?.length && <p>{tr("Активных сроков SLA нет.")}</p>}
             </div>
           </section>
+          )}
+          {widgets.analytics && (
+          <>
           <section className="request-chart-panel" aria-label={tr("Статистика заявок")}>
             <div className="request-chart-copy">
               <span>{tr("ОБЗОР СИСТЕМЫ")}</span>
@@ -875,8 +983,11 @@ function Dashboard({ boot }) {
             <Activity3DChart today={boot.dashboard.activity?.today || []} done={boot.dashboard.activity?.done || []} tr={tr} />
             <Platform3DChart platforms={boot.dashboard.platforms} tr={tr} />
           </section>
+          </>
+          )}
         </>
       )}
+      {widgets.services && (
       <section className="panel">
         <div className="panel-head">
           <div>
@@ -885,22 +996,19 @@ function Dashboard({ boot }) {
           </div>
         </div>
         <div className="service-grid">
-          {boot.dashboard.web_platforms.map((item) => (
-            <a
-              href={item.open_url}
-              target="_blank"
-              rel="noreferrer"
-              key={item.id}
-            >
-              <div>{item.image_url ? <img src={item.image_url} /> : "WEB"}</div>
-              <strong>{item.name}</strong>
-              <small>
-                {item.uses} {tr("открытий")}
-              </small>
-            </a>
+          {[...webPlatforms].sort((a, b) => Number(b.favorite) - Number(a.favorite)).map((item) => (
+            <article className={`service-favorite-card ${item.favorite ? "is-favorite" : ""}`} key={item.id}>
+              <button type="button" onClick={() => togglePlatformFavorite(item)} aria-label={tr(item.favorite ? "Удалить из избранного" : "Добавить в избранное")} title={tr(item.favorite ? "Удалить из избранного" : "Добавить в избранное")}><Star /></button>
+              <a href={item.open_url} target="_blank" rel="noreferrer">
+                <div>{item.image_url ? <img src={item.image_url} /> : "WEB"}</div>
+                <strong>{item.name}</strong>
+                <small>{item.uses} {tr("открытий")}</small>
+              </a>
+            </article>
           ))}
         </div>
       </section>
+      )}
     </div>
   );
 }

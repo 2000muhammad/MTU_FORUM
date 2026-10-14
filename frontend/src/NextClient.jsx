@@ -14,6 +14,9 @@ export default function NextClient() {
     setLanguage(
       new URLSearchParams(window.location.search).get("lang") || "ru",
     );
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
   }, []);
 
   return (

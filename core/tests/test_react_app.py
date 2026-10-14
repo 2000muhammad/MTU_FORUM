@@ -8,7 +8,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from core.models import Branch, IntakeRequest, Organization, Position, RequestNotification, SiteRole, Station, TelegramPasswordReset, UserPresence, UserProfile
+from core.models import Branch, IntakeRequest, Organization, Position, RequestNotification, SiteRole, Station, TelegramPasswordReset, UserPresence, UserProfile, WebPlatform, WebPlatformFavorite
 
 
 class ReactAppTests(TestCase):
@@ -240,6 +240,30 @@ class ReactAppTests(TestCase):
         self.assertEqual(payload["version_links"]["new"], reverse("react_app_global"))
         for module in ("messages", "chats", "tasks", "users", "managers", "settings", "api_settings", "site_settings", "logs", "programmers", "profile"):
             self.assertIn(module, payload["legacy_links"])
+
+    def test_global_search_and_platform_favorite(self):
+        IntakeRequest.objects.create(full_name="Global Search Employee", pnfl="12345678901234", telegram_id=77881)
+        platform = WebPlatform.objects.create(name="Favorite Railway Service", url="https://example.com")
+        self.client.force_login(self.admin)
+
+        search = self.client.get(reverse("react_global_search_api"), {"q": "Global Search"})
+        self.assertEqual(search.status_code, 200)
+        self.assertTrue(any(item["type"] == "request" for item in search.json()["results"]))
+
+        enabled = self.client.post(reverse("react_platform_favorite_api", args=[platform.pk]))
+        self.assertTrue(enabled.json()["favorite"])
+        self.assertTrue(WebPlatformFavorite.objects.filter(user=self.admin, platform=platform).exists())
+        disabled = self.client.post(reverse("react_platform_favorite_api", args=[platform.pk]))
+        self.assertFalse(disabled.json()["favorite"])
+
+    def test_pwa_manifest_and_service_worker_are_available(self):
+        manifest = self.client.get(reverse("pwa_manifest"))
+        worker = self.client.get(reverse("pwa_service_worker"))
+
+        self.assertEqual(manifest.status_code, 200)
+        self.assertEqual(manifest.json()["start_url"], "/app/")
+        self.assertContains(worker, "mtu-forum-shell-v1")
+        self.assertEqual(worker["Service-Worker-Allowed"], "/")
 
     def test_request_workflow_and_notification_read_state(self):
         item = IntakeRequest.objects.create(pnfl="12345678901234", telegram_id=12345, full_name="Test User")

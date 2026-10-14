@@ -12,6 +12,9 @@ from core import views
 
 urlpatterns = [
 
+    path("manifest.webmanifest", views.pwa_manifest, name="pwa_manifest"),
+    path("sw.js", views.pwa_service_worker, name="pwa_service_worker"),
+
     path("admin/", admin.site.urls),
 
     path("api/", include("core.api_urls")),
