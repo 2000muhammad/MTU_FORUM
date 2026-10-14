@@ -197,6 +197,47 @@ function FieldError({ errors, name }) {
   return text ? <small className="field-error">{text}</small> : null;
 }
 
+function SearchableSelect({ name, label, items, value, onChange, placeholder, errors }) {
+  const selected = items.find((item) => String(item.value) === String(value));
+  const [query, setQuery] = useState(selected?.label || "");
+  const [open, setOpen] = useState(false);
+  useEffect(() => setQuery(selected?.label || ""), [selected?.label]);
+  const filtered = items
+    .filter((item) => item.value && item.label.toLowerCase().includes(query.toLowerCase()))
+    .slice(0, 12);
+  return (
+    <label className="searchable-select">
+      <span>{label}</span>
+      <input
+        value={query}
+        placeholder={placeholder}
+        autoComplete="off"
+        onFocus={() => setOpen(true)}
+        onChange={(event) => {
+          setQuery(event.target.value);
+          onChange(name, "");
+          setOpen(true);
+        }}
+        onBlur={() => setTimeout(() => setOpen(false), 120)}
+      />
+      {open && (
+        <div className="searchable-options">
+          {filtered.length ? filtered.map((item) => (
+            <button key={`${name}-${item.value}`} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => {
+              onChange(name, item.value);
+              setQuery(item.label);
+              setOpen(false);
+            }}>
+              {item.label}
+            </button>
+          )) : <small>{placeholder}</small>}
+        </div>
+      )}
+      <FieldError errors={errors} name={name} />
+    </label>
+  );
+}
+
 function PublicRequest({ data }) {
   const tr = createTranslator(data.language);
   const [values, setValues] = useState({
@@ -211,20 +252,20 @@ function PublicRequest({ data }) {
   });
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
-  const [success, setSuccess] = useState("");
+  const [success, setSuccess] = useState(null);
   const change = (e) =>
     setValues((v) => ({ ...v, [e.target.name]: e.target.value }));
   const submit = async (e) => {
     e.preventDefault();
     setBusy(true);
     setErrors({});
-    setSuccess("");
+    setSuccess(null);
     try {
       const result = await api("/api/react/public/", {
         method: "POST",
         body: JSON.stringify({ ...values, lang: data.language }),
       });
-      setSuccess(result.message);
+      setSuccess(result);
       setValues({
         platform: "",
         full_name: "",
@@ -256,6 +297,14 @@ function PublicRequest({ data }) {
       <FieldError errors={errors} name={name} />
     </label>
   );
+  const copy = {
+    ru: { steps: ["Данные", "Проверка", "Готово"], searchCompany: "Найти предприятие…", searchPosition: "Найти должность…", sent: "Заявка отправлена", number: "Номер заявки", next: "Мы передали данные ответственному сотруднику.", another: "Подать ещё одну заявку" },
+    uz: { steps: ["Ma’lumotlar", "Tekshirish", "Tayyor"], searchCompany: "Korxonani qidiring…", searchPosition: "Lavozimni qidiring…", sent: "Ariza yuborildi", number: "Ariza raqami", next: "Ma’lumotlar mas’ul xodimga yuborildi.", another: "Yana ariza yuborish" },
+    "uz-cyrl": { steps: ["Маълумотлар", "Текшириш", "Тайёр"], searchCompany: "Корхонани қидиринг…", searchPosition: "Лавозимни қидиринг…", sent: "Ариза юборилди", number: "Ариза рақами", next: "Маълумотлар масъул ходимга юборилди.", another: "Яна ариза юбориш" },
+    en: { steps: ["Details", "Review", "Done"], searchCompany: "Search company…", searchPosition: "Search position…", sent: "Request submitted", number: "Request number", next: "The details were sent to the responsible employee.", another: "Submit another request" },
+  }[data.language] || null;
+  const requiredReady = values.platform && values.full_name && values.pnfl && values.passport && values.company && values.position && values.phone && values.cause;
+  const activeStep = success ? 3 : requiredReady ? 2 : 1;
   return (
     <PublicFrame data={data} page="public">
       <main className="public-react-main">
@@ -298,12 +347,24 @@ function PublicRequest({ data }) {
               <h2>{tr("Данные сотрудника")}</h2>
             </div>
           </div>
-          {success && (
-            <div className="public-success">
-              <CheckCircle2 />
-              {success}
+          <div className="request-progress" aria-label={copy.steps.join(", ")}>
+            {copy.steps.map((step, index) => (
+              <div key={step} className={activeStep >= index + 1 ? "active" : ""}>
+                <i>{activeStep > index + 1 ? <CheckCircle2 /> : index + 1}</i>
+                <span>{step}</span>
+              </div>
+            ))}
+          </div>
+          {success ? (
+            <div className="request-success-screen">
+              <span><CheckCircle2 /></span>
+              <small>{copy.sent}</small>
+              <h2>{copy.number} <b>#{success.request_id}</b></h2>
+              <p>{success.message}</p>
+              <p>{copy.next}</p>
+              <button type="button" className="public-submit" onClick={() => setSuccess(null)}>{copy.another}<ArrowRight /></button>
             </div>
-          )}
+          ) : <>
           <FieldError errors={errors} name="__all__" />
           <div className="public-form-grid">
             {select("platform", data.texts.platform, data.choices.platforms)}
@@ -338,8 +399,8 @@ function PublicRequest({ data }) {
               />
               <FieldError errors={errors} name="passport" />
             </label>
-            {select("company", data.texts.company, data.choices.companies)}
-            {select("position", data.texts.position, data.choices.positions)}
+            <SearchableSelect name="company" label={data.texts.company} items={data.choices.companies} value={values.company} onChange={(name, value) => setValues((current) => ({ ...current, [name]: value }))} placeholder={copy.searchCompany} errors={errors} />
+            <SearchableSelect name="position" label={data.texts.position} items={data.choices.positions} value={values.position} onChange={(name, value) => setValues((current) => ({ ...current, [name]: value }))} placeholder={copy.searchPosition} errors={errors} />
             <label>
               <span>{data.texts.phone}</span>
               <input
@@ -369,6 +430,7 @@ function PublicRequest({ data }) {
             {tr(busy ? "Отправка…" : "Отправить заявку")}
             <ArrowRight />
           </button>
+          </>}
         </form>
       </main>
       {data.web_platforms.length > 0 && (
