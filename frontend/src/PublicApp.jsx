@@ -138,6 +138,11 @@ function PublicFrame({ data, children, page }) {
       }}
     >
       <div className="public-railway-background">
+        <div className="railway-aurora" aria-hidden="true"><i /><i /><i /></div>
+        <div className="railway-particles" aria-hidden="true">
+          {Array.from({ length: 18 }, (_, index) => <i key={index} style={{ "--particle-left": `${(index * 47) % 97}%`, "--particle-duration": `${16 + (index % 6) * 2}s`, "--particle-delay": `${index * -1.7}s` }} />)}
+        </div>
+        <div className="railway-light-sweep" aria-hidden="true" />
         <svg viewBox="0 0 1600 980" preserveAspectRatio="xMidYMid slice" aria-label="Railway network map">
           <defs>
             <radialGradient id="routeGlow">
@@ -150,6 +155,7 @@ function PublicFrame({ data, children, page }) {
             </filter>
           </defs>
           <path className="uzbekistan-map" d="M270 475 L335 425 445 408 515 365 600 382 665 345 770 372 842 335 935 365 1010 330 1080 352 1135 410 1225 420 1290 468 1260 525 1168 520 1110 565 1015 550 945 590 850 570 770 610 688 575 590 600 525 555 430 565 355 525 295 530 Z" />
+          <path className="rail-line rail-line-halo" d="M-80 735 C180 610 235 300 520 335 S825 720 1075 560 1320 205 1690 310" />
           <path className="rail-line rail-line-main" d="M-80 735 C180 610 235 300 520 335 S825 720 1075 560 1320 205 1690 310" />
           <path className="rail-line rail-line-secondary" d="M70 160 C330 250 360 590 690 635 S1110 410 1195 760 1510 890 1680 790" />
           <path className="rail-line rail-line-branch" d="M520 335 C660 210 790 150 1015 170" />

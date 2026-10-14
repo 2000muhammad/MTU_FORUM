@@ -2030,8 +2030,18 @@ html[data-theme="light"] .secret-modal-backdrop {
   overflow: hidden;
   pointer-events: none;
 }
+.railway-aurora,.railway-particles,.railway-light-sweep { position:absolute; inset:0; overflow:hidden; }
+.railway-aurora i { position:absolute; width:42vw; height:42vw; border-radius:50%; filter:blur(70px); opacity:.16; mix-blend-mode:multiply; }
+.railway-aurora i:nth-child(1) { top:-16%; left:-8%; background:#48d9c0; animation:railway-aurora-one 20s ease-in-out infinite alternate; }
+.railway-aurora i:nth-child(2) { top:18%; right:-10%; background:#5eaef0; animation:railway-aurora-two 25s ease-in-out infinite alternate; }
+.railway-aurora i:nth-child(3) { bottom:-24%; left:34%; background:#87e3d0; animation:railway-aurora-three 28s ease-in-out infinite alternate; }
+.railway-particles i { position:absolute; left:var(--particle-left); bottom:-20px; width:3px; height:3px; border-radius:50%; background:#43bcb5; opacity:0; box-shadow:0 0 12px rgba(64,202,190,.55); animation:railway-particle-rise var(--particle-duration) linear infinite; animation-delay:var(--particle-delay); }
+.railway-particles i:nth-child(3n) { width:5px; height:5px; background:#65aee0; }
+.railway-particles i:nth-child(4n) { width:2px; height:2px; }
+.railway-light-sweep { left:-55%; width:38%; background:linear-gradient(100deg,transparent,rgba(124,230,215,.08),transparent); transform:skewX(-12deg); animation:railway-light-sweep 17s ease-in-out infinite; }
 .public-railway-background svg { width: 100%; height: 100%; overflow: visible; opacity: .22; transform:translate3d(var(--route-shift-x),var(--route-shift-y),0) scale(1.012); transition:transform .7s cubic-bezier(.22,.8,.32,1); }
 .public-railway-background .rail-line { fill: none; stroke: #0d928c; stroke-width: 2; stroke-linecap: round; stroke-dasharray: 9 13; vector-effect: non-scaling-stroke; }
+.public-railway-background .rail-line-halo { stroke:#63dec4; stroke-width:9; stroke-dasharray:none; opacity:.08; filter:blur(5px); }
 .public-railway-background .rail-line-secondary { stroke: #398ac5; stroke-width: 1.5; opacity: .68; }
 .public-railway-background .rail-line-branch { stroke-width: 1.4; opacity: .58; }
 .public-railway-background circle { fill: var(--bg); stroke: #0d928c; stroke-width: 2.5; vector-effect: non-scaling-stroke; }
@@ -2053,21 +2063,33 @@ html[data-theme="light"] .secret-modal-backdrop {
 .public-railway-background .interactive-stations g:hover circle,.public-railway-background .interactive-stations g:focus circle { opacity:.8; transform:scale(1.35); }
 .public-react-header,.public-react-main,.login-react-main,.public-services { position: relative; z-index: 1; }
 html[data-theme="dark"] .public-railway-background svg { opacity: .3; filter: drop-shadow(0 0 12px rgba(57, 190, 191, .12)); }
+html[data-theme="dark"] .railway-aurora i { opacity:.22; mix-blend-mode:screen; }
+html[data-theme="dark"] .railway-particles i { opacity:.25; }
 @media (prefers-reduced-motion: no-preference) {
   .public-railway-background .rail-line-main { animation: railway-route-flow 28s linear infinite; }
   @keyframes railway-route-flow { to { stroke-dashoffset: -220; } }
   @keyframes station-signal { 0%{opacity:.5;transform:scale(.7)} 75%,100%{opacity:0;transform:scale(2.2)} }
+  @keyframes railway-aurora-one { to{transform:translate(22vw,18vh) scale(1.16)} }
+  @keyframes railway-aurora-two { to{transform:translate(-20vw,14vh) scale(.88)} }
+  @keyframes railway-aurora-three { to{transform:translate(12vw,-16vh) scale(1.2)} }
+  @keyframes railway-particle-rise { 0%{transform:translate3d(0,0,0);opacity:0} 12%{opacity:.28} 82%{opacity:.12} 100%{transform:translate3d(24px,-105vh,0);opacity:0} }
+  @keyframes railway-light-sweep { 0%,20%{transform:translateX(0) skewX(-12deg);opacity:0} 38%{opacity:1} 68%,100%{transform:translateX(430%) skewX(-12deg);opacity:0} }
 }
 @media (prefers-reduced-motion: reduce) {
   .public-railway-background .route-pulse,.public-railway-background .railway-train { display:none; }
   .public-railway-background svg { transform:none; transition:none; }
   .public-railway-background .station-pulses circle { animation:none; opacity:.18; }
+  .railway-aurora i,.railway-particles i,.railway-light-sweep { animation:none; }
+  .railway-particles,.railway-light-sweep { display:none; }
 }
 @media (max-width: 620px) {
   .public-railway-background .station-labels { opacity:.45; }
   .public-railway-background .uzbekistan-map { opacity:.34; }
   .public-railway-background svg { transform:none; }
   .public-railway-background .route-codes { opacity:.65; }
+  .railway-aurora i { width:85vw; height:85vw; opacity:.11; }
+  .railway-particles i:nth-child(even) { display:none; }
+  .railway-light-sweep { opacity:.45; }
 }
 .public-react-header {
   position: relative;
