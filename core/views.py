@@ -4896,6 +4896,13 @@ def react_public_api(request):
         {"id": item.id, "name": item.name, "url": item.url, "image_url": item.image_url or _favicon_url(item.url)}
         for item in WebPlatform.objects.filter(is_active=True).order_by("sort_order", "name")
     ]
+    today = timezone.localdate()
+    today_requests = IntakeRequest.objects.filter(created_at__date=today)
+    completed_today = IntakeRequest.objects.filter(status=IntakeRequest.Status.DONE, updated_at__date=today)
+    completed_durations = [
+        max(0, int((item.updated_at - item.created_at).total_seconds() // 60))
+        for item in completed_today.only("created_at", "updated_at")
+    ]
     return JsonResponse({
         "site": _react_site_payload(settings_obj),
         "language": lang_code,
@@ -4906,6 +4913,12 @@ def react_public_api(request):
             "positions": [{"value": value, "label": label} for value, label in form.fields["position"].choices],
         },
         "web_platforms": web_platforms,
+        "public_stats": {
+            "requests_today": today_requests.count(),
+            "completed_today": len(completed_durations),
+            "average_processing_minutes": round(sum(completed_durations) / len(completed_durations)) if completed_durations else None,
+            "active_services": len(web_platforms),
+        },
         "links": {
             "legacy_public": f"/{lang_code}/?legacy=1",
             "legacy_login": f"/{lang_code}/login/?legacy=1",

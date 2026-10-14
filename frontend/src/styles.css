@@ -2036,6 +2036,10 @@ html[data-theme="light"] .secret-modal-backdrop {
 .public-railway-background .uzbekistan-map { fill:color-mix(in srgb,#55cbbb 4%,transparent); stroke:#249b9a; stroke-width:1.25; stroke-dasharray:3 8; opacity:.52; vector-effect:non-scaling-stroke; }
 .public-railway-background .station-labels text { fill:color-mix(in srgb,var(--text) 65%,#178f91); font:700 11px/1 Inter,sans-serif; letter-spacing:.16em; opacity:.6; paint-order:stroke; stroke:var(--bg); stroke-width:5px; }
 .public-railway-background .route-pulse circle:last-of-type { fill:#79f0db; stroke:#d9fff8; stroke-width:1.5; }
+.public-railway-background .interactive-stations { pointer-events:auto; }
+.public-railway-background .interactive-stations g { cursor:help; outline:none; }
+.public-railway-background .interactive-stations circle { fill:rgba(99,222,196,.09); stroke:#20a69d; opacity:.18; transition:opacity .2s,transform .2s; transform-box:fill-box; transform-origin:center; }
+.public-railway-background .interactive-stations g:hover circle,.public-railway-background .interactive-stations g:focus circle { opacity:.8; transform:scale(1.35); }
 .public-react-header,.public-react-main,.login-react-main,.public-services { position: relative; z-index: 1; }
 html[data-theme="dark"] .public-railway-background svg { opacity: .3; filter: drop-shadow(0 0 12px rgba(57, 190, 191, .12)); }
 @media (prefers-reduced-motion: no-preference) {
@@ -2163,6 +2167,13 @@ html[data-theme="dark"] .public-railway-background svg { opacity: .3; filter: dr
 .login-visual small {
   color: var(--muted);
 }
+.public-live-status { display:inline-flex; align-items:center; gap:8px; margin-top:22px; padding:8px 11px; border:1px solid color-mix(in srgb,var(--brand) 25%,var(--line)); border-radius:999px; background:color-mix(in srgb,var(--surface) 80%,transparent); color:var(--text); font-size:11px; font-weight:800; }
+.public-live-status i { width:8px; height:8px; border-radius:50%; background:var(--brand); box-shadow:0 0 0 5px color-mix(in srgb,var(--brand) 14%,transparent); }
+.public-live-status small { padding-left:5px; border-left:1px solid var(--line); color:var(--muted); font-size:9px; }
+.public-quick-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; max-width:560px; margin-top:12px; }
+.public-quick-stats > div { display:grid; gap:2px; padding:12px 13px; border:1px solid var(--line); border-radius:14px; background:color-mix(in srgb,var(--surface) 72%,transparent); backdrop-filter:blur(12px); }
+.public-quick-stats strong { color:var(--text); font-size:20px; }
+.public-quick-stats span { color:var(--muted); font-size:10px; font-weight:700; }
 .public-react-card {
   padding: 28px;
   border: 1px solid rgba(99, 222, 196, 0.25);

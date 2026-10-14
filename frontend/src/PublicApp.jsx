@@ -125,8 +125,8 @@ function PublicFrame({ data, children, page }) {
   }, [language, data?.site?.favicon_url]);
   return (
     <div className="public-react-shell">
-      <div className="public-railway-background" aria-hidden="true">
-        <svg viewBox="0 0 1600 980" preserveAspectRatio="xMidYMid slice">
+      <div className="public-railway-background">
+        <svg viewBox="0 0 1600 980" preserveAspectRatio="xMidYMid slice" aria-label="Railway network map">
           <defs>
             <radialGradient id="routeGlow">
               <stop offset="0" stopColor="#70ead5" stopOpacity=".95" />
@@ -147,6 +147,12 @@ function PublicFrame({ data, children, page }) {
             <text x="645" y="670">JIZZAX</text>
             <text x="1034" y="600">SAMARQAND</text>
             <text x="1340" y="342">BUXORO</text>
+          </g>
+          <g className="interactive-stations">
+            <g tabIndex="0" aria-label="Toshkent — markaziy temir yo‘l uzeli"><circle cx="330" cy="410" r="13" /><title>Toshkent · Markaziy temir yo‘l uzeli</title></g>
+            <g tabIndex="0" aria-label="Jizzax — regional temir yo‘l uzeli"><circle cx="690" cy="635" r="13" /><title>Jizzax · Regional temir yo‘l uzeli</title></g>
+            <g tabIndex="0" aria-label="Samarqand — regional temir yo‘l uzeli"><circle cx="1075" cy="560" r="13" /><title>Samarqand · Regional temir yo‘l uzeli</title></g>
+            <g tabIndex="0" aria-label="Buxoro — regional temir yo‘l uzeli"><circle cx="1370" cy="360" r="13" /><title>Buxoro · Regional temir yo‘l uzeli</title></g>
           </g>
           <g className="route-pulse" transform="translate(520 335)">
             <circle r="17" fill="url(#routeGlow)" />
@@ -320,13 +326,19 @@ function PublicRequest({ data }) {
     </label>
   );
   const copy = {
-    ru: { steps: ["Данные", "Проверка", "Готово"], searchCompany: "Найти предприятие…", searchPosition: "Найти должность…", sent: "Заявка отправлена", number: "Номер заявки", next: "Мы передали данные ответственному сотруднику.", another: "Подать ещё одну заявку" },
-    uz: { steps: ["Ma’lumotlar", "Tekshirish", "Tayyor"], searchCompany: "Korxonani qidiring…", searchPosition: "Lavozimni qidiring…", sent: "Ariza yuborildi", number: "Ariza raqami", next: "Ma’lumotlar mas’ul xodimga yuborildi.", another: "Yana ariza yuborish" },
-    "uz-cyrl": { steps: ["Маълумотлар", "Текшириш", "Тайёр"], searchCompany: "Корхонани қидиринг…", searchPosition: "Лавозимни қидиринг…", sent: "Ариза юборилди", number: "Ариза рақами", next: "Маълумотлар масъул ходимга юборилди.", another: "Яна ариза юбориш" },
-    en: { steps: ["Details", "Review", "Done"], searchCompany: "Search company…", searchPosition: "Search position…", sent: "Request submitted", number: "Request number", next: "The details were sent to the responsible employee.", another: "Submit another request" },
+    ru: { steps: ["Данные", "Проверка", "Готово"], searchCompany: "Найти предприятие…", searchPosition: "Найти должность…", sent: "Заявка отправлена", number: "Номер заявки", next: "Мы передали данные ответственному сотруднику.", another: "Подать ещё одну заявку", online: "Все системы работают", today: "Заявок сегодня", done: "Обработано", average: "Среднее время", minutes: "мин.", hours: "ч.", days: "дн." },
+    uz: { steps: ["Ma’lumotlar", "Tekshirish", "Tayyor"], searchCompany: "Korxonani qidiring…", searchPosition: "Lavozimni qidiring…", sent: "Ariza yuborildi", number: "Ariza raqami", next: "Ma’lumotlar mas’ul xodimga yuborildi.", another: "Yana ariza yuborish", online: "Barcha tizimlar ishlamoqda", today: "Bugungi arizalar", done: "Bajarildi", average: "O‘rtacha vaqt", minutes: "daq.", hours: "soat", days: "kun" },
+    "uz-cyrl": { steps: ["Маълумотлар", "Текшириш", "Тайёр"], searchCompany: "Корхонани қидиринг…", searchPosition: "Лавозимни қидиринг…", sent: "Ариза юборилди", number: "Ариза рақами", next: "Маълумотлар масъул ходимга юборилди.", another: "Яна ариза юбориш", online: "Барча тизимлар ишламоқда", today: "Бугунги аризалар", done: "Бажарилди", average: "Ўртача вақт", minutes: "дақ.", hours: "соат", days: "кун" },
+    en: { steps: ["Details", "Review", "Done"], searchCompany: "Search company…", searchPosition: "Search position…", sent: "Request submitted", number: "Request number", next: "The details were sent to the responsible employee.", another: "Submit another request", online: "All systems operational", today: "Requests today", done: "Completed", average: "Average time", minutes: "min", hours: "hr", days: "d" },
   }[data.language] || null;
   const requiredReady = values.platform && values.full_name && values.pnfl && values.passport && values.company && values.position && values.phone && values.cause;
   const activeStep = success ? 3 : requiredReady ? 2 : 1;
+  const formatDuration = (minutes) => {
+    if (minutes == null) return "—";
+    if (minutes < 60) return `${minutes} ${copy.minutes}`;
+    if (minutes < 1440) return `${Math.floor(minutes / 60)} ${copy.hours} ${minutes % 60} ${copy.minutes}`;
+    return `${Math.floor(minutes / 1440)} ${copy.days} ${Math.floor((minutes % 1440) / 60)} ${copy.hours}`;
+  };
   return (
     <PublicFrame data={data} page="public">
       <main className="public-react-main">
@@ -357,6 +369,12 @@ function PublicRequest({ data }) {
                 <small>{tr("Проверка выполняется средствами Django")}</small>
               </span>
             </div>
+          </div>
+          <div className="public-live-status"><i />{copy.online}<small>{data.public_stats?.active_services || 0} WEB</small></div>
+          <div className="public-quick-stats">
+            <div><strong>{data.public_stats?.requests_today || 0}</strong><span>{copy.today}</span></div>
+            <div><strong>{data.public_stats?.completed_today || 0}</strong><span>{copy.done}</span></div>
+            <div><strong>{formatDuration(data.public_stats?.average_processing_minutes)}</strong><span>{copy.average}</span></div>
           </div>
         </section>
         <form className="public-react-card request-form" onSubmit={submit}>
