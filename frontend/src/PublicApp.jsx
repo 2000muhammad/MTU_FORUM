@@ -127,10 +127,32 @@ function PublicFrame({ data, children, page }) {
     <div className="public-react-shell">
       <div className="public-railway-background" aria-hidden="true">
         <svg viewBox="0 0 1600 980" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <radialGradient id="routeGlow">
+              <stop offset="0" stopColor="#70ead5" stopOpacity=".95" />
+              <stop offset="1" stopColor="#2ba8b5" stopOpacity="0" />
+            </radialGradient>
+            <filter id="softGlow" x="-200%" y="-200%" width="400%" height="400%">
+              <feGaussianBlur stdDeviation="5" result="blur" />
+              <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+          </defs>
+          <path className="uzbekistan-map" d="M270 475 L335 425 445 408 515 365 600 382 665 345 770 372 842 335 935 365 1010 330 1080 352 1135 410 1225 420 1290 468 1260 525 1168 520 1110 565 1015 550 945 590 850 570 770 610 688 575 590 600 525 555 430 565 355 525 295 530 Z" />
           <path className="rail-line rail-line-main" d="M-80 735 C180 610 235 300 520 335 S825 720 1075 560 1320 205 1690 310" />
           <path className="rail-line rail-line-secondary" d="M70 160 C330 250 360 590 690 635 S1110 410 1195 760 1510 890 1680 790" />
           <path className="rail-line rail-line-branch" d="M520 335 C660 210 790 150 1015 170" />
           {[[-5,700],[160,600],[330,410],[520,335],[690,635],[890,650],[1075,560],[1195,760],[1370,360],[1545,300],[1015,170],[1450,835]].map(([cx, cy], index) => <circle key={index} cx={cx} cy={cy} r={index % 3 === 0 ? 7 : 5} />)}
+          <g className="station-labels">
+            <text x="278" y="392">TOSHKENT</text>
+            <text x="645" y="670">JIZZAX</text>
+            <text x="1034" y="600">SAMARQAND</text>
+            <text x="1340" y="342">BUXORO</text>
+          </g>
+          <g className="route-pulse" transform="translate(520 335)">
+            <circle r="17" fill="url(#routeGlow)" />
+            <circle r="5" filter="url(#softGlow)" />
+            <animateMotion dur="18s" repeatCount="indefinite" path="M0 0 C305 385 555 225 800 -130 S1080 -80 1170 -25" />
+          </g>
         </svg>
       </div>
       <header className="public-react-header">

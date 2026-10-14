@@ -2004,6 +2004,8 @@ html[data-theme="light"] .secret-modal-backdrop {
       rgba(43, 178, 185, 0.12),
       transparent 28%
     ),
+    radial-gradient(circle at 48% 52%, rgba(72, 158, 210, .08), transparent 34%),
+    radial-gradient(circle at 78% 68%, rgba(99, 222, 196, .08), transparent 27%),
     var(--bg);
 }
 .public-react-shell::before {
@@ -2031,11 +2033,21 @@ html[data-theme="light"] .secret-modal-backdrop {
 .public-railway-background .rail-line-secondary { stroke: #398ac5; stroke-width: 1.5; opacity: .68; }
 .public-railway-background .rail-line-branch { stroke-width: 1.4; opacity: .58; }
 .public-railway-background circle { fill: var(--bg); stroke: #0d928c; stroke-width: 2.5; vector-effect: non-scaling-stroke; }
+.public-railway-background .uzbekistan-map { fill:color-mix(in srgb,#55cbbb 4%,transparent); stroke:#249b9a; stroke-width:1.25; stroke-dasharray:3 8; opacity:.52; vector-effect:non-scaling-stroke; }
+.public-railway-background .station-labels text { fill:color-mix(in srgb,var(--text) 65%,#178f91); font:700 11px/1 Inter,sans-serif; letter-spacing:.16em; opacity:.6; paint-order:stroke; stroke:var(--bg); stroke-width:5px; }
+.public-railway-background .route-pulse circle:last-of-type { fill:#79f0db; stroke:#d9fff8; stroke-width:1.5; }
 .public-react-header,.public-react-main,.login-react-main,.public-services { position: relative; z-index: 1; }
 html[data-theme="dark"] .public-railway-background svg { opacity: .3; filter: drop-shadow(0 0 12px rgba(57, 190, 191, .12)); }
 @media (prefers-reduced-motion: no-preference) {
   .public-railway-background .rail-line-main { animation: railway-route-flow 28s linear infinite; }
   @keyframes railway-route-flow { to { stroke-dashoffset: -220; } }
+}
+@media (prefers-reduced-motion: reduce) {
+  .public-railway-background .route-pulse { display:none; }
+}
+@media (max-width: 620px) {
+  .public-railway-background .station-labels { opacity:.45; }
+  .public-railway-background .uzbekistan-map { opacity:.34; }
 }
 .public-react-header {
   position: relative;
