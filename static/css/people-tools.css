@@ -24,3 +24,76 @@ html[data-theme="light"] .user-directory-panel{background:linear-gradient(155deg
 .account-type-field{position:relative;align-self:end}.account-type-label{display:flex;align-items:center;gap:7px;min-height:20px;font-weight:750}.account-type-icon{display:grid;place-items:center;width:21px;height:21px;border-radius:7px;background:color-mix(in srgb,var(--accent,#64cdbb) 14%,transparent);font-size:11px;line-height:1}.account-type-field .form-select{min-height:46px;padding-left:13px;border-color:color-mix(in srgb,var(--accent,#64cdbb) 24%,var(--line,transparent))!important;border-radius:14px!important}.account-type-field .form-select:hover{border-color:color-mix(in srgb,var(--accent,#64cdbb) 48%,transparent)!important}.account-type-field small{display:block;margin-top:-2px;padding-left:1px;color:var(--text-secondary,#8392a5);font-size:.68rem;font-weight:600;line-height:1.25}html[data-theme="light"] .account-type-icon{background:rgba(8,127,109,.11)}@media(max-width:720px){.account-type-field .form-select{min-height:48px}.account-type-field small{font-size:.72rem}}
 .user-password-editor small{color:var(--text-secondary,#8392a5);font-size:.68rem;font-weight:600}.user-password-editor input:disabled{opacity:.78;cursor:not-allowed;background:color-mix(in srgb,var(--surface,#12202b) 84%,transparent)!important}.user-password-editor .password-change-btn{min-width:142px}.user-password-editor .password-show-btn[hidden],.user-password-editor .password-change-btn[hidden]{display:none!important}.user-password-editor.is-enabled small{color:color-mix(in srgb,var(--accent,#64cdbb) 72%,var(--text-secondary,#8392a5))}@media(max-width:560px){.user-password-editor .password-change-btn{width:100%}}
 @media(max-width:430px){.people-data-actions{grid-template-columns:1fr}.people-data-actions .btn{min-height:46px}.people-import-log article{grid-template-columns:1fr}.people-import-log progress,.people-import-log small{grid-column:1}}
+
+/* User card actions: shared by the legacy page and the embedded new interface. */
+.user-action-menu.is-floating{
+  overflow:hidden;
+  max-width:calc(100vw - 24px);
+}
+.user-action-menu form{
+  display:block;
+  width:100%;
+  margin:0;
+}
+.user-action-menu>a,
+.user-action-menu button{
+  display:flex;
+  align-items:center;
+  width:100%;
+  min-height:42px;
+  margin:0;
+  padding:9px 12px;
+  border:0;
+  border-radius:12px;
+  background:transparent;
+  color:#dce9f5;
+  font:inherit;
+  font-size:.84rem;
+  font-weight:800;
+  line-height:1.25;
+  text-align:left;
+  text-decoration:none;
+  white-space:normal;
+  cursor:pointer;
+  transition:background .16s ease,color .16s ease,transform .16s ease;
+}
+.user-action-menu>a:hover,
+.user-action-menu>a:focus-visible,
+.user-action-menu button:hover,
+.user-action-menu button:focus-visible{
+  outline:none;
+  background:rgba(68,215,182,.12);
+  color:#fff;
+  transform:translateX(2px);
+}
+.user-action-menu form:last-child{
+  margin-top:3px;
+  padding-top:4px;
+  border-top:1px solid rgba(190,213,229,.14);
+}
+.user-action-menu button.danger{
+  color:#ff9cad;
+}
+.user-action-menu button.danger:hover,
+.user-action-menu button.danger:focus-visible{
+  background:rgba(255,107,122,.13);
+  color:#ffc0c7;
+}
+html[data-theme="light"] .user-action-menu>a,
+html[data-theme="light"] .user-action-menu button{
+  color:#163044;
+}
+html[data-theme="light"] .user-action-menu>a:hover,
+html[data-theme="light"] .user-action-menu>a:focus-visible,
+html[data-theme="light"] .user-action-menu button:hover,
+html[data-theme="light"] .user-action-menu button:focus-visible{
+  background:rgba(8,127,109,.1);
+  color:#075f52;
+}
+html[data-theme="light"] .user-action-menu button.danger{
+  color:#ba3345;
+}
+@media(max-width:430px){
+  .user-action-menu.is-floating{border-radius:16px!important;padding:7px!important}
+  .user-action-menu>a,.user-action-menu button{min-height:44px;font-size:.82rem}
+}

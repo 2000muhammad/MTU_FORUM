@@ -541,13 +541,14 @@ document.querySelectorAll('[data-user-menu-toggle]').forEach((button) => {
 
 function positionUserActionMenu(button, menu) {
   const rect = button.getBoundingClientRect();
-  const width = 230;
-  const left = Math.min(Math.max(12, rect.right - width), window.innerWidth - width - 12);
+  const pageMargin = 12;
+  const width = Math.min(230, Math.max(176, window.innerWidth - pageMargin * 2));
+  const left = Math.min(Math.max(pageMargin, rect.right - width), window.innerWidth - width - pageMargin);
   const preferredTop = rect.bottom + 8;
-  const maxTop = window.innerHeight - menu.offsetHeight - 12;
+  const maxTop = window.innerHeight - menu.offsetHeight - pageMargin;
   menu.style.width = `${width}px`;
   menu.style.left = `${left}px`;
-  menu.style.top = `${Math.max(12, Math.min(preferredTop, maxTop))}px`;
+  menu.style.top = `${Math.max(pageMargin, Math.min(preferredTop, maxTop))}px`;
 }
 
 function closeUserActionMenu(actions) {
