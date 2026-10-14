@@ -828,10 +828,30 @@ function Dashboard({ boot }) {
     }
     let active = true;
     setRemoteQuote(null);
-    api(`/api/react/quote/?lang=${encodeURIComponent(boot.language)}`)
-      .then((result) => { if (active && result.ok && result.quote?.text) setRemoteQuote(result.quote); })
-      .catch(() => { /* Keep the localized built-in quote as a reliable fallback. */ });
-    return () => { active = false; };
+    const loadQuote = () => {
+      api(`/api/react/quote/?lang=${encodeURIComponent(boot.language)}&_=${Date.now()}`)
+        .then((result) => {
+          if (!active || !result.ok || !result.quote?.text) return;
+          setRemoteQuote((current) => {
+            if (!current || current.text !== result.quote.text || current.author !== result.quote.author) {
+              return result.quote;
+            }
+            setQuoteIndex((index) => (quotes.length > 1 ? (index + 1) % quotes.length : index));
+            return null;
+          });
+        })
+        .catch(() => {
+          if (!active) return;
+          setRemoteQuote(null);
+          setQuoteIndex((index) => (quotes.length > 1 ? (index + 1) % quotes.length : index));
+        });
+    };
+    loadQuote();
+    const quoteTimer = window.setInterval(loadQuote, 15000);
+    return () => {
+      active = false;
+      window.clearInterval(quoteTimer);
+    };
   }, [boot.language, quotes.length]);
   const shownQuote = remoteQuote || quotes[quoteIndex];
   const stats = boot.dashboard.stats;
