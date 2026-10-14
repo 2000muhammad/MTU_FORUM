@@ -125,6 +125,14 @@ function PublicFrame({ data, children, page }) {
   }, [language, data?.site?.favicon_url]);
   return (
     <div className="public-react-shell">
+      <div className="public-railway-background" aria-hidden="true">
+        <svg viewBox="0 0 1600 980" preserveAspectRatio="xMidYMid slice">
+          <path className="rail-line rail-line-main" d="M-80 735 C180 610 235 300 520 335 S825 720 1075 560 1320 205 1690 310" />
+          <path className="rail-line rail-line-secondary" d="M70 160 C330 250 360 590 690 635 S1110 410 1195 760 1510 890 1680 790" />
+          <path className="rail-line rail-line-branch" d="M520 335 C660 210 790 150 1015 170" />
+          {[[-5,700],[160,600],[330,410],[520,335],[690,635],[890,650],[1075,560],[1195,760],[1370,360],[1545,300],[1015,170],[1450,835]].map(([cx, cy], index) => <circle key={index} cx={cx} cy={cy} r={index % 3 === 0 ? 7 : 5} />)}
+        </svg>
+      </div>
       <header className="public-react-header">
         <a
           className="public-react-brand"

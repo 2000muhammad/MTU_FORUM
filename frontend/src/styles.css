@@ -1989,6 +1989,9 @@ html[data-theme="light"] .secret-modal-backdrop {
 
 /* Public React experience: landing request and authentication. */
 .public-react-shell {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   min-height: 100vh;
   background:
     radial-gradient(
@@ -2002,6 +2005,37 @@ html[data-theme="light"] .secret-modal-backdrop {
       transparent 28%
     ),
     var(--bg);
+}
+.public-react-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -3;
+  opacity: .38;
+  background-image:
+    linear-gradient(rgba(19, 104, 109, .035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(19, 104, 109, .035) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+  pointer-events: none;
+}
+.public-railway-background {
+  position: fixed;
+  inset: 80px 0 0;
+  z-index: -2;
+  overflow: hidden;
+  pointer-events: none;
+}
+.public-railway-background svg { width: 100%; height: 100%; overflow: visible; opacity: .22; }
+.public-railway-background .rail-line { fill: none; stroke: #0d928c; stroke-width: 2; stroke-linecap: round; stroke-dasharray: 9 13; vector-effect: non-scaling-stroke; }
+.public-railway-background .rail-line-secondary { stroke: #398ac5; stroke-width: 1.5; opacity: .68; }
+.public-railway-background .rail-line-branch { stroke-width: 1.4; opacity: .58; }
+.public-railway-background circle { fill: var(--bg); stroke: #0d928c; stroke-width: 2.5; vector-effect: non-scaling-stroke; }
+.public-react-header,.public-react-main,.login-react-main,.public-services { position: relative; z-index: 1; }
+html[data-theme="dark"] .public-railway-background svg { opacity: .3; filter: drop-shadow(0 0 12px rgba(57, 190, 191, .12)); }
+@media (prefers-reduced-motion: no-preference) {
+  .public-railway-background .rail-line-main { animation: railway-route-flow 28s linear infinite; }
+  @keyframes railway-route-flow { to { stroke-dashoffset: -220; } }
 }
 .public-react-header {
   position: relative;
