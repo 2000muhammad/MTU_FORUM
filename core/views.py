@@ -5073,6 +5073,28 @@ def _react_dashboard_payload(user):
         if created_at and updated_at
     ] if can_requests else []
     average_processing_seconds = round(sum(completed_durations) / len(completed_durations)) if completed_durations else 0
+    online_queryset = UserPresence.objects.filter(
+        user__is_active=True,
+        last_seen_at__gte=timezone.now() - timedelta(seconds=70),
+    ).select_related("user", "user__profile").order_by("-last_seen_at")
+    online_users = []
+    for presence in online_queryset[:6]:
+        online_user = presence.user
+        online_profile = getattr(online_user, "profile", None)
+        avatar_url = ""
+        if online_profile:
+            if online_profile.avatar:
+                avatar_url = online_profile.avatar.url
+            elif online_profile.hrm_photo:
+                avatar_url = str(online_profile.hrm_photo)
+        display_name = online_user.get_full_name().strip() or online_user.username
+        initials = "".join(part[:1] for part in display_name.split()[:2]).upper() or "U"
+        online_users.append({
+            "id": online_user.id,
+            "name": display_name,
+            "avatar_url": avatar_url,
+            "initials": initials,
+        })
     return {
         "stats": {
             "new": visible_requests.filter(status=IntakeRequest.Status.NEW).count() if can_requests else 0,
@@ -5081,11 +5103,9 @@ def _react_dashboard_payload(user):
             "chats": AdminChatMessage.objects.filter(direction=AdminChatMessage.Direction.IN, is_read=False).count() if can_chats else 0,
             "today": visible_requests.filter(created_at__date=timezone.localdate()).count() if can_requests else 0,
             "average_processing_seconds": average_processing_seconds,
-            "online": UserPresence.objects.filter(
-                user__is_active=True,
-                last_seen_at__gte=timezone.now() - timedelta(seconds=70),
-            ).count(),
+            "online": online_queryset.count(),
         },
+        "online_users": online_users,
         "platforms": platform_rows,
         "web_platforms": web_platforms,
         "activity": activity,

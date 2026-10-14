@@ -584,10 +584,36 @@ function Dashboard({ boot }) {
               <strong>{formatDuration(stats.average_processing_seconds)}</strong>
               <CheckCircle2 />
             </article>
-            <article>
+            <article className="online-users-metric">
               <span>{tr("Пользователи онлайн")}</span>
               <strong>{stats.online ?? 0}</strong>
-              <Users />
+              {boot.dashboard.online_users?.length ? (
+                <div className="online-user-avatars" aria-label={tr("Пользователи онлайн")}>
+                  {boot.dashboard.online_users.slice(0, 4).map((onlineUser) => (
+                    <span
+                      className="online-user-avatar"
+                      key={onlineUser.id}
+                      tabIndex="0"
+                      role="img"
+                      aria-label={onlineUser.name}
+                      data-name={onlineUser.name}
+                    >
+                      {onlineUser.avatar_url ? (
+                        <img src={onlineUser.avatar_url} alt="" />
+                      ) : (
+                        <b>{onlineUser.initials}</b>
+                      )}
+                    </span>
+                  ))}
+                  {boot.dashboard.online_users.length > 4 && (
+                    <span className="online-user-more" aria-label={tr("Ещё {count}", { count: boot.dashboard.online_users.length - 4 })}>
+                      +{boot.dashboard.online_users.length - 4}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <Users />
+              )}
             </article>
             <article>
               <span>{tr("Непрочитанные чаты")}</span>

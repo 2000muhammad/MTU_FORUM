@@ -7,7 +7,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from core.models import Branch, IntakeRequest, Organization, Position, SiteRole, Station, TelegramPasswordReset, UserProfile
+from core.models import Branch, IntakeRequest, Organization, Position, SiteRole, Station, TelegramPasswordReset, UserPresence, UserProfile
 
 
 class ReactAppTests(TestCase):
@@ -205,6 +205,10 @@ class ReactAppTests(TestCase):
         self.assertEqual(payload["choices"]["platforms"][0]["label"], "Select platform")
 
     def test_react_bootstrap_contains_permissions_and_dashboard(self):
+        self.admin.first_name = "React"
+        self.admin.last_name = "Admin"
+        self.admin.save(update_fields=["first_name", "last_name"])
+        UserPresence.objects.update_or_create(user=self.admin, defaults={"last_seen_at": timezone.now()})
         self.client.force_login(self.admin)
 
         response = self.client.get(reverse("react_bootstrap_api"))
@@ -221,6 +225,9 @@ class ReactAppTests(TestCase):
             self.assertIn(metric, payload["dashboard"]["stats"])
         self.assertNotIn("done_week", payload["dashboard"]["stats"])
         self.assertNotIn("users_total", payload["dashboard"]["stats"])
+        self.assertEqual(payload["dashboard"]["online_users"][0]["name"], "React Admin")
+        self.assertEqual(payload["dashboard"]["online_users"][0]["initials"], "RA")
+        self.assertIn("avatar_url", payload["dashboard"]["online_users"][0])
         self.assertEqual(len(payload["dashboard"]["activity"]["today"]), 7)
         self.assertEqual(len(payload["dashboard"]["activity"]["done"]), 7)
         self.assertEqual(
