@@ -124,7 +124,19 @@ function PublicFrame({ data, children, page }) {
     }
   }, [language, data?.site?.favicon_url]);
   return (
-    <div className="public-react-shell">
+    <div
+      className="public-react-shell"
+      onPointerMove={(event) => {
+        if (event.pointerType === "touch") return;
+        const rect = event.currentTarget.getBoundingClientRect();
+        event.currentTarget.style.setProperty("--route-shift-x", `${((event.clientX - rect.left) / rect.width - .5) * 12}px`);
+        event.currentTarget.style.setProperty("--route-shift-y", `${((event.clientY - rect.top) / Math.max(rect.height, 1) - .5) * 9}px`);
+      }}
+      onPointerLeave={(event) => {
+        event.currentTarget.style.setProperty("--route-shift-x", "0px");
+        event.currentTarget.style.setProperty("--route-shift-y", "0px");
+      }}
+    >
       <div className="public-railway-background">
         <svg viewBox="0 0 1600 980" preserveAspectRatio="xMidYMid slice" aria-label="Railway network map">
           <defs>
@@ -148,6 +160,16 @@ function PublicFrame({ data, children, page }) {
             <text x="1034" y="600">SAMARQAND</text>
             <text x="1340" y="342">BUXORO</text>
           </g>
+          <g className="route-codes">
+            <text x="435" y="300">TAS–01</text>
+            <text x="775" y="688">JIZ–02</text>
+            <text x="1120" y="525">SAM–03</text>
+            <text x="1420" y="322">BUX–04</text>
+          </g>
+          <g className="station-pulses">
+            <circle cx="330" cy="410" r="17" /><circle cx="690" cy="635" r="17" />
+            <circle cx="1075" cy="560" r="17" /><circle cx="1370" cy="360" r="17" />
+          </g>
           <g className="interactive-stations">
             <g tabIndex="0" aria-label="Toshkent — markaziy temir yo‘l uzeli"><circle cx="330" cy="410" r="13" /><title>Toshkent · Markaziy temir yo‘l uzeli</title></g>
             <g tabIndex="0" aria-label="Jizzax — regional temir yo‘l uzeli"><circle cx="690" cy="635" r="13" /><title>Jizzax · Regional temir yo‘l uzeli</title></g>
@@ -158,6 +180,13 @@ function PublicFrame({ data, children, page }) {
             <circle r="17" fill="url(#routeGlow)" />
             <circle r="5" filter="url(#softGlow)" />
             <animateMotion dur="18s" repeatCount="indefinite" path="M0 0 C305 385 555 225 800 -130 S1080 -80 1170 -25" />
+          </g>
+          <g className="railway-train">
+            <rect x="-16" y="-8" width="26" height="14" rx="4" />
+            <path d="M10-5h7l7 7v4H10z" />
+            <circle cx="-8" cy="9" r="3" /><circle cx="15" cy="9" r="3" />
+            <path className="train-light" d="M24 1l13-5v10z" />
+            <animateMotion dur="34s" repeatCount="indefinite" rotate="auto" path="M-80 735 C180 610 235 300 520 335 S825 720 1075 560 1320 205 1690 310" />
           </g>
         </svg>
       </div>

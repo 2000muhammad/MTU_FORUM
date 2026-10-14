@@ -1989,6 +1989,8 @@ html[data-theme="light"] .secret-modal-backdrop {
 
 /* Public React experience: landing request and authentication. */
 .public-react-shell {
+  --route-shift-x: 0px;
+  --route-shift-y: 0px;
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -2028,14 +2030,23 @@ html[data-theme="light"] .secret-modal-backdrop {
   overflow: hidden;
   pointer-events: none;
 }
-.public-railway-background svg { width: 100%; height: 100%; overflow: visible; opacity: .22; }
+.public-railway-background svg { width: 100%; height: 100%; overflow: visible; opacity: .22; transform:translate3d(var(--route-shift-x),var(--route-shift-y),0) scale(1.012); transition:transform .7s cubic-bezier(.22,.8,.32,1); }
 .public-railway-background .rail-line { fill: none; stroke: #0d928c; stroke-width: 2; stroke-linecap: round; stroke-dasharray: 9 13; vector-effect: non-scaling-stroke; }
 .public-railway-background .rail-line-secondary { stroke: #398ac5; stroke-width: 1.5; opacity: .68; }
 .public-railway-background .rail-line-branch { stroke-width: 1.4; opacity: .58; }
 .public-railway-background circle { fill: var(--bg); stroke: #0d928c; stroke-width: 2.5; vector-effect: non-scaling-stroke; }
 .public-railway-background .uzbekistan-map { fill:color-mix(in srgb,#55cbbb 4%,transparent); stroke:#249b9a; stroke-width:1.25; stroke-dasharray:3 8; opacity:.52; vector-effect:non-scaling-stroke; }
 .public-railway-background .station-labels text { fill:color-mix(in srgb,var(--text) 65%,#178f91); font:700 11px/1 Inter,sans-serif; letter-spacing:.16em; opacity:.6; paint-order:stroke; stroke:var(--bg); stroke-width:5px; }
+.public-railway-background .route-codes text { fill:#238e92; font:800 9px/1 ui-monospace,SFMono-Regular,monospace; letter-spacing:.12em; opacity:.48; }
+.public-railway-background .station-pulses circle { fill:none; stroke:#3cc8bb; stroke-width:1.5; opacity:.38; transform-box:fill-box; transform-origin:center; animation:station-signal 3.8s ease-out infinite; }
+.public-railway-background .station-pulses circle:nth-child(2) { animation-delay:.9s; }
+.public-railway-background .station-pulses circle:nth-child(3) { animation-delay:1.8s; }
+.public-railway-background .station-pulses circle:nth-child(4) { animation-delay:2.7s; }
 .public-railway-background .route-pulse circle:last-of-type { fill:#79f0db; stroke:#d9fff8; stroke-width:1.5; }
+.public-railway-background .railway-train { color:#178f91; filter:drop-shadow(0 3px 6px rgba(15,119,124,.38)); }
+.public-railway-background .railway-train rect,.public-railway-background .railway-train path:not(.train-light) { fill:currentColor; stroke:#bff8ed; stroke-width:1; }
+.public-railway-background .railway-train circle { fill:#123f48; stroke:#7ce6d1; stroke-width:1.2; }
+.public-railway-background .railway-train .train-light { fill:rgba(110,235,217,.3); stroke:0; }
 .public-railway-background .interactive-stations { pointer-events:auto; }
 .public-railway-background .interactive-stations g { cursor:help; outline:none; }
 .public-railway-background .interactive-stations circle { fill:rgba(99,222,196,.09); stroke:#20a69d; opacity:.18; transition:opacity .2s,transform .2s; transform-box:fill-box; transform-origin:center; }
@@ -2045,13 +2056,18 @@ html[data-theme="dark"] .public-railway-background svg { opacity: .3; filter: dr
 @media (prefers-reduced-motion: no-preference) {
   .public-railway-background .rail-line-main { animation: railway-route-flow 28s linear infinite; }
   @keyframes railway-route-flow { to { stroke-dashoffset: -220; } }
+  @keyframes station-signal { 0%{opacity:.5;transform:scale(.7)} 75%,100%{opacity:0;transform:scale(2.2)} }
 }
 @media (prefers-reduced-motion: reduce) {
-  .public-railway-background .route-pulse { display:none; }
+  .public-railway-background .route-pulse,.public-railway-background .railway-train { display:none; }
+  .public-railway-background svg { transform:none; transition:none; }
+  .public-railway-background .station-pulses circle { animation:none; opacity:.18; }
 }
 @media (max-width: 620px) {
   .public-railway-background .station-labels { opacity:.45; }
   .public-railway-background .uzbekistan-map { opacity:.34; }
+  .public-railway-background svg { transform:none; }
+  .public-railway-background .route-codes { opacity:.65; }
 }
 .public-react-header {
   position: relative;
