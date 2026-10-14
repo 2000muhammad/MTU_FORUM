@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   NavLink,
   Navigate,
@@ -12,8 +12,6 @@ import {
   Bell,
   Building2,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   ClipboardList,
   Code2,
   FileText,
@@ -141,7 +139,7 @@ function ErrorState({ message, retry, tr = createTranslator("ru") }) {
 }
 
 function Layout({ boot, config, children }) {
-  const tr = createTranslator(boot.language);
+  const tr = useMemo(() => createTranslator(boot.language), [boot.language]);
   const [open, setOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () =>
@@ -159,6 +157,8 @@ function Layout({ boot, config, children }) {
   const [languageOpen, setLanguageOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState(boot.notifications || { unread: 0, items: [] });
+  const [permissionPromptOpen, setPermissionPromptOpen] = useState(false);
+  const knownNotificationIds = useRef(new Set((boot.notifications?.items || []).map((item) => item.id)));
   const location = useLocation();
   const routeCategory =
     location.pathname.startsWith("/requests") ||
@@ -224,14 +224,54 @@ function Layout({ boot, config, children }) {
     };
   }, [boot.user]);
   useEffect(() => {
-    const refreshNotifications = () => {
-      if (document.visibilityState === "visible") {
-        api("/api/notifications/requests/").then(setNotifications).catch(() => {});
-      }
-    };
-    const timer = window.setInterval(refreshNotifications, 30000);
-    return () => window.clearInterval(timer);
+    if (!("Notification" in window) || window.Notification.permission !== "default") return undefined;
+    const remindAfter = Number(window.localStorage.getItem("mtu-notification-remind-after") || 0);
+    if (remindAfter > Date.now()) return undefined;
+    const timer = window.setTimeout(() => setPermissionPromptOpen(true), 1200);
+    return () => window.clearTimeout(timer);
   }, []);
+  useEffect(() => {
+    const refreshNotifications = () => {
+      api("/api/notifications/requests/").then((updated) => {
+        const newItems = updated.items.filter((item) => !knownNotificationIds.current.has(item.id));
+        updated.items.forEach((item) => knownNotificationIds.current.add(item.id));
+        setNotifications(updated);
+        if (window.Notification?.permission === "granted") {
+          newItems.reverse().forEach((item) => {
+            const alert = new window.Notification(item.title, {
+              body: item.message || tr("Откройте центр уведомлений, чтобы посмотреть подробности."),
+              icon: boot.site?.favicon_url || "/static/img/favicon.svg",
+              tag: `request-${item.id}`,
+            });
+            alert.onclick = () => {
+              window.focus();
+              window.location.href = item.url;
+              alert.close();
+            };
+          });
+        }
+      }).catch(() => {});
+    };
+    const timer = window.setInterval(refreshNotifications, 15000);
+    return () => window.clearInterval(timer);
+  }, [boot.site?.favicon_url, tr]);
+  const postponeNotifications = () => {
+    window.localStorage.setItem("mtu-notification-remind-after", String(Date.now() + 3 * 24 * 60 * 60 * 1000));
+    setPermissionPromptOpen(false);
+  };
+  const enableBrowserNotifications = async () => {
+    if (!("Notification" in window)) return;
+    const permission = await window.Notification.requestPermission();
+    setPermissionPromptOpen(false);
+    if (permission === "granted") {
+      window.localStorage.removeItem("mtu-notification-remind-after");
+      new window.Notification(tr("Уведомления включены"), {
+        body: tr("Теперь вы будете видеть новые события, даже если вкладка свёрнута."),
+        icon: boot.site?.favicon_url || "/static/img/favicon.svg",
+        tag: "notifications-enabled",
+      });
+    }
+  };
   const markNotificationsRead = async (id = null) => {
     const updated = await api("/api/notifications/requests/", {
       method: "POST",
@@ -522,6 +562,20 @@ function Layout({ boot, config, children }) {
           aria-label={tr("Закрыть меню")}
         />
       )}
+      {permissionPromptOpen && (
+        <div className="browser-notification-backdrop" role="presentation">
+          <section className="browser-notification-card" role="dialog" aria-modal="true" aria-labelledby="browser-notification-title">
+            <button className="browser-notification-close" type="button" onClick={postponeNotifications} aria-label={tr("Закрыть")}>×</button>
+            <div className="browser-notification-bell" aria-hidden="true"><Bell /></div>
+            <h2 id="browser-notification-title">{tr("Включите уведомления")}</h2>
+            <p>{tr("Разрешите уведомления, чтобы узнавать о новых заявках и изменениях, даже когда вкладка свёрнута.")}</p>
+            <div className="browser-notification-actions">
+              <button type="button" onClick={postponeNotifications}>{tr("Позже")}</button>
+              <button className="primary" type="button" onClick={enableBrowserNotifications}><Bell />{tr("Включить")}</button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
@@ -579,36 +633,36 @@ function Platform3DChart({ platforms = [], tr }) {
 
 const dashboardQuotes = {
   ru: [
-    { text: "Знание — сила.", author: "Фрэнсис Бэкон" },
-    { text: "Воображение важнее знания. Знание ограничено, а воображение охватывает весь мир.", author: "Альберт Эйнштейн" },
-    { text: "Мы — то, что мы делаем постоянно. Совершенство — это привычка.", author: "Аристотель" },
-    { text: "Единственный путь к великой работе — любить то, что вы делаете.", author: "Стив Джобс" },
-    { text: "Не бойтесь совершенства: вам его не достичь.", author: "Сальвадор Дали" },
-    { text: "Учиться — всё равно что грести против течения: остановишься — тебя отнесёт назад.", author: "Китайская пословица" },
+    { text: "Сила — в справедливости.", author: "Амир Темур" },
+    { text: "Если ты человек, не называй человеком того, кого не заботит горе народа.", author: "Алишер Навои" },
+    { text: "Кто не владеет своим языком, тот не заслуживает внимания народа.", author: "Алишер Навои" },
+    { text: "Воспитание для нас — вопрос жизни или смерти, спасения или гибели, счастья или бедствия.", author: "Абдулла Авлони" },
+    { text: "Знание — плод повторения и возвращения к изученному.", author: "Абу Райхан Беруни" },
+    { text: "Доброе слово — пища душе.", author: "Узбекская народная мудрость" },
   ],
   uz: [
-    { text: "Bilim — kuchdir.", author: "Frensis Bekon" },
-    { text: "Tasavvur bilimdan muhimroq. Bilim cheklangan, tasavvur esa butun dunyoni qamrab oladi.", author: "Albert Eynshteyn" },
-    { text: "Biz doimo qiladigan ishimizdan iboratmiz. Mukammallik — odatdir.", author: "Arastu" },
-    { text: "Buyuk ish qilishning yagona yo‘li — qilayotgan ishingizni sevishdir.", author: "Stiv Jobs" },
-    { text: "Mukammallikdan qo‘rqmang: unga baribir erisha olmaysiz.", author: "Salvador Dali" },
-    { text: "O‘rganish oqimga qarshi eshkak eshishdir: to‘xtasangiz, ortga ketasiz.", author: "Xitoy maqoli" },
+    { text: "Kuch — adolatda.", author: "Amir Temur" },
+    { text: "Odami ersang, demagil odami, onikim yo‘q xalq g‘amidin g‘ami.", author: "Alisher Navoiy" },
+    { text: "Tilga ixtiyorsiz — elga e’tiborsiz.", author: "Alisher Navoiy" },
+    { text: "Tarbiya biz uchun yo hayot — yo mamot, yo najot — yo halokat, yo saodat — yo falokat masalasidir.", author: "Abdulla Avloniy" },
+    { text: "Bilim — qaytarish va takrorlash mevasidir.", author: "Abu Rayhon Beruniy" },
+    { text: "Yaxshi so‘z — jon ozig‘i.", author: "O‘zbek xalq maqoli" },
   ],
   "uz-cyrl": [
-    { text: "Билим — кучдир.", author: "Фрэнсис Бэкон" },
-    { text: "Тасаввур билимдан муҳимроқ. Билим чекланган, тасаввур эса бутун дунёни қамраб олади.", author: "Альберт Эйнштейн" },
-    { text: "Биз доимо қиладиган ишимиздан иборатмиз. Мукаммаллик — одатдир.", author: "Арасту" },
-    { text: "Буюк иш қилишнинг ягона йўли — қилаётган ишингизни севишдир.", author: "Стив Жобс" },
-    { text: "Мукаммалликдан қўрқманг: унга барибир эриша олмайсиз.", author: "Сальвадор Дали" },
-    { text: "Ўрганиш оқимга қарши эшкак эшишдир: тўхтасангиз, ортга кетасиз.", author: "Хитой мақоли" },
+    { text: "Куч — адолатда.", author: "Амир Темур" },
+    { text: "Одами эрсанг, демагил одами, ониким йўқ халқ ғамидин ғами.", author: "Алишер Навоий" },
+    { text: "Тилга ихтиёрсиз — элга эътиборсиз.", author: "Алишер Навоий" },
+    { text: "Тарбия биз учун ё ҳаёт — ё мамот, ё нажот — ё ҳалокат, ё саодат — ё фалокат масаласидир.", author: "Абдулла Авлоний" },
+    { text: "Билим — қайтариш ва такрорлаш мевасидир.", author: "Абу Райҳон Беруний" },
+    { text: "Яхши сўз — жон озиғи.", author: "Ўзбек халқ мақоли" },
   ],
   en: [
-    { text: "Knowledge is power.", author: "Francis Bacon" },
-    { text: "Imagination is more important than knowledge. Knowledge is limited; imagination encircles the world.", author: "Albert Einstein" },
-    { text: "We are what we repeatedly do. Excellence, then, is a habit.", author: "Aristotle" },
-    { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
-    { text: "Have no fear of perfection—you’ll never reach it.", author: "Salvador Dalí" },
-    { text: "Learning is like rowing upstream: not to advance is to drop back.", author: "Chinese proverb" },
+    { text: "Strength lies in justice.", author: "Amir Temur" },
+    { text: "Call no one human who feels no concern for the people’s sorrow.", author: "Alisher Navoi" },
+    { text: "One who cannot govern their tongue shows no regard for the people.", author: "Alisher Navoi" },
+    { text: "Education is for us a matter of life or death, salvation or ruin, happiness or disaster.", author: "Abdulla Avloni" },
+    { text: "Knowledge is the fruit of returning to and repeating what has been learned.", author: "Abu Rayhan Beruni" },
+    { text: "A kind word is nourishment for the soul.", author: "Uzbek proverb" },
   ],
 };
 
@@ -624,9 +678,6 @@ function Dashboard({ boot }) {
     }, 15000);
     return () => window.clearInterval(timer);
   }, [boot.language, quotes.length]);
-  const changeQuote = (direction) => {
-    setQuoteIndex((current) => (current + direction + quotes.length) % quotes.length);
-  };
   const stats = boot.dashboard.stats;
   const formatDuration = (seconds) => {
     if (!seconds) return "—";
@@ -694,11 +745,6 @@ function Dashboard({ boot }) {
           <blockquote>“{quotes[quoteIndex].text}”</blockquote>
           <div className="quote-card-footer">
             <cite>{quotes[quoteIndex].author}</cite>
-            <div>
-              <button type="button" onClick={() => changeQuote(-1)} aria-label={tr("Предыдущая цитата")}><ChevronLeft /></button>
-              <span>{quoteIndex + 1}/{quotes.length}</span>
-              <button type="button" onClick={() => changeQuote(1)} aria-label={tr("Следующая цитата")}><ChevronRight /></button>
-            </div>
           </div>
         </article>
       </section>

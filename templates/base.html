@@ -576,6 +576,32 @@
 
       const notificationState = { initialized: false, requestId: 0, chatId: 0 };
       const notificationLanguage = pageLang === 'uz-cyrl' ? 'uz-cyrl' : (pageLang.split('-')[0] || 'ru');
+      const notificationCopy = {
+        ru: { title: 'Включите уведомления', body: 'Разрешите уведомления, чтобы узнавать о новых заявках и изменениях, даже когда вкладка свёрнута.', later: 'Позже', enable: 'Включить', close: 'Закрыть', request: 'Новая заявка', requestBody: 'Поступила новая заявка.', chat: 'Новое сообщение', chatBody: 'В Telegram-чате появилось новое сообщение.' },
+        uz: { title: 'Bildirishnomalarni yoqing', body: 'Yangi arizalar va o‘zgarishlardan, hatto brauzer oynasi yig‘ilganida ham, xabardor bo‘lish uchun ruxsat bering.', later: 'Keyinroq', enable: 'Yoqish', close: 'Yopish', request: 'Yangi ariza', requestBody: 'Yangi ariza kelib tushdi.', chat: 'Yangi xabar', chatBody: 'Telegram chatida yangi xabar bor.' },
+        'uz-cyrl': { title: 'Билдиришномаларни ёқинг', body: 'Янги аризалар ва ўзгаришлардан, ҳатто браузер ойнаси йиғилганида ҳам, хабардор бўлиш учун рухсат беринг.', later: 'Кейинроқ', enable: 'Ёқиш', close: 'Ёпиш', request: 'Янги ариза', requestBody: 'Янги ариза келиб тушди.', chat: 'Янги хабар', chatBody: 'Telegram чатида янги хабар бор.' },
+        en: { title: 'Turn on notifications', body: 'Allow notifications to learn about new requests and changes even when the tab is minimized.', later: 'Later', enable: 'Turn on', close: 'Close', request: 'New request', requestBody: 'A new request has arrived.', chat: 'New message', chatBody: 'There is a new message in the Telegram chat.' }
+      };
+      const notificationText = notificationCopy[notificationLanguage] || notificationCopy.ru;
+      const showSystemNotification = (title, body, tag, url) => {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        const alert = new Notification(title, { body, tag, icon: document.querySelector('link[rel="icon"]')?.href || '/static/img/favicon.svg' });
+        alert.onclick = () => { window.focus(); if (url) window.location.href = url; alert.close(); };
+      };
+      const offerBrowserNotifications = () => {
+        if (window.self !== window.top || !('Notification' in window) || Notification.permission !== 'default') return;
+        if (Number(localStorage.getItem('mtu-notification-remind-after') || 0) > Date.now()) return;
+        window.setTimeout(() => {
+          const backdrop = document.createElement('div');
+          backdrop.className = 'browser-notification-backdrop';
+          backdrop.innerHTML = `<section class="browser-notification-card" role="dialog" aria-modal="true" aria-labelledby="legacy-notification-title"><button class="browser-notification-close" type="button" aria-label="${notificationText.close}">×</button><div class="browser-notification-bell" aria-hidden="true">🔔</div><h2 id="legacy-notification-title">${notificationText.title}</h2><p>${notificationText.body}</p><div class="browser-notification-actions"><button type="button" data-notification-later>${notificationText.later}</button><button class="primary" type="button" data-notification-enable>● ${notificationText.enable}</button></div></section>`;
+          const postpone = () => { localStorage.setItem('mtu-notification-remind-after', String(Date.now() + 3 * 86400000)); backdrop.remove(); };
+          backdrop.querySelector('.browser-notification-close').addEventListener('click', postpone);
+          backdrop.querySelector('[data-notification-later]').addEventListener('click', postpone);
+          backdrop.querySelector('[data-notification-enable]').addEventListener('click', async () => { await Notification.requestPermission(); backdrop.remove(); });
+          document.body.appendChild(backdrop);
+        }, 1200);
+      };
       const notificationSoundUrl = (data, type) => {
         return data.sounds?.by_language?.[notificationLanguage]?.[type] || data.sounds?.[type] || '';
       };
@@ -589,8 +615,14 @@
           const requestId = Number(data.last_request_id || 0);
           const chatId = Number(data.last_chat_id || 0);
           if (notificationState.initialized) {
-            if (requestId > notificationState.requestId) playNotification(notificationSoundUrl(data, 'request'));
-            if (chatId > notificationState.chatId) playNotification(notificationSoundUrl(data, 'telegram_chat'));
+            if (requestId > notificationState.requestId) {
+              playNotification(notificationSoundUrl(data, 'request'));
+              showSystemNotification(notificationText.request, notificationText.requestBody, `request-${requestId}`, `/${notificationLanguage}/requests/`);
+            }
+            if (chatId > notificationState.chatId) {
+              playNotification(notificationSoundUrl(data, 'telegram_chat'));
+              showSystemNotification(notificationText.chat, notificationText.chatBody, `chat-${chatId}`, `/${notificationLanguage}/chats/`);
+            }
           }
           notificationState.requestId = requestId;
           notificationState.chatId = chatId;
@@ -601,6 +633,7 @@
       };
 
       {% if user.is_authenticated and ui_user_can_manage %}
+      offerBrowserNotifications();
       pollNotifications();
       setInterval(pollNotifications, 10000);
       {% endif %}

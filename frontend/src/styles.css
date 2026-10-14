@@ -1374,6 +1374,93 @@ html[data-theme="light"] .secret-modal-backdrop {
   }
 }
 
+.browser-notification-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1800;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(4, 15, 27, 0.58);
+  backdrop-filter: blur(8px);
+}
+.browser-notification-card {
+  position: relative;
+  width: min(390px, 100%);
+  padding: 30px 24px 24px;
+  overflow: hidden;
+  border: 1px solid rgba(126, 190, 232, 0.2);
+  border-radius: 24px;
+  color: #f5f9ff;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(44, 135, 239, 0.22), transparent 42%),
+    linear-gradient(145deg, #1c2b40, #172437);
+  box-shadow: 0 28px 80px rgba(2, 12, 24, 0.48);
+}
+.browser-notification-card::before {
+  content: "1245   1245";
+  position: absolute;
+  inset: 18px -16px auto;
+  color: rgba(255, 255, 255, 0.035);
+  font-size: 15px;
+  font-weight: 800;
+  word-spacing: 230px;
+  transform: rotate(-25deg);
+  pointer-events: none;
+}
+.browser-notification-close {
+  position: absolute;
+  top: 13px;
+  right: 15px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  color: #aab9ca;
+  font-size: 24px;
+  line-height: 1;
+  background: transparent;
+}
+.browser-notification-bell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 86px;
+  height: 86px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  color: #7ecbff;
+  background: linear-gradient(145deg, #153c67, #153257);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.browser-notification-bell svg { width: 42px; height: 42px; fill: #76c5ff; stroke-width: 1.8; }
+.browser-notification-card h2 { margin: 0 34px 10px; color: #fff; font-size: 21px; }
+.browser-notification-card p { margin: 0 auto 23px; max-width: 320px; color: #c8d3df; font-size: 14px; line-height: 1.55; }
+.browser-notification-actions { display: grid; grid-template-columns: 1fr 1.08fr; gap: 12px; }
+.browser-notification-actions button {
+  min-height: 48px;
+  border: 0;
+  border-radius: 11px;
+  color: #68b9ff;
+  font-weight: 750;
+  background: #1d416c;
+}
+.browser-notification-actions button.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #fff;
+  background: linear-gradient(135deg, #1685f8, #146ee2);
+  box-shadow: 0 10px 25px rgba(20, 110, 226, 0.3);
+}
+.browser-notification-actions button.primary svg { width: 18px; height: 18px; }
+@media (max-width: 440px) {
+  .browser-notification-card { padding: 27px 18px 18px; border-radius: 20px; }
+  .browser-notification-actions { gap: 9px; }
+}
+
 @media (max-width: 780px) {
   .request-chart-panel { grid-template-columns: 1fr; }
   .request-donut { grid-row: 1; width: min(64vw, 250px); }
