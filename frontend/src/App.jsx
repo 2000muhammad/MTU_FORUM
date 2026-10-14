@@ -12,6 +12,8 @@ import {
   Bell,
   Building2,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   Code2,
   FileText,
@@ -26,6 +28,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   PlugZap,
+  Quote,
   ScrollText,
   Search,
   Settings2,
@@ -574,9 +577,56 @@ function Platform3DChart({ platforms = [], tr }) {
   );
 }
 
+const dashboardQuotes = {
+  ru: [
+    { text: "Знание — сила.", author: "Фрэнсис Бэкон" },
+    { text: "Воображение важнее знания. Знание ограничено, а воображение охватывает весь мир.", author: "Альберт Эйнштейн" },
+    { text: "Мы — то, что мы делаем постоянно. Совершенство — это привычка.", author: "Аристотель" },
+    { text: "Единственный путь к великой работе — любить то, что вы делаете.", author: "Стив Джобс" },
+    { text: "Не бойтесь совершенства: вам его не достичь.", author: "Сальвадор Дали" },
+    { text: "Учиться — всё равно что грести против течения: остановишься — тебя отнесёт назад.", author: "Китайская пословица" },
+  ],
+  uz: [
+    { text: "Bilim — kuchdir.", author: "Frensis Bekon" },
+    { text: "Tasavvur bilimdan muhimroq. Bilim cheklangan, tasavvur esa butun dunyoni qamrab oladi.", author: "Albert Eynshteyn" },
+    { text: "Biz doimo qiladigan ishimizdan iboratmiz. Mukammallik — odatdir.", author: "Arastu" },
+    { text: "Buyuk ish qilishning yagona yo‘li — qilayotgan ishingizni sevishdir.", author: "Stiv Jobs" },
+    { text: "Mukammallikdan qo‘rqmang: unga baribir erisha olmaysiz.", author: "Salvador Dali" },
+    { text: "O‘rganish oqimga qarshi eshkak eshishdir: to‘xtasangiz, ortga ketasiz.", author: "Xitoy maqoli" },
+  ],
+  "uz-cyrl": [
+    { text: "Билим — кучдир.", author: "Фрэнсис Бэкон" },
+    { text: "Тасаввур билимдан муҳимроқ. Билим чекланган, тасаввур эса бутун дунёни қамраб олади.", author: "Альберт Эйнштейн" },
+    { text: "Биз доимо қиладиган ишимиздан иборатмиз. Мукаммаллик — одатдир.", author: "Арасту" },
+    { text: "Буюк иш қилишнинг ягона йўли — қилаётган ишингизни севишдир.", author: "Стив Жобс" },
+    { text: "Мукаммалликдан қўрқманг: унга барибир эриша олмайсиз.", author: "Сальвадор Дали" },
+    { text: "Ўрганиш оқимга қарши эшкак эшишдир: тўхтасангиз, ортга кетасиз.", author: "Хитой мақоли" },
+  ],
+  en: [
+    { text: "Knowledge is power.", author: "Francis Bacon" },
+    { text: "Imagination is more important than knowledge. Knowledge is limited; imagination encircles the world.", author: "Albert Einstein" },
+    { text: "We are what we repeatedly do. Excellence, then, is a habit.", author: "Aristotle" },
+    { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+    { text: "Have no fear of perfection—you’ll never reach it.", author: "Salvador Dalí" },
+    { text: "Learning is like rowing upstream: not to advance is to drop back.", author: "Chinese proverb" },
+  ],
+};
+
 function Dashboard({ boot }) {
   const tr = createTranslator(boot.language);
   const [activeChartSegment, setActiveChartSegment] = useState(null);
+  const quotes = dashboardQuotes[boot.language] || dashboardQuotes.ru;
+  const [quoteIndex, setQuoteIndex] = useState(() => new Date().getDate() % quotes.length);
+  useEffect(() => {
+    setQuoteIndex(new Date().getDate() % quotes.length);
+    const timer = window.setInterval(() => {
+      setQuoteIndex((current) => (current + 1) % quotes.length);
+    }, 15000);
+    return () => window.clearInterval(timer);
+  }, [boot.language, quotes.length]);
+  const changeQuote = (direction) => {
+    setQuoteIndex((current) => (current + direction + quotes.length) % quotes.length);
+  };
   const stats = boot.dashboard.stats;
   const formatDuration = (seconds) => {
     if (!seconds) return "—";
@@ -619,21 +669,38 @@ function Dashboard({ boot }) {
   };
   return (
     <div className="page-stack">
-      <section className="hero">
-        <div>
-          <span>{tr("ОБЗОР СИСТЕМЫ")}</span>
-          <h2>
-            {tr("Добро пожаловать, {name}", {
-              name: boot.user.first_name || boot.user.username,
-            })}
-          </h2>
-          <p>
-            {tr(
-              "Актуальное состояние заявок и быстрый доступ к рабочим сервисам.",
-            )}
-          </p>
-        </div>
-        <ShieldCheck />
+      <section className="dashboard-intro-grid">
+        <article className="hero">
+          <div>
+            <span>{tr("ОБЗОР СИСТЕМЫ")}</span>
+            <h2>
+              {tr("Добро пожаловать, {name}", {
+                name: boot.user.first_name || boot.user.username,
+              })}
+            </h2>
+            <p>
+              {tr(
+                "Актуальное состояние заявок и быстрый доступ к рабочим сервисам.",
+              )}
+            </p>
+          </div>
+          <ShieldCheck />
+        </article>
+        <article className="quote-card" aria-live="polite">
+          <div className="quote-card-head">
+            <span>{tr("МЫСЛЬ ДНЯ")}</span>
+            <Quote aria-hidden="true" />
+          </div>
+          <blockquote>“{quotes[quoteIndex].text}”</blockquote>
+          <div className="quote-card-footer">
+            <cite>{quotes[quoteIndex].author}</cite>
+            <div>
+              <button type="button" onClick={() => changeQuote(-1)} aria-label={tr("Предыдущая цитата")}><ChevronLeft /></button>
+              <span>{quoteIndex + 1}/{quotes.length}</span>
+              <button type="button" onClick={() => changeQuote(1)} aria-label={tr("Следующая цитата")}><ChevronRight /></button>
+            </div>
+          </div>
+        </article>
       </section>
       {boot.permissions.requests && (
         <>
