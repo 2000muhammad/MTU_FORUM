@@ -713,6 +713,18 @@ const dashboardQuotes = {
     { text: "Воспитание для нас — вопрос жизни или смерти, спасения или гибели, счастья или бедствия.", author: "Абдулла Авлони" },
     { text: "Знание — плод повторения и возвращения к изученному.", author: "Абу Райхан Беруни" },
     { text: "Доброе слово — пища душе.", author: "Узбекская народная мудрость" },
+    { text: "Знание открывает путь, труд доводит до цели.", author: "Узбекская народная мудрость" },
+    { text: "Совет мудрого сокращает долгую дорогу.", author: "Узбекская народная мудрость" },
+    { text: "Терпение приносит плод, поспешность — сожаление.", author: "Узбекская народная мудрость" },
+    { text: "Человек ценен не словами, а полезными делами.", author: "Узбекская народная мудрость" },
+    { text: "Где есть согласие, там есть сила.", author: "Узбекская народная мудрость" },
+    { text: "Время — самый справедливый наставник.", author: "Узбекская народная мудрость" },
+    { text: "Учись у прошлого, трудись сегодня, думай о будущем.", author: "Узбекская народная мудрость" },
+    { text: "Малое добро открывает большие двери.", author: "Узбекская народная мудрость" },
+    { text: "Ум растёт от вопросов, мастерство — от практики.", author: "Узбекская народная мудрость" },
+    { text: "Честный труд украшает человека.", author: "Узбекская народная мудрость" },
+    { text: "Порядок в деле начинается с порядка в мыслях.", author: "Узбекская народная мудрость" },
+    { text: "Дорогу осилит тот, кто продолжает идти.", author: "Узбекская народная мудрость" },
   ],
   uz: [
     { text: "Kuch — adolatda.", author: "Amir Temur" },
@@ -721,6 +733,18 @@ const dashboardQuotes = {
     { text: "Tarbiya biz uchun yo hayot — yo mamot, yo najot — yo halokat, yo saodat — yo falokat masalasidir.", author: "Abdulla Avloniy" },
     { text: "Bilim — qaytarish va takrorlash mevasidir.", author: "Abu Rayhon Beruniy" },
     { text: "Yaxshi so‘z — jon ozig‘i.", author: "O‘zbek xalq maqoli" },
+    { text: "Bilim yo‘l ochar, mehnat manzilga yetkazar.", author: "O‘zbek xalq hikmati" },
+    { text: "Dononing maslahati uzoq yo‘lni qisqartirar.", author: "O‘zbek xalq hikmati" },
+    { text: "Sabr meva keltirar, shoshqaloqlik — pushaymon.", author: "O‘zbek xalq hikmati" },
+    { text: "Inson so‘zi bilan emas, foydali ishi bilan qadrlanadi.", author: "O‘zbek xalq hikmati" },
+    { text: "Hamjihatlik bor joyda kuch bor.", author: "O‘zbek xalq hikmati" },
+    { text: "Vaqt — eng adolatli ustoz.", author: "O‘zbek xalq hikmati" },
+    { text: "O‘tmishdan o‘rgan, bugun mehnat qil, kelajakni o‘yla.", author: "O‘zbek xalq hikmati" },
+    { text: "Kichik yaxshilik katta eshiklarni ochar.", author: "O‘zbek xalq hikmati" },
+    { text: "Aql savoldan, mahorat mashqdan o‘sadi.", author: "O‘zbek xalq hikmati" },
+    { text: "Halol mehnat insonni bezaydi.", author: "O‘zbek xalq hikmati" },
+    { text: "Ishdagi tartib fikrdagi tartibdan boshlanadi.", author: "O‘zbek xalq hikmati" },
+    { text: "Yo‘lni davom etgan odam bosib o‘tadi.", author: "O‘zbek xalq hikmati" },
   ],
   "uz-cyrl": [
     { text: "Куч — адолатда.", author: "Амир Темур" },
@@ -729,6 +753,18 @@ const dashboardQuotes = {
     { text: "Тарбия биз учун ё ҳаёт — ё мамот, ё нажот — ё ҳалокат, ё саодат — ё фалокат масаласидир.", author: "Абдулла Авлоний" },
     { text: "Билим — қайтариш ва такрорлаш мевасидир.", author: "Абу Райҳон Беруний" },
     { text: "Яхши сўз — жон озиғи.", author: "Ўзбек халқ мақоли" },
+    { text: "Билим йўл очар, меҳнат манзилга етказар.", author: "Ўзбек халқ ҳикмати" },
+    { text: "Дононинг маслаҳати узоқ йўлни қисқартирар.", author: "Ўзбек халқ ҳикмати" },
+    { text: "Сабр мева келтирар, шошқалоқлик — пушаймон.", author: "Ўзбек халқ ҳикмати" },
+    { text: "Инсон сўзи билан эмас, фойдали иши билан қадрланади.", author: "Ўзбек халқ ҳикмати" },
+    { text: "Ҳамжиҳатлик бор жойда куч бор.", author: "Ўзбек халқ ҳикмати" },
+    { text: "Вақт — энг адолатли устоз.", author: "Ўзбек халқ ҳикмати" },
+    { text: "Ўтмишдан ўрган, бугун меҳнат қил, келажакни ўйла.", author: "Ўзбек халқ ҳикмати" },
+    { text: "Кичик яхшилик катта эшикларни очар.", author: "Ўзбек халқ ҳикмати" },
+    { text: "Ақл саволдан, маҳорат машқдан ўсади.", author: "Ўзбек халқ ҳикмати" },
+    { text: "Ҳалол меҳнат инсонни безайди.", author: "Ўзбек халқ ҳикмати" },
+    { text: "Ишдаги тартиб фикрдаги тартибдан бошланади.", author: "Ўзбек халқ ҳикмати" },
+    { text: "Йўлни давом этган одам босиб ўтади.", author: "Ўзбек халқ ҳикмати" },
   ],
   en: [
     { text: "Strength lies in justice.", author: "Amir Temur" },
@@ -737,8 +773,31 @@ const dashboardQuotes = {
     { text: "Education is for us a matter of life or death, salvation or ruin, happiness or disaster.", author: "Abdulla Avloni" },
     { text: "Knowledge is the fruit of returning to and repeating what has been learned.", author: "Abu Rayhan Beruni" },
     { text: "A kind word is nourishment for the soul.", author: "Uzbek proverb" },
+    { text: "Knowledge opens the road; work carries you to the destination.", author: "Uzbek wisdom" },
+    { text: "Wise advice shortens a long road.", author: "Uzbek wisdom" },
+    { text: "Patience bears fruit; haste brings regret.", author: "Uzbek wisdom" },
+    { text: "A person is valued by useful deeds, not words.", author: "Uzbek wisdom" },
+    { text: "Where there is unity, there is strength.", author: "Uzbek wisdom" },
+    { text: "Time is the fairest teacher.", author: "Uzbek wisdom" },
+    { text: "Learn from the past, work today, and think of the future.", author: "Uzbek wisdom" },
+    { text: "A small kindness opens great doors.", author: "Uzbek wisdom" },
+    { text: "The mind grows through questions; skill grows through practice.", author: "Uzbek wisdom" },
+    { text: "Honest work adorns a person.", author: "Uzbek wisdom" },
+    { text: "Order in work begins with order in thought.", author: "Uzbek wisdom" },
+    { text: "The road is completed by the one who keeps moving.", author: "Uzbek wisdom" },
   ],
 };
+
+function pickFreshQuote(language, length) {
+  if (!length) return 0;
+  const key = `mtu-last-quote-${language}`;
+  let previous = -1;
+  try { previous = Number(window.sessionStorage.getItem(key)); } catch { previous = -1; }
+  let next = Math.floor(Math.random() * length);
+  if (length > 1 && next === previous) next = (next + 1 + Math.floor(Math.random() * (length - 1))) % length;
+  try { window.sessionStorage.setItem(key, String(next)); } catch { /* The quote still changes without storage. */ }
+  return next;
+}
 
 function Dashboard({ boot }) {
   const tr = createTranslator(boot.language);
@@ -759,11 +818,19 @@ function Dashboard({ boot }) {
     setWebPlatforms((current) => current.map((item) => item.id === platform.id ? { ...item, favorite: result.favorite } : item));
   };
   const quotes = dashboardQuotes[boot.language] || dashboardQuotes.ru;
-  const [quoteIndex, setQuoteIndex] = useState(() => new Date().getDate() % quotes.length);
+  const quoteLanguageRef = useRef(boot.language);
+  const [quoteIndex, setQuoteIndex] = useState(() => pickFreshQuote(boot.language, quotes.length));
   useEffect(() => {
-    setQuoteIndex(new Date().getDate() % quotes.length);
+    if (quoteLanguageRef.current !== boot.language) {
+      quoteLanguageRef.current = boot.language;
+      setQuoteIndex(pickFreshQuote(boot.language, quotes.length));
+    }
     const timer = window.setInterval(() => {
-      setQuoteIndex((current) => (current + 1) % quotes.length);
+      setQuoteIndex((current) => {
+        const next = (current + 1) % quotes.length;
+        try { window.sessionStorage.setItem(`mtu-last-quote-${boot.language}`, String(next)); } catch { /* Rotation still works. */ }
+        return next;
+      });
     }, 15000);
     return () => window.clearInterval(timer);
   }, [boot.language, quotes.length]);
