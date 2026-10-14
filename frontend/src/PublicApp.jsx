@@ -261,7 +261,7 @@ function FieldError({ errors, name }) {
 }
 
 function SearchableSelect({ name, label, items, value, onChange, placeholder, errors }) {
-  const selected = items.find((item) => String(item.value) === String(value));
+  const selected = items.find((item) => item.value && String(item.value) === String(value));
   const [query, setQuery] = useState(selected?.label || "");
   const [open, setOpen] = useState(false);
   useEffect(() => setQuery(selected?.label || ""), [selected?.label]);
