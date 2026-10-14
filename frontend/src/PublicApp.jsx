@@ -347,24 +347,11 @@ function PublicRequest({ data }) {
       setBusy(false);
     }
   };
-  const select = (name, label, items) => (
-    <label>
-      <span>{label}</span>
-      <select name={name} value={values[name]} onChange={change}>
-        {items.map((item) => (
-          <option key={`${name}-${item.value}`} value={item.value}>
-            {item.label}
-          </option>
-        ))}
-      </select>
-      <FieldError errors={errors} name={name} />
-    </label>
-  );
   const copy = {
-    ru: { steps: ["Данные", "Проверка", "Готово"], searchCompany: "Найти предприятие…", searchPosition: "Найти должность…", sent: "Заявка отправлена", number: "Номер заявки", next: "Мы передали данные ответственному сотруднику.", another: "Подать ещё одну заявку", online: "Все системы работают", today: "Заявок сегодня", done: "Обработано", average: "Среднее время", minutes: "мин.", hours: "ч.", days: "дн." },
-    uz: { steps: ["Ma’lumotlar", "Tekshirish", "Tayyor"], searchCompany: "Korxonani qidiring…", searchPosition: "Lavozimni qidiring…", sent: "Ariza yuborildi", number: "Ariza raqami", next: "Ma’lumotlar mas’ul xodimga yuborildi.", another: "Yana ariza yuborish", online: "Barcha tizimlar ishlamoqda", today: "Bugungi arizalar", done: "Bajarildi", average: "O‘rtacha vaqt", minutes: "daq.", hours: "soat", days: "kun" },
-    "uz-cyrl": { steps: ["Маълумотлар", "Текшириш", "Тайёр"], searchCompany: "Корхонани қидиринг…", searchPosition: "Лавозимни қидиринг…", sent: "Ариза юборилди", number: "Ариза рақами", next: "Маълумотлар масъул ходимга юборилди.", another: "Яна ариза юбориш", online: "Барча тизимлар ишламоқда", today: "Бугунги аризалар", done: "Бажарилди", average: "Ўртача вақт", minutes: "дақ.", hours: "соат", days: "кун" },
-    en: { steps: ["Details", "Review", "Done"], searchCompany: "Search company…", searchPosition: "Search position…", sent: "Request submitted", number: "Request number", next: "The details were sent to the responsible employee.", another: "Submit another request", online: "All systems operational", today: "Requests today", done: "Completed", average: "Average time", minutes: "min", hours: "hr", days: "d" },
+    ru: { steps: ["Данные", "Проверка", "Готово"], searchPlatform: "Найти платформу…", searchCompany: "Найти предприятие…", searchPosition: "Найти должность…", sent: "Заявка отправлена", number: "Номер заявки", next: "Мы передали данные ответственному сотруднику.", another: "Подать ещё одну заявку", online: "Все системы работают", today: "Заявок сегодня", done: "Обработано", average: "Среднее время", minutes: "мин.", hours: "ч.", days: "дн." },
+    uz: { steps: ["Ma’lumotlar", "Tekshirish", "Tayyor"], searchPlatform: "Platformani qidiring…", searchCompany: "Korxonani qidiring…", searchPosition: "Lavozimni qidiring…", sent: "Ariza yuborildi", number: "Ariza raqami", next: "Ma’lumotlar mas’ul xodimga yuborildi.", another: "Yana ariza yuborish", online: "Barcha tizimlar ishlamoqda", today: "Bugungi arizalar", done: "Bajarildi", average: "O‘rtacha vaqt", minutes: "daq.", hours: "soat", days: "kun" },
+    "uz-cyrl": { steps: ["Маълумотлар", "Текшириш", "Тайёр"], searchPlatform: "Платформани қидиринг…", searchCompany: "Корхонани қидиринг…", searchPosition: "Лавозимни қидиринг…", sent: "Ариза юборилди", number: "Ариза рақами", next: "Маълумотлар масъул ходимга юборилди.", another: "Яна ариза юбориш", online: "Барча тизимлар ишламоқда", today: "Бугунги аризалар", done: "Бажарилди", average: "Ўртача вақт", minutes: "дақ.", hours: "соат", days: "кун" },
+    en: { steps: ["Details", "Review", "Done"], searchPlatform: "Search platform…", searchCompany: "Search company…", searchPosition: "Search position…", sent: "Request submitted", number: "Request number", next: "The details were sent to the responsible employee.", another: "Submit another request", online: "All systems operational", today: "Requests today", done: "Completed", average: "Average time", minutes: "min", hours: "hr", days: "d" },
   }[data.language] || null;
   const requiredReady = values.platform && values.full_name && values.pnfl && values.passport && values.company && values.position && values.phone && values.cause;
   const activeStep = success ? 3 : requiredReady ? 2 : 1;
@@ -442,7 +429,7 @@ function PublicRequest({ data }) {
           ) : <>
           <FieldError errors={errors} name="__all__" />
           <div className="public-form-grid">
-            {select("platform", data.texts.platform, data.choices.platforms)}
+            <SearchableSelect name="platform" label={data.texts.platform} items={data.choices.platforms} value={values.platform} onChange={(name, value) => setValues((current) => ({ ...current, [name]: value }))} placeholder={copy.searchPlatform} errors={errors} />
             <label>
               <span>{data.texts.full_name}</span>
               <input
