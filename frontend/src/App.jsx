@@ -847,7 +847,7 @@ function Dashboard({ boot }) {
         });
     };
     loadQuote();
-    const quoteTimer = window.setInterval(loadQuote, 15000);
+    const quoteTimer = window.setInterval(loadQuote, 30000);
     return () => {
       active = false;
       window.clearInterval(quoteTimer);
