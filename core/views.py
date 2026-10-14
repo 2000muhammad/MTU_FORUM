@@ -5247,7 +5247,7 @@ def react_bootstrap_api(request):
     legacy_links = {
         "profile": reverse("profile"),
         "logout": reverse("logout"),
-        "documents": reverse("legacy_documents"),
+        "documents": reverse("public_document_root"),
     }
     optional_links = {
         "messages": (permissions["messages"], "internal_messages"),

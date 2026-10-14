@@ -48,7 +48,7 @@ class ReactAppTests(TestCase):
         self.assertContains(legacy, 'min-height:720px')
 
         bootstrap = self.client.get(reverse("react_bootstrap_api")).json()
-        self.assertEqual(bootstrap["legacy_links"]["documents"], reverse("legacy_documents"))
+        self.assertEqual(bootstrap["legacy_links"]["documents"], reverse("public_document_root"))
 
     def test_localized_app_redirects_to_global_next_app(self):
         self.client.force_login(self.admin)

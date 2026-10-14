@@ -37,3 +37,83 @@ body.embedded main {
 .document-library a:hover { border-color: var(--accent); color: var(--accent); }
 .document-pdf { width: 100%; min-height: 72vh; border: 0; }
 @media (max-width: 850px) { .import-panel form { grid-template-columns: 1fr; } }
+
+/* The React workspace embeds this page directly. Keep it fluid and avoid nested scrollbars. */
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+html[data-theme="dark"] {
+  --ink: #e8f3f2;
+  --muted: #9db0b6;
+  --paper: #10212a;
+  --line: #29434c;
+  --accent: #63dec4;
+  --accent-soft: #173b39;
+  color-scheme: dark;
+}
+html[data-theme="dark"] body {
+  background: #07151c;
+}
+html[data-theme="dark"] .document-content h1,
+html[data-theme="dark"] .document-content h2,
+html[data-theme="dark"] .document-content h3 {
+  color: #dff8f2;
+}
+html[data-theme="dark"] .document-content th {
+  background: var(--accent-soft);
+}
+.search input,
+.import-panel input {
+  background: var(--paper);
+  color: var(--ink);
+}
+.document-content {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.document-content table {
+  width: 100%;
+  max-width: 100%;
+}
+.document-content th,
+.document-content td {
+  border-color: var(--line);
+  overflow-wrap: anywhere;
+}
+body.embedded {
+  background: transparent;
+}
+body.embedded main {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+}
+body.embedded .import-panel,
+body.embedded .document-library {
+  margin-right: 18px;
+  margin-left: 18px;
+}
+body.embedded .import-panel {
+  margin-top: 18px;
+}
+body.embedded .hero,
+body.embedded .statistics,
+body.embedded .reader-shell {
+  border-radius: 0;
+}
+body.embedded .reader-shell {
+  margin-top: 16px;
+}
+@media (max-width: 700px) {
+  body.embedded .import-panel,
+  body.embedded .document-library {
+    margin-right: 10px;
+    margin-left: 10px;
+  }
+  body.embedded .hero { padding: 24px 18px; }
+  body.embedded .document-content { padding: 22px 16px; }
+}
