@@ -312,6 +312,18 @@ class IntakeRequest(models.Model):
 
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.NEW)
 
+    assignee = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="assigned_intake_requests",
+    )
+
+    watchers = models.ManyToManyField(User, blank=True, related_name="watched_intake_requests")
+
+    sla_due_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
     hrm_payload = models.JSONField(default=dict, blank=True)
 
     updated_at = models.DateTimeField(auto_now=True)
@@ -335,6 +347,8 @@ class IntakeRequestHistory(models.Model):
         UPDATED = "updated", "Данные изменены"
         STATUS = "status", "Статус изменён"
         CREDENTIALS = "credentials", "Данные доступа изменены"
+        ASSIGNMENT = "assignment", "Исполнитель изменён"
+        SLA = "sla", "Срок SLA изменён"
 
     request = models.ForeignKey(
         IntakeRequest,
@@ -361,6 +375,28 @@ class IntakeRequestHistory(models.Model):
 
     def __str__(self):
         return f"#{self.request_id}: {self.get_event_display()}"
+
+
+class RequestNotification(models.Model):
+    class Kind(models.TextChoices):
+        CREATED = "created", "Новая заявка"
+        ASSIGNED = "assigned", "Назначение"
+        STATUS = "status", "Изменение статуса"
+        SLA = "sla", "Контроль SLA"
+
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name="request_notifications")
+    request = models.ForeignKey(IntakeRequest, on_delete=models.CASCADE, related_name="notifications")
+    kind = models.CharField(max_length=20, choices=Kind.choices)
+    title = models.CharField(max_length=220)
+    message = models.CharField(max_length=500, blank=True)
+    is_read = models.BooleanField(default=False, db_index=True)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return f"{self.recipient}: {self.title}"
 
 
 class TelegramPasswordReset(models.Model):

@@ -11,6 +11,7 @@ urlpatterns = [
     path("dashboard/requests/", views.dashboard_requests_api, name="dashboard_requests_api"),
     path("dashboard/requests/reveal/", views.dashboard_request_reveal_api, name="dashboard_request_reveal_api"),
     path("notifications/state/", views.notification_state_api, name="notification_state_api"),
+    path("notifications/requests/", views.request_notifications_api, name="request_notifications_api"),
     path("presence/heartbeat/", views.user_presence_heartbeat_api, name="user_presence_heartbeat_api"),
     path("presence/state/", views.user_presence_state_api, name="user_presence_state_api"),
     path("people-import/<int:pk>/", views.people_import_job_state_api, name="people_import_job_state_api"),

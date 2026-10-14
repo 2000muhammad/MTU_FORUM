@@ -51,6 +51,34 @@
     <button class="btn btn-primary" name="action" value="save">{% tr 'save' %}</button>
   </div>
 </form>
+<form method="post" class="glass-card request-workflow-card">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="save_workflow">
+  <div class="request-workflow-head">
+    <div><span class="eyebrow">Рабочий процесс</span><h2>Исполнитель и SLA</h2><p>Назначьте ответственного, наблюдателей и контрольный срок.</p></div>
+    {% if item.sla_due_at %}<span class="request-sla-badge">{{ item.sla_due_at|date:'d.m.Y H:i' }}</span>{% endif %}
+  </div>
+  <div class="request-workflow-grid">
+    <label>Исполнитель
+      <select class="form-select" name="assignee">
+        <option value="">Не назначен</option>
+        {% for candidate in workflow_users %}<option value="{{ candidate.id }}" {% if item.assignee_id == candidate.id %}selected{% endif %}>{{ candidate.get_full_name|default:candidate.username }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Срок SLA
+      <input class="form-control" type="datetime-local" name="sla_due_at" value="{% if item.sla_due_at %}{{ item.sla_due_at|date:'Y-m-d\TH:i' }}{% endif %}">
+    </label>
+    <fieldset class="request-watchers">
+      <legend>Наблюдатели</legend>
+      <div>
+        {% for candidate in workflow_users %}
+          <label><input type="checkbox" name="watchers" value="{{ candidate.id }}" {% if candidate.id in selected_watcher_ids %}checked{% endif %}><span>{{ candidate.get_full_name|default:candidate.username }}</span></label>
+        {% empty %}<p>Нет доступных сотрудников.</p>{% endfor %}
+      </div>
+    </fieldset>
+  </div>
+  <div class="request-workflow-actions"><button class="btn btn-primary" type="submit">Сохранить назначение</button></div>
+</form>
 <section class="glass-card request-history-card">
   <div class="request-history-head">
     <div>

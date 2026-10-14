@@ -1,4 +1,5 @@
 import json
+from datetime import timedelta
 from pathlib import Path
 
 from django.conf import settings
@@ -7,7 +8,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from core.models import Branch, IntakeRequest, Organization, Position, SiteRole, Station, TelegramPasswordReset, UserPresence, UserProfile
+from core.models import Branch, IntakeRequest, Organization, Position, RequestNotification, SiteRole, Station, TelegramPasswordReset, UserPresence, UserProfile
 
 
 class ReactAppTests(TestCase):
@@ -228,6 +229,8 @@ class ReactAppTests(TestCase):
         self.assertEqual(payload["dashboard"]["online_users"][0]["name"], "React Admin")
         self.assertEqual(payload["dashboard"]["online_users"][0]["initials"], "RA")
         self.assertIn("avatar_url", payload["dashboard"]["online_users"][0])
+        self.assertIn("sla", payload["dashboard"])
+        self.assertIn("notifications", payload)
         self.assertEqual(len(payload["dashboard"]["activity"]["today"]), 7)
         self.assertEqual(len(payload["dashboard"]["activity"]["done"]), 7)
         self.assertEqual(
@@ -237,6 +240,41 @@ class ReactAppTests(TestCase):
         self.assertEqual(payload["version_links"]["new"], reverse("react_app_global"))
         for module in ("messages", "chats", "tasks", "users", "managers", "settings", "api_settings", "site_settings", "logs", "programmers", "profile"):
             self.assertIn(module, payload["legacy_links"])
+
+    def test_request_workflow_and_notification_read_state(self):
+        item = IntakeRequest.objects.create(pnfl="12345678901234", telegram_id=12345, full_name="Test User")
+        self.client.force_login(self.admin)
+        due_at = timezone.now() + timedelta(hours=4)
+
+        response = self.client.post(reverse("request_edit", args=[item.pk]), {
+            "action": "save_workflow",
+            "assignee": str(self.admin.pk),
+            "watchers": [str(self.admin.pk)],
+            "sla_due_at": due_at.strftime("%Y-%m-%dT%H:%M"),
+        })
+
+        self.assertRedirects(response, reverse("request_edit", args=[item.pk]))
+        item.refresh_from_db()
+        self.assertEqual(item.assignee, self.admin)
+        self.assertEqual(list(item.watchers.all()), [self.admin])
+        self.assertIsNotNone(item.sla_due_at)
+
+        notification = RequestNotification.objects.create(
+            recipient=self.admin,
+            request=item,
+            kind=RequestNotification.Kind.SLA,
+            title="SLA test",
+        )
+        state = self.client.get(reverse("request_notifications_api")).json()
+        self.assertGreaterEqual(state["unread"], 1)
+        marked = self.client.post(
+            reverse("request_notifications_api"),
+            data=json.dumps({"id": notification.pk}),
+            content_type="application/json",
+        ).json()
+        notification.refresh_from_db()
+        self.assertTrue(notification.is_read)
+        self.assertLess(marked["unread"], state["unread"])
 
     def test_legacy_page_has_both_version_links(self):
         self.client.force_login(self.admin)

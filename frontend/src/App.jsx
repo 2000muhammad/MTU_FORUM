@@ -9,6 +9,7 @@ import {
 } from "react-router-dom";
 import {
   BarChart3,
+  Bell,
   Building2,
   CheckCircle2,
   ClipboardList,
@@ -153,6 +154,8 @@ function Layout({ boot, config, children }) {
   } = useSolarTheme(boot.language);
   const [accessOpen, setAccessOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState(boot.notifications || { unread: 0, items: [] });
   const location = useLocation();
   const routeCategory =
     location.pathname.startsWith("/requests") ||
@@ -217,6 +220,22 @@ function Layout({ boot, config, children }) {
       document.removeEventListener("visibilitychange", heartbeat);
     };
   }, [boot.user]);
+  useEffect(() => {
+    const refreshNotifications = () => {
+      if (document.visibilityState === "visible") {
+        api("/api/notifications/requests/").then(setNotifications).catch(() => {});
+      }
+    };
+    const timer = window.setInterval(refreshNotifications, 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const markNotificationsRead = async (id = null) => {
+    const updated = await api("/api/notifications/requests/", {
+      method: "POST",
+      body: JSON.stringify(id ? { id } : {}),
+    });
+    setNotifications(updated);
+  };
   useEffect(() => {
     window.localStorage.setItem(
       "mtu-sidebar-collapsed",
@@ -376,6 +395,51 @@ function Layout({ boot, config, children }) {
             <h1>{currentTitle}</h1>
           </div>
           <div className="new-tools">
+            <div className="tool-menu notification-tool">
+              <button
+                type="button"
+                className={`icon-button notification-button ${notificationsOpen ? "active" : ""}`}
+                onClick={() => {
+                  setNotificationsOpen(!notificationsOpen);
+                  setAccessOpen(false);
+                  setLanguageOpen(false);
+                }}
+                aria-label={tr("Уведомления")}
+                aria-expanded={notificationsOpen}
+              >
+                <Bell />
+                {notifications.unread > 0 && <b>{Math.min(notifications.unread, 99)}</b>}
+              </button>
+              {notificationsOpen && (
+                <section className="react-popover notification-popover" aria-label={tr("Центр уведомлений")}>
+                  <div className="notification-head">
+                    <div><small>{tr("СОБЫТИЯ")}</small><strong>{tr("Центр уведомлений")}</strong></div>
+                    {notifications.unread > 0 && <button type="button" onClick={() => markNotificationsRead()}>{tr("Прочитать все")}</button>}
+                  </div>
+                  <div className="notification-list">
+                    {notifications.items.map((item) => (
+                      <a
+                        key={item.id}
+                        className={item.is_read ? "" : "unread"}
+                        href={item.url}
+                        onClick={(event) => {
+                          if (!item.is_read) {
+                            event.preventDefault();
+                            markNotificationsRead(item.id).finally(() => {
+                              window.location.href = item.url;
+                            });
+                          }
+                        }}
+                      >
+                        <i className={`notification-kind is-${item.kind}`}><Bell /></i>
+                        <span><strong>{item.title}</strong>{item.message && <small>{item.message}</small>}</span>
+                      </a>
+                    ))}
+                    {!notifications.items.length && <p>{tr("Новых уведомлений нет.")}</p>}
+                  </div>
+                </section>
+              )}
+            </div>
             <VersionSwitch
               legacyUrl={boot.version_links.old}
               oldLabel={tr("Старая версия")}
@@ -620,6 +684,31 @@ function Dashboard({ boot }) {
               <strong>{stats.chats}</strong>
               <MessageCircle />
             </article>
+          </section>
+          <section className="sla-panel">
+            <div className="sla-heading">
+              <div><span>{tr("КОНТРОЛЬ SLA")}</span><h2>{tr("Сроки обработки заявок")}</h2><p>{tr("Ближайшие сроки и просроченные заявки.")}</p></div>
+              <div className="sla-summary">
+                <span className="overdue"><b>{boot.dashboard.sla?.overdue || 0}</b>{tr("Просрочено")}</span>
+                <span className="soon"><b>{boot.dashboard.sla?.due_soon || 0}</b>{tr("До 24 часов")}</span>
+              </div>
+            </div>
+            <div className="sla-list">
+              {(boot.dashboard.sla?.items || []).map((item) => {
+                const seconds = Math.abs(item.remaining_seconds);
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.max(1, Math.floor((seconds % 3600) / 60));
+                const timeLabel = `${hours ? `${hours} ${tr("ч.")} ` : ""}${minutes} ${tr("мин.")}`;
+                return (
+                  <a href={item.edit_url} key={item.id} className={item.overdue ? "overdue" : ""}>
+                    <span>#{item.id}</span>
+                    <div><strong>{item.title}</strong><small>{item.assignee || tr("Исполнитель не назначен")}{item.company ? ` · ${item.company}` : ""}</small></div>
+                    <b>{item.overdue ? `−${timeLabel}` : timeLabel}</b>
+                  </a>
+                );
+              })}
+              {!boot.dashboard.sla?.items?.length && <p>{tr("Активных сроков SLA нет.")}</p>}
+            </div>
           </section>
           <section className="request-chart-panel" aria-label={tr("Статистика заявок")}>
             <div className="request-chart-copy">

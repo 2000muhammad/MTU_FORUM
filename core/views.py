@@ -44,7 +44,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 
 from django.utils import timezone
-from django.utils.dateparse import parse_date
+from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.text import slugify
 
 from django.utils.decorators import method_decorator
@@ -59,7 +59,7 @@ from PIL import Image, ImageOps
 
 from .forms import ApiConfigurationForm, BotSubscriptionChannelForm, BranchForm, DeveloperTaskForm, EmployeeProfileForm, ExternalApiConnectionForm, IntakeRequestForm, LoginForm, ManagerAccountForm, OrganizationForm, PlatformForm, PositionForm, SiteIntakeForm, SiteRoleForm, SiteSettingsForm, StationForm, StyledPasswordChangeForm, UserForm, UserInfoForm, UserProfileForm, WebPlatformForm
 from .excel_utils import build_xlsx, parse_xlsx, truthy
-from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, IntakeRequestHistory, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, PeopleImportJob, Platform, Position, PublicDocument, PublicDocumentEvent, PublicDocumentSession, SecurityThrottle, SiteLog, SiteRole, SiteSettings, Station, TelegramAccountLink, TelegramPasswordReset, UserPresence, UserProfile, WebPlatform, WebPlatformFavorite
+from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, IntakeRequestHistory, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, PeopleImportJob, Platform, Position, PublicDocument, PublicDocumentEvent, PublicDocumentSession, RequestNotification, SecurityThrottle, SiteLog, SiteRole, SiteSettings, Station, TelegramAccountLink, TelegramPasswordReset, UserPresence, UserProfile, WebPlatform, WebPlatformFavorite
 from .site_logs import write_site_log
 from .security import clear_failures, consume_rate_limit, is_locked, record_failure
 from .middleware import get_platform_version
@@ -1269,10 +1269,30 @@ def dashboard_request_reveal_api(request):
 
 
 
+def _request_workflow_users():
+    return [
+        candidate
+        for candidate in User.objects.filter(is_active=True).select_related("profile").prefetch_related("profile__roles")
+        if user_can_requests(candidate)
+    ]
+
+
+def _create_request_notifications(item, recipients, *, kind, title, message="", actor=None):
+    recipient_ids = {user.pk for user in recipients if user and user.pk and (not actor or user.pk != actor.pk)}
+    RequestNotification.objects.bulk_create([
+        RequestNotification(
+            recipient_id=recipient_id,
+            request=item,
+            kind=kind,
+            title=title,
+            message=message,
+        )
+        for recipient_id in recipient_ids
+    ])
+
+
 @login_required
-
 @user_passes_test(user_can_requests)
-
 def request_edit(request, pk):
 
     item = get_object_or_404(_intake_requests_for_user(request.user), pk=pk)
@@ -1298,6 +1318,54 @@ def request_edit(request, pk):
             item.delete()
             messages.success(request, "Заявка удалена.")
             return redirect("requests")
+
+        if action == "save_workflow":
+            before_assignee = item.assignee
+            before_watchers = list(item.watchers.all())
+            before_due = item.sla_due_at
+            assignee_id = request.POST.get("assignee", "").strip()
+            watcher_ids = request.POST.getlist("watchers")
+            workflow_users = _request_workflow_users()
+            allowed_ids = {candidate.pk for candidate in workflow_users}
+            item.assignee = next((candidate for candidate in workflow_users if str(candidate.pk) == assignee_id), None)
+            due_value = request.POST.get("sla_due_at", "").strip()
+            parsed_due = parse_datetime(due_value) if due_value else None
+            if parsed_due and timezone.is_naive(parsed_due):
+                parsed_due = timezone.make_aware(parsed_due, timezone.get_current_timezone())
+            item.sla_due_at = parsed_due
+            item.save(update_fields=["assignee", "sla_due_at", "updated_at"])
+            selected_watcher_ids = {int(value) for value in watcher_ids if value.isdigit()} & allowed_ids
+            item.watchers.set(User.objects.filter(pk__in=selected_watcher_ids))
+
+            new_watchers = list(item.watchers.all())
+            changes = {}
+            old_assignee_name = before_assignee.get_full_name() or before_assignee.username if before_assignee else "—"
+            new_assignee_name = item.assignee.get_full_name() or item.assignee.username if item.assignee else "—"
+            if before_assignee != item.assignee:
+                changes["Исполнитель"] = {"old": old_assignee_name, "new": new_assignee_name}
+            old_watcher_names = ", ".join(user.get_full_name() or user.username for user in before_watchers) or "—"
+            new_watcher_names = ", ".join(user.get_full_name() or user.username for user in new_watchers) or "—"
+            if {user.pk for user in before_watchers} != {user.pk for user in new_watchers}:
+                changes["Наблюдатели"] = {"old": old_watcher_names, "new": new_watcher_names}
+            if before_due != item.sla_due_at:
+                changes["Срок SLA"] = {
+                    "old": timezone.localtime(before_due).strftime("%d.%m.%Y %H:%M") if before_due else "—",
+                    "new": timezone.localtime(item.sla_due_at).strftime("%d.%m.%Y %H:%M") if item.sla_due_at else "—",
+                }
+            if changes:
+                event = IntakeRequestHistory.Event.ASSIGNMENT if "Исполнитель" in changes or "Наблюдатели" in changes else IntakeRequestHistory.Event.SLA
+                IntakeRequestHistory.objects.create(request=item, actor=request.user, event=event, changes=changes)
+                recipients = ([item.assignee] if item.assignee else []) + new_watchers
+                _create_request_notifications(
+                    item,
+                    recipients,
+                    kind=RequestNotification.Kind.ASSIGNED,
+                    title=f"Назначение по заявке #{item.pk}",
+                    message=f"Исполнитель: {new_assignee_name}. Срок SLA: {changes.get('Срок SLA', {}).get('new', timezone.localtime(item.sla_due_at).strftime('%d.%m.%Y %H:%M') if item.sla_due_at else 'не задан')}.",
+                    actor=request.user,
+                )
+            messages.success(request, "Исполнитель, наблюдатели и срок SLA сохранены.")
+            return redirect("request_edit", pk=item.pk)
 
         tracked_fields = [
             "pnfl", "full_name", "company", "department", "position",
@@ -1476,6 +1544,17 @@ def request_edit(request, pk):
                 else:
                     messages.warning(request, "Статус сохранён, но Telegram-уведомление отправить не удалось.")
 
+            if status_changed:
+                recipients = ([item.assignee] if item.assignee else []) + list(item.watchers.all())
+                _create_request_notifications(
+                    item,
+                    recipients,
+                    kind=RequestNotification.Kind.STATUS,
+                    title=f"Статус заявки #{item.pk} изменён",
+                    message=f"Новый статус: {status_labels.get(item.status, item.status)}.",
+                    actor=request.user,
+                )
+
             if action == "send_credentials" and item.generated_login and item.generated_password:
 
                 password = _get_plain_request_password(request, item)
@@ -1523,6 +1602,8 @@ def request_edit(request, pk):
         "password_is_hashed": _is_django_password_hash(item.generated_password),
         "request_history": item.history.select_related("actor").all()[:100],
         "request_status_labels": dict(IntakeRequest.Status.choices),
+        "workflow_users": _request_workflow_users(),
+        "selected_watcher_ids": set(item.watchers.values_list("id", flat=True)),
     })
 
 
@@ -5095,6 +5176,21 @@ def _react_dashboard_payload(user):
             "avatar_url": avatar_url,
             "initials": initials,
         })
+    now = timezone.now()
+    active_sla = visible_requests.exclude(status=IntakeRequest.Status.DONE).filter(sla_due_at__isnull=False) if can_requests else IntakeRequest.objects.none()
+    sla_items = []
+    for sla_item in active_sla.select_related("assignee").order_by("sla_due_at")[:5]:
+        remaining_seconds = int((sla_item.sla_due_at - now).total_seconds())
+        sla_items.append({
+            "id": sla_item.pk,
+            "title": sla_item.cause or sla_item.platform or sla_item.full_name or f"Заявка #{sla_item.pk}",
+            "company": sla_item.company,
+            "assignee": (sla_item.assignee.get_full_name() or sla_item.assignee.username) if sla_item.assignee else "",
+            "due_at": timezone.localtime(sla_item.sla_due_at).isoformat(),
+            "remaining_seconds": remaining_seconds,
+            "overdue": remaining_seconds < 0,
+            "edit_url": reverse("react_app_global_path", kwargs={"path": f"requests/{sla_item.pk}/edit"}),
+        })
     return {
         "stats": {
             "new": visible_requests.filter(status=IntakeRequest.Status.NEW).count() if can_requests else 0,
@@ -5106,6 +5202,11 @@ def _react_dashboard_payload(user):
             "online": online_queryset.count(),
         },
         "online_users": online_users,
+        "sla": {
+            "overdue": active_sla.filter(sla_due_at__lt=now).count(),
+            "due_soon": active_sla.filter(sla_due_at__gte=now, sla_due_at__lte=now + timedelta(hours=24)).count(),
+            "items": sla_items,
+        },
         "platforms": platform_rows,
         "web_platforms": web_platforms,
         "activity": activity,
@@ -5164,6 +5265,7 @@ def react_bootstrap_api(request):
         if allowed:
             legacy_links[key] = reverse(route_name)
 
+    recent_notifications = RequestNotification.objects.filter(recipient=user).select_related("request")[:8]
     return JsonResponse({
         "site": _react_site_payload(settings_obj),
         "language": getattr(request, "LANGUAGE_CODE", "ru"),
@@ -5187,6 +5289,51 @@ def react_bootstrap_api(request):
         },
         "legacy_directories": reverse("settings"),
         "dashboard": _react_dashboard_payload(user),
+        "notifications": {
+            "unread": RequestNotification.objects.filter(recipient=user, is_read=False).count(),
+            "items": [
+                {
+                    "id": item.pk,
+                    "kind": item.kind,
+                    "title": item.title,
+                    "message": item.message,
+                    "is_read": item.is_read,
+                    "created_at": timezone.localtime(item.created_at).isoformat(),
+                    "url": reverse("react_app_global_path", kwargs={"path": f"requests/{item.request_id}/edit"}),
+                }
+                for item in recent_notifications
+            ],
+        },
+    })
+
+
+@login_required
+def request_notifications_api(request):
+    if request.method == "POST":
+        try:
+            payload = json.loads(request.body or "{}")
+        except json.JSONDecodeError:
+            return JsonResponse({"detail": "Invalid JSON."}, status=400)
+        queryset = RequestNotification.objects.filter(recipient=request.user, is_read=False)
+        notification_id = payload.get("id")
+        if notification_id:
+            queryset = queryset.filter(pk=notification_id)
+        queryset.update(is_read=True)
+    items = RequestNotification.objects.filter(recipient=request.user).select_related("request")[:12]
+    return JsonResponse({
+        "unread": RequestNotification.objects.filter(recipient=request.user, is_read=False).count(),
+        "items": [
+            {
+                "id": item.pk,
+                "kind": item.kind,
+                "title": item.title,
+                "message": item.message,
+                "is_read": item.is_read,
+                "created_at": timezone.localtime(item.created_at).isoformat(),
+                "url": reverse("react_app_global_path", kwargs={"path": f"requests/{item.request_id}/edit"}),
+            }
+            for item in items
+        ],
     })
 
 
