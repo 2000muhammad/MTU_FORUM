@@ -39,7 +39,7 @@ class QuotesApiTests(TestCase):
         quote_response = Mock()
         quote_response.json.return_value = [{"quote": "Knowledge is power.", "author": "Francis Bacon"}]
         translated_quote = Mock()
-        translated_quote.json.return_value = {"responseData": {"translatedText": "Знание — сила."}}
+        translated_quote.json.return_value = {"responseData": {"translatedText": "Знание &#39;—&#39; сила."}}
         translated_author = Mock()
         translated_author.json.return_value = {"responseData": {"translatedText": "Фрэнсис Бэкон"}}
         request_get.side_effect = [quote_response, translated_quote, translated_author]
@@ -47,7 +47,7 @@ class QuotesApiTests(TestCase):
         result = self.client.get(reverse("react_quote_api"), {"lang": "ru"})
 
         self.assertEqual(result.status_code, 200)
-        self.assertEqual(result.json()["quote"], {"text": "Знание — сила.", "author": "Фрэнсис Бэкон"})
+        self.assertEqual(result.json()["quote"], {"text": "Знание '—' сила.", "author": "Фрэнсис Бэкон"})
 
     @override_settings(API_NINJAS_API_KEY="")
     def test_uses_local_fallback_when_key_is_missing(self):

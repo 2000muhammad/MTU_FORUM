@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 
 from collections import defaultdict
 from datetime import timedelta
-from html import escape
+from html import escape, unescape
 from pathlib import Path
 from decimal import Decimal, InvalidOperation
 from io import BytesIO, StringIO
@@ -5287,7 +5287,7 @@ def _translate_quote_text(text, language):
     if language == "en" or not text:
         return text
     target = "ru" if language == "ru" else "uz"
-    cache_key = f"quote-translation:{target}:{hashlib.sha256(text.encode('utf-8')).hexdigest()}"
+    cache_key = f"quote-translation:v2:{target}:{hashlib.sha256(text.encode('utf-8')).hexdigest()}"
     translated = cache.get(cache_key)
     if not translated:
         response = requests.get(
@@ -5299,7 +5299,9 @@ def _translate_quote_text(text, language):
         translated = str(response.json().get("responseData", {}).get("translatedText") or "").strip()
         if not translated:
             raise ValueError("Translation service returned an empty result.")
+        translated = unescape(unescape(translated))
         cache.set(cache_key, translated, 60 * 60 * 24 * 30)
+    translated = unescape(unescape(translated))
     return _latin_uz_to_cyrillic(translated) if language == "uz-cyrl" else translated
 
 
@@ -5326,8 +5328,8 @@ def react_quote_api(request):
         response.raise_for_status()
         rows = response.json()
         item = rows[0] if isinstance(rows, list) and rows else {}
-        original = str(item.get("quote") or "").strip()
-        author = str(item.get("author") or "").strip() or "Unknown"
+        original = unescape(unescape(str(item.get("quote") or "").strip()))
+        author = unescape(unescape(str(item.get("author") or "").strip())) or "Unknown"
         if not original:
             raise ValueError("Quotes API returned an empty result.")
         localized_text = _translate_quote_text(original, language)
