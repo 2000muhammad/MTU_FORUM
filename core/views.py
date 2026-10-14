@@ -54,6 +54,7 @@ from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_POST
 
 from django.conf import settings
+from django.core.cache import cache
 
 from PIL import Image, ImageOps
 
@@ -5263,6 +5264,82 @@ def _react_dashboard_payload(user):
         "web_platforms": web_platforms,
         "activity": activity,
     }
+
+
+def _latin_uz_to_cyrillic(text):
+    pairs = [
+        ("O‘", "Ў"), ("O'", "Ў"), ("o‘", "ў"), ("o'", "ў"),
+        ("G‘", "Ғ"), ("G'", "Ғ"), ("g‘", "ғ"), ("g'", "ғ"),
+        ("Sh", "Ш"), ("sh", "ш"), ("Ch", "Ч"), ("ch", "ч"),
+        ("Yo", "Ё"), ("yo", "ё"), ("Yu", "Ю"), ("yu", "ю"),
+        ("Ya", "Я"), ("ya", "я"), ("Ng", "Нг"), ("ng", "нг"),
+    ]
+    for source, target in pairs:
+        text = text.replace(source, target)
+    table = str.maketrans(
+        "ABDEFGHIJKLMNOPQRSTUVXYZabdefghijklmnopqrstuvxyz",
+        "АБДЕФГҲИЖКЛМНОПҚРСТУВХЙЗабдефгҳижклмнопқрстувхйз",
+    )
+    return text.translate(table)
+
+
+def _translate_quote_text(text, language):
+    if language == "en" or not text:
+        return text
+    target = "ru" if language == "ru" else "uz"
+    cache_key = f"quote-translation:{target}:{hashlib.sha256(text.encode('utf-8')).hexdigest()}"
+    translated = cache.get(cache_key)
+    if not translated:
+        response = requests.get(
+            "https://api.mymemory.translated.net/get",
+            params={"q": text[:480], "langpair": f"en|{target}"},
+            timeout=6,
+        )
+        response.raise_for_status()
+        translated = str(response.json().get("responseData", {}).get("translatedText") or "").strip()
+        if not translated:
+            raise ValueError("Translation service returned an empty result.")
+        cache.set(cache_key, translated, 60 * 60 * 24 * 30)
+    return _latin_uz_to_cyrillic(translated) if language == "uz-cyrl" else translated
+
+
+@require_GET
+@login_required
+def react_quote_api(request):
+    language = request.GET.get("lang") or "ru"
+    if language not in {"ru", "uz", "uz-cyrl", "en"}:
+        language = "ru"
+    connection = ExternalApiConnection.objects.filter(
+        Q(name__iexact="API Ninjas Quotes") | Q(base_url__icontains="api.api-ninjas.com")
+    ).filter(is_active=True).first()
+    api_key = settings.API_NINJAS_API_KEY or (connection.api_key if connection else "")
+    if not api_key:
+        return JsonResponse({"ok": False, "configured": False, "fallback": True})
+    endpoint = (connection.base_url if connection and connection.base_url else "https://api.api-ninjas.com/v2/randomquotes")
+    try:
+        response = requests.get(
+            endpoint,
+            params={"categories": "wisdom"},
+            headers={(connection.auth_header if connection else "X-Api-Key"): api_key},
+            timeout=min(connection.timeout_seconds if connection else 8, 15),
+        )
+        response.raise_for_status()
+        rows = response.json()
+        item = rows[0] if isinstance(rows, list) and rows else {}
+        original = str(item.get("quote") or "").strip()
+        author = str(item.get("author") or "").strip() or "Unknown"
+        if not original:
+            raise ValueError("Quotes API returned an empty result.")
+        localized_text = _translate_quote_text(original, language)
+        localized_author = _translate_quote_text(author, language) if language != "en" else author
+        return JsonResponse({
+            "ok": True,
+            "quote": {"text": localized_text, "author": localized_author},
+            "source": "API Ninjas",
+        })
+    except (requests.RequestException, ValueError, TypeError, KeyError) as exc:
+        write_site_log(request, level=SiteLog.Level.WARNING, source="api", action="quotes_api_error", message=str(exc)[:500])
+        return JsonResponse({"ok": False, "configured": True, "fallback": True})
 
 
 @require_GET

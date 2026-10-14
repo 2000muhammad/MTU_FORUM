@@ -820,20 +820,20 @@ function Dashboard({ boot }) {
   const quotes = dashboardQuotes[boot.language] || dashboardQuotes.ru;
   const quoteLanguageRef = useRef(boot.language);
   const [quoteIndex, setQuoteIndex] = useState(() => pickFreshQuote(boot.language, quotes.length));
+  const [remoteQuote, setRemoteQuote] = useState(null);
   useEffect(() => {
     if (quoteLanguageRef.current !== boot.language) {
       quoteLanguageRef.current = boot.language;
       setQuoteIndex(pickFreshQuote(boot.language, quotes.length));
     }
-    const timer = window.setInterval(() => {
-      setQuoteIndex((current) => {
-        const next = (current + 1) % quotes.length;
-        try { window.sessionStorage.setItem(`mtu-last-quote-${boot.language}`, String(next)); } catch { /* Rotation still works. */ }
-        return next;
-      });
-    }, 15000);
-    return () => window.clearInterval(timer);
+    let active = true;
+    setRemoteQuote(null);
+    api(`/api/react/quote/?lang=${encodeURIComponent(boot.language)}`)
+      .then((result) => { if (active && result.ok && result.quote?.text) setRemoteQuote(result.quote); })
+      .catch(() => { /* Keep the localized built-in quote as a reliable fallback. */ });
+    return () => { active = false; };
   }, [boot.language, quotes.length]);
+  const shownQuote = remoteQuote || quotes[quoteIndex];
   const stats = boot.dashboard.stats;
   const formatDuration = (seconds) => {
     if (!seconds) return "—";
@@ -910,9 +910,9 @@ function Dashboard({ boot }) {
             <span>{tr("МЫСЛЬ ДНЯ")}</span>
             <Quote aria-hidden="true" />
           </div>
-          <blockquote>“{quotes[quoteIndex].text}”</blockquote>
+          <blockquote>“{shownQuote.text}”</blockquote>
           <div className="quote-card-footer">
-            <cite>{quotes[quoteIndex].author}</cite>
+            <cite>{shownQuote.author}</cite>
           </div>
         </article>
       </section>
