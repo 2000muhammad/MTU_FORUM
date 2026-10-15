@@ -27,6 +27,7 @@ from app.keyboards import (
     choice_keyboard,
     close_chat_label,
     contact_keyboard,
+    directory_inline_keyboard,
     language_keyboard,
     main_menu,
     new_chat_label,
@@ -79,6 +80,15 @@ def _normalize_phone(value):
 
 def _choices_markup(items, lang):
     return choice_keyboard(items, lang, include_back=True) if items else back_keyboard(lang)
+
+
+async def _send_directory_step(message, context, lang, kind, items, prompt_key, page=0):
+    choices = [item for item in items if item.get("name")]
+    context.user_data[f"{kind}_choices"] = choices
+    await message.reply_text(
+        t(lang, prompt_key),
+        reply_markup=directory_inline_keyboard(choices, kind, lang, page=page) if choices else back_keyboard(lang),
+    )
 
 
 def _thread_button_label(item):
@@ -213,9 +223,9 @@ async def _send_request_step(update, context, lang, state):
     elif state == states.PASSPORT:
         await update.message.reply_text(t(lang, "send_passport"), reply_markup=back_keyboard(lang))
     elif state == states.COMPANY:
-        await update.message.reply_text(t(lang, "send_station"), reply_markup=_choices_markup(get_stations(), lang))
+        await _send_directory_step(update.message, context, lang, "company", get_stations(), "send_station")
     elif state == states.POSITION:
-        await update.message.reply_text(t(lang, "send_position"), reply_markup=_choices_markup(get_positions(), lang))
+        await _send_directory_step(update.message, context, lang, "position", get_positions(), "send_position")
     elif state == states.CAUSE:
         await update.message.reply_text(t(lang, "send_cause"), reply_markup=back_keyboard(lang))
     elif state == states.PHONE:
@@ -290,6 +300,55 @@ async def platform_router(update, context):
     context.user_data.pop("platform_choices", None)
     await query.edit_message_reply_markup(reply_markup=None)
     await _ask_pnfl_from_message(query.message, lang)
+
+
+async def directory_choice_router(update, context):
+    query = update.callback_query
+    if query is None or context.user_data is None:
+        return
+    await query.answer()
+    lang = context.user_data.get("lang", "ru")
+    try:
+        _, kind, action, value = query.data.split(":", 3)
+    except ValueError:
+        return
+    expected_state = states.COMPANY if kind == "company" else states.POSITION if kind == "position" else None
+    if expected_state is None or context.user_data.get("state") != expected_state:
+        await query.edit_message_reply_markup(reply_markup=None)
+        return
+    choices = context.user_data.get(f"{kind}_choices", [])
+    if action == "noop":
+        return
+    if action == "page":
+        await query.edit_message_reply_markup(
+            reply_markup=directory_inline_keyboard(choices, kind, lang, page=int(value)),
+        )
+        return
+    if action == "back":
+        await query.edit_message_reply_markup(reply_markup=None)
+        if kind == "company":
+            context.user_data["state"] = states.PASSPORT
+            await query.message.reply_text(t(lang, "send_passport"), reply_markup=back_keyboard(lang))
+        else:
+            context.user_data["state"] = states.COMPANY
+            await _send_directory_step(query.message, context, lang, "company", get_stations(), "send_station")
+        return
+    if action != "pick":
+        return
+    try:
+        selected = choices[int(value)]["name"]
+    except (ValueError, IndexError, TypeError, KeyError):
+        return
+    await query.edit_message_reply_markup(reply_markup=None)
+    context.user_data.pop(f"{kind}_choices", None)
+    if kind == "company":
+        context.user_data["company"] = selected
+        context.user_data["state"] = states.POSITION
+        await _send_directory_step(query.message, context, lang, "position", get_positions(), "send_position")
+    else:
+        context.user_data["selected_position"] = selected
+        context.user_data["state"] = states.CAUSE
+        await query.message.reply_text(t(lang, "send_cause"), reply_markup=back_keyboard(lang))
 
 
 async def _show_chat_selection(update, context, lang):
@@ -457,9 +516,7 @@ async def request_router(update, context):
         return
 
     if state == states.PLATFORM:
-        context.user_data["platform"] = text
-        context.user_data["state"] = states.PNFL
-        await _ask_pnfl(update, lang)
+        await _send_platform_step(update.message, context, lang)
     elif state == states.PNFL:
         if not text.isdigit() or len(text) != 14:
             await update.message.reply_text(t(lang, "pnfl_invalid"))
@@ -482,15 +539,11 @@ async def request_router(update, context):
             return
         context.user_data["passport"] = passport
         context.user_data["state"] = states.COMPANY
-        await update.message.reply_text(t(lang, "send_station"), reply_markup=_choices_markup(get_stations(), lang))
+        await _send_directory_step(update.message, context, lang, "company", get_stations(), "send_station")
     elif state == states.COMPANY:
-        context.user_data["company"] = text
-        context.user_data["state"] = states.POSITION
-        await update.message.reply_text(t(lang, "send_position"), reply_markup=_choices_markup(get_positions(), lang))
+        await _send_directory_step(update.message, context, lang, "company", context.user_data.get("company_choices") or get_stations(), "send_station")
     elif state == states.POSITION:
-        context.user_data["selected_position"] = text
-        context.user_data["state"] = states.CAUSE
-        await update.message.reply_text(t(lang, "send_cause"), reply_markup=back_keyboard(lang))
+        await _send_directory_step(update.message, context, lang, "position", context.user_data.get("position_choices") or get_positions(), "send_position")
     elif state == states.CAUSE:
         context.user_data["cause"] = text
         context.user_data["state"] = states.PHONE

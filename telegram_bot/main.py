@@ -3,7 +3,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQu
 from app.config import BOT_TOKEN, SITE_API_KEY, SITE_BASE_URL
 from app.handlers.start import start
 from app.handlers.menu import menu_router
-from app.handlers.request_flow import platform_router, request_router
+from app.handlers.request_flow import directory_choice_router, platform_router, request_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -19,6 +19,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(menu_router, pattern="^(lang:|check_subscription|settings)"))
     app.add_handler(CallbackQueryHandler(platform_router, pattern="^platform:"))
+    app.add_handler(CallbackQueryHandler(directory_choice_router, pattern="^directory:"))
     app.add_handler(MessageHandler(
         filters.ChatType.PRIVATE & (
             (filters.TEXT & ~filters.COMMAND)

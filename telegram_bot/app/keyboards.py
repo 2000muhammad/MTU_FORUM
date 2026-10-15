@@ -83,6 +83,28 @@ def platform_inline_keyboard(items, lang="ru"):
     return InlineKeyboardMarkup(rows)
 
 
+def directory_inline_keyboard(items, kind, lang="ru", page=0, page_size=8):
+    """Paginated callback menu for directory values; typed text cannot select an item."""
+    items = [item for item in items if item.get("name")]
+    pages = max(1, (len(items) + page_size - 1) // page_size)
+    page = max(0, min(int(page or 0), pages - 1))
+    start = page * page_size
+    rows = [
+        [InlineKeyboardButton(item["name"], callback_data=f"directory:{kind}:pick:{index}")]
+        for index, item in enumerate(items[start:start + page_size], start=start)
+    ]
+    if pages > 1:
+        navigation = []
+        if page > 0:
+            navigation.append(InlineKeyboardButton("‹", callback_data=f"directory:{kind}:page:{page - 1}"))
+        navigation.append(InlineKeyboardButton(f"{page + 1}/{pages}", callback_data=f"directory:{kind}:noop:{page}"))
+        if page + 1 < pages:
+            navigation.append(InlineKeyboardButton("›", callback_data=f"directory:{kind}:page:{page + 1}"))
+        rows.append(navigation)
+    rows.append([InlineKeyboardButton(back_label(lang), callback_data=f"directory:{kind}:back:0")])
+    return InlineKeyboardMarkup(rows)
+
+
 def contact_keyboard(lang="ru", include_back=False):
     rows = [[KeyboardButton(t(lang, "share_contact"), request_contact=True)]]
     if include_back:
