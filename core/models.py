@@ -51,6 +51,7 @@ class AutomaticCodeMixin:
 
 
 class Station(AutomaticCodeMixin, models.Model):
+    platform = models.ForeignKey("Platform", null=True, blank=True, on_delete=models.PROTECT, related_name="stations")
     branch = models.ForeignKey("Branch", null=True, blank=True, on_delete=models.PROTECT, related_name="stations")
     organization = models.ForeignKey("Organization", null=True, blank=True, on_delete=models.PROTECT, related_name="stations")
     name = models.CharField(max_length=180)
@@ -78,6 +79,7 @@ class Station(AutomaticCodeMixin, models.Model):
 
 
 class Position(models.Model):
+    platform = models.ForeignKey("Platform", null=True, blank=True, on_delete=models.PROTECT, related_name="positions")
     branch = models.ForeignKey("Branch", null=True, blank=True, on_delete=models.PROTECT, related_name="positions")
     organization = models.ForeignKey("Organization", null=True, blank=True, on_delete=models.PROTECT, related_name="positions")
     name = models.CharField(max_length=180)

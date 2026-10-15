@@ -434,6 +434,10 @@ class StationForm(AdminStyledModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["platform"].queryset = Platform.objects.filter(is_active=True).order_by("sort_order", "name")
+        self.fields["platform"].empty_label = "Выберите платформу"
+        self.fields["platform"].required = False
+        self.fields["platform"].widget.attrs["class"] = "form-select"
         self.fields["branch"].queryset = Branch.objects.filter(is_active=True).order_by("sort_order", "name")
         self.fields["branch"].empty_label = "Выберите филиал"
         self.fields["branch"].required = True
@@ -454,7 +458,7 @@ class StationForm(AdminStyledModelForm):
 
         model = Station
 
-        fields = ["branch", "organization", "name", "is_active", "sort_order"]
+        fields = ["platform", "branch", "organization", "name", "is_active", "sort_order"]
 
 
 
@@ -464,6 +468,10 @@ class PositionForm(AdminStyledModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["platform"].queryset = Platform.objects.filter(is_active=True).order_by("sort_order", "name")
+        self.fields["platform"].empty_label = "Выберите платформу"
+        self.fields["platform"].required = False
+        self.fields["platform"].widget.attrs["class"] = "form-select"
         self.fields["branch"].queryset = Branch.objects.filter(is_active=True).order_by("sort_order", "name")
         self.fields["branch"].empty_label = "Выберите филиал"
         self.fields["branch"].required = True
@@ -484,7 +492,7 @@ class PositionForm(AdminStyledModelForm):
 
         model = Position
 
-        fields = ["branch", "organization", "name", "is_active", "sort_order"]
+        fields = ["platform", "branch", "organization", "name", "is_active", "sort_order"]
 
 
 

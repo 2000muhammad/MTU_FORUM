@@ -53,6 +53,7 @@
       </div>
       <form method="get" class="directory-search-bar directory-search-advanced">
         <input class="form-control" name="station_q" value="{{ station_query }}" placeholder="Поиск по названию, коду, филиалу или организации">
+        <select class="form-select" name="station_platform"><option value="">Все платформы</option>{% for platform in platforms %}<option value="{{ platform.id }}" {% if station_platform == platform.id|stringformat:'s' %}selected{% endif %}>{{ platform.name }}</option>{% endfor %}</select>
         <select class="form-select" name="station_branch" data-directory-branch>
           <option value="">Все филиалы</option>
           {% for branch in branches %}<option value="{{ branch.id }}" {% if station_branch == branch.id|stringformat:'s' %}selected{% endif %}>{{ branch.name }}</option>{% endfor %}
@@ -67,11 +68,12 @@
           <option value="inactive" {% if station_status == 'inactive' %}selected{% endif %}>Неактивные</option>
         </select>
         <button class="btn btn-outline-info" type="submit">Найти</button>
-        {% if station_query or station_branch or station_organization or station_status %}<a class="btn btn-outline-light" href="{% url 'settings_section' 'stations' %}">Сбросить</a>{% endif %}
+        {% if station_query or station_platform or station_branch or station_organization or station_status %}<a class="btn btn-outline-light" href="{% url 'settings_section' 'stations' %}">Сбросить</a>{% endif %}
       </form>
       <div class="directory-results-meta">Показано {{ station_rows.start_index }}–{{ station_rows.end_index }} из {{ station_rows.paginator.count }}</div>
       <form method="post" class="crud-form add-form branch-station-add">
         {% csrf_token %}<input type="hidden" name="section" value="station"><input type="hidden" name="action" value="save">
+        <label>Платформа{{ station_form.platform }}</label>
         {% if not ui_user_is_branch_manager and not ui_user_is_organization_manager %}<label>{% tr 'branch' %}<select class="form-select" name="branch" required data-directory-branch><option value="">Выберите филиал</option>{% for branch in branches %}<option value="{{ branch.id }}">{{ branch.name }}</option>{% endfor %}</select></label>{% endif %}
         {% if not ui_user_is_organization_manager %}<label>{% tr 'organization' %}<select class="form-select" name="organization" required data-directory-organization><option value="">Выберите организацию</option>{% for organization in organizations %}<option value="{{ organization.id }}" data-branch="{{ organization.branch_id }}">{{ organization.name }}</option>{% endfor %}</select></label>{% endif %}
         <label>{% tr 'name' %}{{ station_form.name }}</label><span class="auto-code-note">{% tr 'code' %}: создаётся автоматически</span><label>{% tr 'sort_order' %}{{ station_form.sort_order }}</label>
@@ -96,10 +98,10 @@
         <div class="crud-row branch-station-row directory-compact-row">
           <input class="form-check-input directory-row-check" type="checkbox" name="selected_ids" value="{{ item.id }}" form="station-bulk-form" aria-label="Выбрать {{ item.name }}">
           <div class="directory-row-main"><strong>{{ item.name }}</strong><small>{{ item.code|default:'Без кода' }}</small></div>
-          <div class="directory-row-scope"><span>{{ item.branch.name|default:'Без филиала' }}</span><small>{{ item.organization.name|default:'Без организации' }}</small></div>
+          <div class="directory-row-scope"><span>{{ item.platform.name|default:'Без платформы' }}</span><small>{{ item.branch.name|default:'Без филиала' }} · {{ item.organization.name|default:'Без организации' }}</small></div>
           <span class="directory-status {% if item.is_active %}is-active{% else %}is-inactive{% endif %}">{% if item.is_active %}Активно{% else %}Отключено{% endif %}</span>
           <span class="directory-order">№ {{ item.sort_order }}</span>
-          <button class="btn btn-outline-info btn-sm" type="button" data-directory-edit data-dialog="station-edit-dialog" data-id="{{ item.id }}" data-name="{{ item.name }}" data-branch="{{ item.branch_id|default:'' }}" data-organization="{{ item.organization_id|default:'' }}" data-order="{{ item.sort_order }}" data-active="{% if item.is_active %}1{% else %}0{% endif %}">Редактировать</button>
+          <button class="btn btn-outline-info btn-sm" type="button" data-directory-edit data-dialog="station-edit-dialog" data-id="{{ item.id }}" data-name="{{ item.name }}" data-platform="{{ item.platform_id|default:'' }}" data-branch="{{ item.branch_id|default:'' }}" data-organization="{{ item.organization_id|default:'' }}" data-order="{{ item.sort_order }}" data-active="{% if item.is_active %}1{% else %}0{% endif %}">Редактировать</button>
         </div>
         {% empty %}<p class="text-secondary">{% tr 'no_records' %}</p>{% endfor %}
       </div>
@@ -112,6 +114,7 @@
         <form method="post" class="directory-edit-form">
           {% csrf_token %}<input type="hidden" name="section" value="station"><input type="text" name="record_id" hidden readonly>
           <div class="directory-dialog-head"><div><small>Предприятие</small><h3>Редактирование</h3></div><button type="button" class="directory-dialog-close" data-dialog-close aria-label="Закрыть">×</button></div>
+          <label>Платформа<select class="form-select" name="platform"><option value="">Выберите платформу</option>{% for platform in platforms %}<option value="{{ platform.id }}">{{ platform.name }}</option>{% endfor %}</select></label>
           {% if not ui_user_is_branch_manager and not ui_user_is_organization_manager %}<label>Филиал<select class="form-select" name="branch" required data-directory-branch><option value="">Выберите филиал</option>{% for branch in branches %}<option value="{{ branch.id }}">{{ branch.name }}</option>{% endfor %}</select></label>{% endif %}
           {% if not ui_user_is_organization_manager %}<label>Организация<select class="form-select" name="organization" required data-directory-organization><option value="">Выберите организацию</option>{% for organization in organizations %}<option value="{{ organization.id }}" data-branch="{{ organization.branch_id }}">{{ organization.name }}</option>{% endfor %}</select></label>{% endif %}
           <label>Название<input class="form-control" name="name" required></label>
@@ -137,6 +140,7 @@
       </div>
       <form method="get" class="directory-search-bar directory-search-advanced">
         <input class="form-control" name="position_q" value="{{ position_query }}" placeholder="Поиск по должности, филиалу или организации">
+        <select class="form-select" name="position_platform"><option value="">Все платформы</option>{% for platform in platforms %}<option value="{{ platform.id }}" {% if position_platform == platform.id|stringformat:'s' %}selected{% endif %}>{{ platform.name }}</option>{% endfor %}</select>
         <select class="form-select" name="position_branch" data-directory-branch>
           <option value="">Все филиалы</option>
           {% for branch in branches %}<option value="{{ branch.id }}" {% if position_branch == branch.id|stringformat:'s' %}selected{% endif %}>{{ branch.name }}</option>{% endfor %}
@@ -151,11 +155,12 @@
           <option value="inactive" {% if position_status == 'inactive' %}selected{% endif %}>Неактивные</option>
         </select>
         <button class="btn btn-outline-info" type="submit">Найти</button>
-        {% if position_query or position_branch or position_organization or position_status %}<a class="btn btn-outline-light" href="{% url 'settings_section' 'positions' %}">Сбросить</a>{% endif %}
+        {% if position_query or position_platform or position_branch or position_organization or position_status %}<a class="btn btn-outline-light" href="{% url 'settings_section' 'positions' %}">Сбросить</a>{% endif %}
       </form>
       <div class="directory-results-meta">Показано {{ position_rows.start_index }}–{{ position_rows.end_index }} из {{ position_rows.paginator.count }}</div>
       <form method="post" class="crud-form add-form branch-position-add">
         {% csrf_token %}<input type="hidden" name="section" value="position"><input type="hidden" name="action" value="save">
+        <label>Платформа{{ position_form.platform }}</label>
         {% if not ui_user_is_branch_manager and not ui_user_is_organization_manager %}<label>{% tr 'branch' %}<select class="form-select" name="branch" required data-directory-branch><option value="">Выберите филиал</option>{% for branch in branches %}<option value="{{ branch.id }}">{{ branch.name }}</option>{% endfor %}</select></label>{% endif %}
         {% if not ui_user_is_organization_manager %}<label>{% tr 'organization' %}<select class="form-select" name="organization" required data-directory-organization><option value="">Выберите организацию</option>{% for organization in organizations %}<option value="{{ organization.id }}" data-branch="{{ organization.branch_id }}">{{ organization.name }}</option>{% endfor %}</select></label>{% endif %}
         <label>{% tr 'name' %}{{ position_form.name }}</label><label>{% tr 'sort_order' %}{{ position_form.sort_order }}</label>
@@ -180,10 +185,10 @@
         <div class="crud-row position-row branch-position-row directory-compact-row">
           <input class="form-check-input directory-row-check" type="checkbox" name="selected_ids" value="{{ item.id }}" form="position-bulk-form" aria-label="Выбрать {{ item.name }}">
           <div class="directory-row-main"><strong>{{ item.name }}</strong><small>Должность</small></div>
-          <div class="directory-row-scope"><span>{{ item.branch.name|default:'Без филиала' }}</span><small>{{ item.organization.name|default:'Без организации' }}</small></div>
+          <div class="directory-row-scope"><span>{{ item.platform.name|default:'Без платформы' }}</span><small>{{ item.branch.name|default:'Без филиала' }} · {{ item.organization.name|default:'Без организации' }}</small></div>
           <span class="directory-status {% if item.is_active %}is-active{% else %}is-inactive{% endif %}">{% if item.is_active %}Активно{% else %}Отключено{% endif %}</span>
           <span class="directory-order">№ {{ item.sort_order }}</span>
-          <button class="btn btn-outline-info btn-sm" type="button" data-directory-edit data-dialog="position-edit-dialog" data-id="{{ item.id }}" data-name="{{ item.name }}" data-branch="{{ item.branch_id|default:'' }}" data-organization="{{ item.organization_id|default:'' }}" data-order="{{ item.sort_order }}" data-active="{% if item.is_active %}1{% else %}0{% endif %}">Редактировать</button>
+          <button class="btn btn-outline-info btn-sm" type="button" data-directory-edit data-dialog="position-edit-dialog" data-id="{{ item.id }}" data-name="{{ item.name }}" data-platform="{{ item.platform_id|default:'' }}" data-branch="{{ item.branch_id|default:'' }}" data-organization="{{ item.organization_id|default:'' }}" data-order="{{ item.sort_order }}" data-active="{% if item.is_active %}1{% else %}0{% endif %}">Редактировать</button>
         </div>
         {% empty %}<p class="text-secondary">{% tr 'no_records' %}</p>{% endfor %}
       </div>
@@ -196,6 +201,7 @@
         <form method="post" class="directory-edit-form">
           {% csrf_token %}<input type="hidden" name="section" value="position"><input type="text" name="record_id" hidden readonly>
           <div class="directory-dialog-head"><div><small>Должность</small><h3>Редактирование</h3></div><button type="button" class="directory-dialog-close" data-dialog-close aria-label="Закрыть">×</button></div>
+          <label>Платформа<select class="form-select" name="platform"><option value="">Выберите платформу</option>{% for platform in platforms %}<option value="{{ platform.id }}">{{ platform.name }}</option>{% endfor %}</select></label>
           {% if not ui_user_is_branch_manager and not ui_user_is_organization_manager %}<label>Филиал<select class="form-select" name="branch" required data-directory-branch><option value="">Выберите филиал</option>{% for branch in branches %}<option value="{{ branch.id }}">{{ branch.name }}</option>{% endfor %}</select></label>{% endif %}
           {% if not ui_user_is_organization_manager %}<label>Организация<select class="form-select" name="organization" required data-directory-organization><option value="">Выберите организацию</option>{% for organization in organizations %}<option value="{{ organization.id }}" data-branch="{{ organization.branch_id }}">{{ organization.name }}</option>{% endfor %}</select></label>{% endif %}
           <label>Название<input class="form-control" name="name" required></label>
@@ -691,8 +697,10 @@
       form.elements.namedItem('sort_order').value = button.dataset.order || '0';
       form.elements.namedItem('is_active').checked = button.dataset.active === '1';
 
+      const platform = form.elements.namedItem('platform');
       const branch = form.elements.namedItem('branch');
       const organization = form.elements.namedItem('organization');
+      if (platform) platform.value = button.dataset.platform || '';
       if (branch) {
         branch.value = button.dataset.branch || '';
         branch.dispatchEvent(new Event('change'));

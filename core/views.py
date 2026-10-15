@@ -3795,10 +3795,12 @@ def settings_view(request, section="stations"):
     organization_query = request.GET.get("organization_q", "").strip()
     organization_branch = request.GET.get("organization_branch", "").strip()
     station_query = request.GET.get("station_q", "").strip()
+    station_platform = request.GET.get("station_platform", "").strip()
     station_branch = request.GET.get("station_branch", "").strip()
     station_organization = request.GET.get("station_organization", "").strip()
     station_status = request.GET.get("station_status", "").strip()
     position_query = request.GET.get("position_q", "").strip()
+    position_platform = request.GET.get("position_platform", "").strip()
     position_branch = request.GET.get("position_branch", "").strip()
     position_organization = request.GET.get("position_organization", "").strip()
     position_status = request.GET.get("position_status", "").strip()
@@ -3826,7 +3828,7 @@ def settings_view(request, section="stations"):
         organization_rows = organization_rows.filter(branch_id=organization_branch)
 
     stations = _scope_branch_directory_for_actor(
-        Station.objects.select_related("branch", "organization").all(),
+        Station.objects.select_related("platform", "branch", "organization").all(),
         request.user,
     )
     station_rows = stations
@@ -3834,9 +3836,12 @@ def settings_view(request, section="stations"):
         station_rows = station_rows.filter(
             Q(name__icontains=station_query)
             | Q(code__icontains=station_query)
+            | Q(platform__name__icontains=station_query)
             | Q(branch__name__icontains=station_query)
             | Q(organization__name__icontains=station_query)
         )
+    if station_platform:
+        station_rows = station_rows.filter(platform_id=station_platform)
     if station_branch:
         station_rows = station_rows.filter(branch_id=station_branch)
     if station_organization:
@@ -3845,16 +3850,19 @@ def settings_view(request, section="stations"):
         station_rows = station_rows.filter(is_active=station_status == "active")
 
     positions = _scope_branch_directory_for_actor(
-        Position.objects.select_related("branch", "organization").all(),
+        Position.objects.select_related("platform", "branch", "organization").all(),
         request.user,
     )
     position_rows = positions
     if position_query:
         position_rows = position_rows.filter(
             Q(name__icontains=position_query)
+            | Q(platform__name__icontains=position_query)
             | Q(branch__name__icontains=position_query)
             | Q(organization__name__icontains=position_query)
         )
+    if position_platform:
+        position_rows = position_rows.filter(platform_id=position_platform)
     if position_branch:
         position_rows = position_rows.filter(branch_id=position_branch)
     if position_organization:
@@ -3868,6 +3876,7 @@ def settings_view(request, section="stations"):
         key: value
         for key, value in {
             "station_q": station_query,
+            "station_platform": station_platform,
             "station_branch": station_branch,
             "station_organization": station_organization,
             "station_status": station_status,
@@ -3878,6 +3887,7 @@ def settings_view(request, section="stations"):
         key: value
         for key, value in {
             "position_q": position_query,
+            "position_platform": position_platform,
             "position_branch": position_branch,
             "position_organization": position_organization,
             "position_status": position_status,
@@ -3894,6 +3904,7 @@ def settings_view(request, section="stations"):
         "stations": stations,
         "station_rows": station_page,
         "station_query": station_query,
+        "station_platform": station_platform,
         "station_branch": station_branch,
         "station_organization": station_organization,
         "station_status": station_status,
@@ -3901,6 +3912,7 @@ def settings_view(request, section="stations"):
         "positions": positions,
         "position_rows": position_page,
         "position_query": position_query,
+        "position_platform": position_platform,
         "position_branch": position_branch,
         "position_organization": position_organization,
         "position_status": position_status,
