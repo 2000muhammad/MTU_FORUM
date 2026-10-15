@@ -1484,6 +1484,26 @@ html[data-theme="light"] .secret-modal-backdrop {
 .pwa-help-popover { width:min(330px,calc(100vw - 24px)); }
 .pwa-help-popover strong { display:block; margin-bottom:6px; }
 .pwa-help-popover p { margin:0; color:var(--muted); font-size:13px; line-height:1.5; }
+.permission-popover { width:min(360px,calc(100vw - 24px)); padding:15px; }
+.permission-title { display:flex; align-items:center; gap:11px; padding:2px 2px 13px; }
+.permission-title > svg { width:24px; color:var(--brand); }
+.permission-title > div { display:grid; }
+.permission-title strong { font-size:15px; }
+.permission-title small { color:var(--muted); font-size:11px; }
+.permission-secure { display:flex; align-items:center; gap:9px; padding:12px 4px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); color:var(--text); font-size:13px; font-weight:750; }
+.permission-secure svg { width:17px; color:var(--brand); }
+.permission-list { display:grid; padding:8px 0; }
+.permission-list > button { display:grid; grid-template-columns:22px 1fr 39px; align-items:center; gap:9px; min-height:45px; padding:5px 4px; border:0; color:var(--text); background:transparent; text-align:left; }
+.permission-list > button:disabled { opacity:.55; cursor:not-allowed; }
+.permission-list svg { width:18px; color:var(--muted); }
+.permission-list span { font-size:13px; font-weight:700; }
+.permission-toggle { position:relative; display:block; width:36px; height:20px; border-radius:20px; background:var(--line); transition:.2s ease; }
+.permission-toggle::after { content:""; position:absolute; top:3px; left:3px; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.3); transition:.2s ease; }
+.permission-toggle.is-granted { background:#4d91e8; }
+.permission-toggle.is-granted::after { transform:translateX(16px); }
+.permission-toggle.is-denied { background:#b94b58; }
+.permission-reset { width:100%; min-height:38px; border:1px solid var(--brand); border-radius:20px; color:var(--brand); background:transparent; font-weight:750; }
+.permission-popover > p { margin:10px 3px 0; color:var(--muted); font-size:11px; line-height:1.45; }
 .favorite-nav-links { display:grid; gap:4px; margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,.08); }
 .favorite-nav-links > small { padding:4px 11px; color:#67cdbb; font-size:9px; font-weight:900; letter-spacing:.12em; }
 .dashboard-customize-bar { position:relative; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px; border:1px solid var(--line); border-radius:16px; background:var(--surface); }
