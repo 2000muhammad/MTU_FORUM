@@ -28,7 +28,6 @@ from app.keyboards import (
     close_chat_label,
     contact_keyboard,
     directory_inline_keyboard,
-    language_keyboard,
     main_menu,
     new_chat_label,
     platform_inline_keyboard,
@@ -36,6 +35,7 @@ from app.keyboards import (
 )
 from app.subscription import missing_channels
 from app.texts import t
+from app.language_picker import send_language_picker
 
 
 PINFL_HINT_IMAGE = Path(__file__).resolve().parents[2] / "assets" / "pinfl_hint.jpg"
@@ -425,7 +425,7 @@ async def _handle_menu_action(update, context, action, lang):
         )
     elif action == "settings":
         context.user_data["state"] = states.MENU
-        await update.message.reply_text(t(lang, "settings_text"), reply_markup=language_keyboard())
+        await send_language_picker(update.message, t(lang, "settings_text"))
     elif action == "developers":
         context.user_data["state"] = states.MENU
         await update.message.reply_text(t(lang, "developers_text"), reply_markup=main_menu(lang))
