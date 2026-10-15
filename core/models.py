@@ -1,9 +1,15 @@
+from datetime import timedelta
+
 from django.contrib.auth.models import User
 
 from django.db import models
 
 from django.utils import timezone
 from django.utils.text import slugify
+
+
+def default_request_sla_due_at():
+    return timezone.now() + timedelta(hours=24)
 
 
 def _make_unique_code(instance, name, max_length=32, queryset=None):
@@ -322,7 +328,7 @@ class IntakeRequest(models.Model):
 
     watchers = models.ManyToManyField(User, blank=True, related_name="watched_intake_requests")
 
-    sla_due_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    sla_due_at = models.DateTimeField(default=default_request_sla_due_at, blank=True, db_index=True)
 
     hrm_payload = models.JSONField(default=dict, blank=True)
 

@@ -267,6 +267,7 @@ class ReactAppTests(TestCase):
 
     def test_request_workflow_and_notification_read_state(self):
         item = IntakeRequest.objects.create(pnfl="12345678901234", telegram_id=12345, full_name="Test User")
+        self.assertIsNotNone(item.sla_due_at)
         self.client.force_login(self.admin)
         due_at = timezone.now() + timedelta(hours=4)
 
