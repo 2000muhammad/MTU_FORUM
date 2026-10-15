@@ -67,6 +67,15 @@ class RequestPlatformAccessTests(TestCase):
         self.assertNotIn("pnfl", payload["rows"][0])
         self.assertNotIn("phone", payload["rows"][0])
 
+    def test_request_list_hides_department_when_it_duplicates_company(self):
+        self.alpha_request.department = f"  {self.alpha_request.company}  "
+        self.alpha_request.save(update_fields=["department"])
+
+        row = self.client.get(reverse("dashboard_requests_api")).json()["rows"][0]
+
+        self.assertEqual(row["company"], self.alpha_request.company)
+        self.assertEqual(row["department"], "")
+
     def test_sensitive_value_requires_current_account_password(self):
         denied = self.client.post(
             reverse("dashboard_request_reveal_api"),

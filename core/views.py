@@ -1197,6 +1197,13 @@ def requests_view(request):
     return render(request, "requests.html", {"statuses": IntakeRequest.Status.choices})
 
 
+def _request_display_department(item):
+    """Hide a duplicated organization/station label in compact request rows."""
+    company = " ".join(str(item.company or "").split()).casefold()
+    department = " ".join(str(item.department or "").split())
+    return "" if company and department.casefold() == company else department
+
+
 
 
 
@@ -1246,7 +1253,7 @@ def dashboard_requests_api(request):
 
             "company": item.company,
 
-            "department": item.department,
+            "department": _request_display_department(item),
 
             "position": item.position,
 

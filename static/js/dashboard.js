@@ -39,7 +39,12 @@ function shortText(value, fallback = "-") {
 
 function requestCard(row) {
   const title = row.full_name || row.company || `Заявка #${row.id}`;
-  const subtitle = [row.company, row.department, row.position].filter(Boolean).join(" · ");
+  const cleanPart = (value) => String(value || "").trim();
+  const company = cleanPart(row.company);
+  const department = cleanPart(row.department);
+  const subtitle = [company, department && department.toLocaleLowerCase() !== company.toLocaleLowerCase() ? department : "", row.position]
+    .filter(Boolean)
+    .join(" · ");
   return `
     <article class="request-card">
       <div class="request-card-main">
