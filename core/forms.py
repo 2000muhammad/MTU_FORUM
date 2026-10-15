@@ -288,7 +288,18 @@ class IntakeRequestForm(forms.ModelForm):
 class SiteIntakeForm(forms.Form):
     platform = forms.ChoiceField(widget=forms.Select(attrs={"class": "form-select"}))
     full_name = forms.CharField(max_length=180, widget=forms.TextInput(attrs={"class": "form-control"}))
-    pnfl = forms.CharField(max_length=14, widget=forms.TextInput(attrs={"class": "form-control", "inputmode": "numeric"}))
+    pnfl = forms.CharField(
+        min_length=14,
+        max_length=14,
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+            "inputmode": "numeric",
+            "minlength": "14",
+            "maxlength": "14",
+            "pattern": "[0-9]{14}",
+            "autocomplete": "off",
+        }),
+    )
     passport = forms.CharField(max_length=9, widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "AB1234567"}))
     company = forms.ChoiceField(widget=forms.Select(attrs={"class": "form-select"}))
     position = forms.ChoiceField(widget=forms.Select(attrs={"class": "form-select"}))
@@ -351,8 +362,8 @@ class SiteIntakeForm(forms.Form):
         return value
 
     def clean_pnfl(self):
-        value = re.sub(r"\D", "", self.cleaned_data["pnfl"])
-        if len(value) != 14:
+        value = self.cleaned_data["pnfl"].strip()
+        if not re.fullmatch(r"[0-9]{14}", value):
             raise forms.ValidationError(self.texts["pnfl_error"])
         return value
 

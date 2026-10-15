@@ -328,6 +328,10 @@ function PublicRequest({ data }) {
   }, [refreshPublicStats]);
   const change = (e) =>
     setValues((v) => ({ ...v, [e.target.name]: e.target.value }));
+  const changePnfl = (e) => {
+    const pnfl = e.target.value.replace(/\D/g, "").slice(0, 14);
+    setValues((current) => ({ ...current, pnfl }));
+  };
   const submit = async (e) => {
     e.preventDefault();
     setBusy(true);
@@ -364,7 +368,7 @@ function PublicRequest({ data }) {
     "uz-cyrl": { steps: ["Маълумотлар", "Текшириш", "Тайёр"], searchPlatform: "Платформани қидиринг…", searchCompany: "Корхонани қидиринг…", searchPosition: "Лавозимни қидиринг…", sent: "Ариза юборилди", number: "Ариза рақами", next: "Маълумотлар масъул ходимга юборилди.", another: "Яна ариза юбориш", online: "Барча тизимлар ишламоқда", today: "Бугунги аризалар", done: "Бажарилди", average: "Ўртача вақт", minutes: "дақ.", hours: "соат", days: "кун" },
     en: { steps: ["Details", "Review", "Done"], searchPlatform: "Search platform…", searchCompany: "Search company…", searchPosition: "Search position…", sent: "Request submitted", number: "Request number", next: "The details were sent to the responsible employee.", another: "Submit another request", online: "All systems operational", today: "Requests today", done: "Completed", average: "Average time", minutes: "min", hours: "hr", days: "d" },
   }[data.language] || null;
-  const requiredReady = values.platform && values.full_name && values.pnfl && values.passport && values.company && values.position && values.phone && values.cause;
+  const requiredReady = values.platform && values.full_name && /^[0-9]{14}$/.test(values.pnfl) && values.passport && values.company && values.position && values.phone && values.cause;
   const activeStep = success ? 3 : requiredReady ? 2 : 1;
   const formatDuration = (minutes) => {
     if (minutes == null) return "—";
@@ -456,8 +460,11 @@ function PublicRequest({ data }) {
               <input
                 name="pnfl"
                 value={values.pnfl}
-                onChange={change}
+                onChange={changePnfl}
                 inputMode="numeric"
+                minLength={14}
+                maxLength={14}
+                pattern="[0-9]{14}"
                 placeholder={data.texts.pnfl_placeholder}
               />
               <FieldError errors={errors} name="pnfl" />

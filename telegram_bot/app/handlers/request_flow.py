@@ -523,7 +523,7 @@ async def request_router(update, context):
     if state == states.PLATFORM:
         await _send_platform_step(update.message, context, lang)
     elif state == states.PNFL:
-        if not text.isdigit() or len(text) != 14:
+        if not re.fullmatch(r"[0-9]{14}", text):
             await update.message.reply_text(t(lang, "pnfl_invalid"))
             return
         context.user_data["pnfl"] = text

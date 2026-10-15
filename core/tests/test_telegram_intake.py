@@ -58,3 +58,14 @@ class TelegramIntakeTests(TestCase):
         self.assertEqual(request.platform, "MTU FORUM")
         self.assertEqual(request.status, IntakeRequest.Status.NEW)
         self.assertEqual(request.hrm_payload, {})
+
+    def test_request_rejects_pnfl_unless_it_is_exactly_14_ascii_digits(self):
+        for pnfl in ("1234567890123", "123456789012345", "1234567890123a", "۱۲۳۴۵۶۷۸۹۰۱۲۳۴"):
+            response = self.client.post(
+                reverse("telegram_intake_api"),
+                data=json.dumps({"pnfl": pnfl, "telegram_id": 998001234567}),
+                content_type="application/json",
+                HTTP_X_API_KEY="test-telegram-api-key",
+            )
+            self.assertEqual(response.status_code, 400, pnfl)
+            self.assertIn("14 digits", response.json()["error"])

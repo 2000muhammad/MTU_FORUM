@@ -3,6 +3,7 @@ import binascii
 import hashlib
 import json
 import os
+import re
 import secrets
 import tempfile
 import threading
@@ -4413,8 +4414,11 @@ def telegram_intake_api(request):
     except json.JSONDecodeError:
         return JsonResponse({"ok": False, "error": "invalid json"}, status=400)
 
-    if not payload.get("pnfl") or not payload.get("telegram_id"):
+    pnfl = str(payload.get("pnfl", "")).strip()
+    if not pnfl or not payload.get("telegram_id"):
         return JsonResponse({"ok": False, "error": "pnfl and telegram_id are required"}, status=400)
+    if not re.fullmatch(r"[0-9]{14}", pnfl):
+        return JsonResponse({"ok": False, "error": "pnfl must contain exactly 14 digits"}, status=400)
 
     # Telegram requests are accepted for manual review without an HRM/PINFL lookup.
     selected_position = payload.get("selected_position") or payload.get("position", "")
@@ -4425,7 +4429,7 @@ def telegram_intake_api(request):
 
     item = IntakeRequest.objects.create(
 
-        pnfl=payload.get("pnfl", ""),
+        pnfl=pnfl,
 
         phone=payload.get("phone", ""),
 
