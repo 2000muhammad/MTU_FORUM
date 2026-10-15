@@ -5349,17 +5349,21 @@ def _translate_quote_text(text, language):
     cache_key = f"quote-translation:v2:{target}:{hashlib.sha256(text.encode('utf-8')).hexdigest()}"
     translated = cache.get(cache_key)
     if not translated:
-        response = requests.get(
-            "https://api.mymemory.translated.net/get",
-            params={"q": text[:480], "langpair": f"en|{target}"},
-            timeout=6,
-        )
-        response.raise_for_status()
-        translated = str(response.json().get("responseData", {}).get("translatedText") or "").strip()
-        if not translated:
-            raise ValueError("Translation service returned an empty result.")
-        translated = unescape(unescape(translated))
-        cache.set(cache_key, translated, 60 * 60 * 24 * 30)
+        try:
+            response = requests.get(
+                "https://api.mymemory.translated.net/get",
+                params={"q": text[:480], "langpair": f"en|{target}"},
+                timeout=6,
+            )
+            response.raise_for_status()
+            translated = str(response.json().get("responseData", {}).get("translatedText") or "").strip()
+            if not translated:
+                raise ValueError("Translation service returned an empty result.")
+            translated = unescape(unescape(translated))
+            cache.set(cache_key, translated, 60 * 60 * 24 * 30)
+        except (requests.RequestException, ValueError, TypeError, KeyError):
+            # A translation outage must not discard a valid live quote.
+            translated = text
     translated = unescape(unescape(translated))
     return _latin_uz_to_cyrillic(translated) if language == "uz-cyrl" else translated
 
@@ -5392,7 +5396,7 @@ def react_quote_api(request):
         if not original:
             raise ValueError("Quotes API returned an empty result.")
         localized_text = _translate_quote_text(original, language)
-        localized_author = _translate_quote_text(author, language) if language != "en" else author
+        localized_author = author
         return JsonResponse({
             "ok": True,
             "quote": {"text": localized_text, "author": localized_author},

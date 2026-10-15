@@ -1,5 +1,7 @@
 from unittest.mock import Mock, patch
 
+import requests
+
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -40,14 +42,25 @@ class QuotesApiTests(TestCase):
         quote_response.json.return_value = [{"quote": "Knowledge is power.", "author": "Francis Bacon"}]
         translated_quote = Mock()
         translated_quote.json.return_value = {"responseData": {"translatedText": "Знание &#39;—&#39; сила."}}
-        translated_author = Mock()
-        translated_author.json.return_value = {"responseData": {"translatedText": "Фрэнсис Бэкон"}}
-        request_get.side_effect = [quote_response, translated_quote, translated_author]
+        request_get.side_effect = [quote_response, translated_quote]
 
         result = self.client.get(reverse("react_quote_api"), {"lang": "ru"})
 
         self.assertEqual(result.status_code, 200)
-        self.assertEqual(result.json()["quote"], {"text": "Знание '—' сила.", "author": "Фрэнсис Бэкон"})
+        self.assertEqual(result.json()["quote"], {"text": "Знание '—' сила.", "author": "Francis Bacon"})
+
+    @override_settings(API_NINJAS_API_KEY="")
+    @patch("core.views.requests.get")
+    def test_translation_failure_keeps_live_api_quote(self, request_get):
+        quote_response = Mock()
+        quote_response.json.return_value = [{"quote": "A calm mind sees clearly.", "author": "Test Author"}]
+        request_get.side_effect = [quote_response, requests.RequestException("translation limit")]
+
+        result = self.client.get(reverse("react_quote_api"), {"lang": "ru"})
+
+        self.assertEqual(result.status_code, 200)
+        self.assertTrue(result.json()["ok"])
+        self.assertEqual(result.json()["quote"], {"text": "A calm mind sees clearly.", "author": "Test Author"})
 
     @override_settings(API_NINJAS_API_KEY="")
     def test_uses_local_fallback_when_key_is_missing(self):
