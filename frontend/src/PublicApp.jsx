@@ -303,6 +303,7 @@ function SearchableSelect({ name, label, items, value, onChange, placeholder, er
 
 function PublicRequest({ data }) {
   const tr = createTranslator(data.language);
+  const [publicStats, setPublicStats] = useState(data.public_stats || {});
   const [values, setValues] = useState({
     platform: "",
     full_name: "",
@@ -316,6 +317,15 @@ function PublicRequest({ data }) {
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState(null);
+  const refreshPublicStats = useCallback(() => {
+    return api(`/api/react/public/?lang=${encodeURIComponent(data.language)}&_=${Date.now()}`)
+      .then((result) => setPublicStats(result.public_stats || {}))
+      .catch(() => { /* Keep the last confirmed values if the connection is temporarily unavailable. */ });
+  }, [data.language]);
+  useEffect(() => {
+    const statsTimer = window.setInterval(refreshPublicStats, 30000);
+    return () => window.clearInterval(statsTimer);
+  }, [refreshPublicStats]);
   const change = (e) =>
     setValues((v) => ({ ...v, [e.target.name]: e.target.value }));
   const submit = async (e) => {
@@ -329,6 +339,7 @@ function PublicRequest({ data }) {
         body: JSON.stringify({ ...values, lang: data.language }),
       });
       setSuccess(result);
+      await refreshPublicStats();
       setValues({
         platform: "",
         full_name: "",
@@ -392,11 +403,11 @@ function PublicRequest({ data }) {
               </span>
             </div>
           </div>
-          <div className="public-live-status"><i />{copy.online}<small>{data.public_stats?.active_services || 0} WEB</small></div>
+          <div className="public-live-status"><i />{copy.online}<small>{publicStats.active_services || 0} WEB</small></div>
           <div className="public-quick-stats">
-            <div><strong>{data.public_stats?.requests_today || 0}</strong><span>{copy.today}</span></div>
-            <div><strong>{data.public_stats?.completed_today || 0}</strong><span>{copy.done}</span></div>
-            <div><strong>{formatDuration(data.public_stats?.average_processing_minutes)}</strong><span>{copy.average}</span></div>
+            <div><strong>{publicStats.requests_today || 0}</strong><span>{copy.today}</span></div>
+            <div><strong>{publicStats.completed_today || 0}</strong><span>{copy.done}</span></div>
+            <div><strong>{formatDuration(publicStats.average_processing_minutes)}</strong><span>{copy.average}</span></div>
           </div>
         </section>
         <form className="public-react-card request-form" onSubmit={submit}>
