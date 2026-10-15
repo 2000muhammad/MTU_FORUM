@@ -45,7 +45,7 @@
     </div>
   </div>
   <div class="action-row">
-    <a class="btn btn-outline-light" href="{{ return_to }}" target="_top">{% tr 'back' %}</a>
+    <a class="btn btn-outline-light" href="{{ return_to }}" target="_top" data-react-request-back>{% tr 'back' %}</a>
     <button class="btn btn-outline-light" name="action" value="generate">{% tr 'generate_credentials' %}</button>
     <button class="btn btn-outline-warning" name="action" value="send_credentials">{% tr 'send_to_telegram' %}</button>
     <button class="btn btn-outline-danger" name="action" value="delete" onclick="return confirm('{% tr 'delete_request_confirm' %}')">{% tr 'delete' %}</button>
@@ -132,6 +132,18 @@
   </div>
 </section>
 <script>
+(() => {
+  const back = document.querySelector('[data-react-request-back]');
+  if (!back || window.parent === window) return;
+  back.addEventListener('click', (event) => {
+    const target = new URL(back.href, window.location.origin);
+    if (target.origin !== window.location.origin || !target.pathname.startsWith('/app/requests')) return;
+    event.preventDefault();
+    const path = `/requests${target.search}`;
+    window.parent.postMessage({ type: 'mtu:navigate', path }, window.location.origin);
+  });
+})();
+
 document.querySelectorAll('[data-credential-item]').forEach((item) => {
   const value = item.querySelector('[data-credential-value]');
   const editor = item.querySelector('[data-credential-editor]');

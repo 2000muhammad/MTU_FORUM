@@ -54,6 +54,7 @@ const statusLabels = {
   done: "Сделано",
   blocked: "Заблокирована",
 };
+const requestListCache = new Map();
 const moduleMeta = {
   messages: {
     title: "Сообщения",
@@ -1115,11 +1116,38 @@ function RequestsPage({ language }) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [confirmError, setConfirmError] = useState("");
   const [confirmBusy, setConfirmBusy] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
   const endpoint = `/api/dashboard/requests/?q=${encodeURIComponent(query)}&status=${encodeURIComponent(status)}&platform=${encodeURIComponent(platform)}&company=${encodeURIComponent(company)}&position=${encodeURIComponent(position)}`;
-  const { loading, data, error, reload } = useRemote(
-    () => api(endpoint),
-    [endpoint],
-  );
+  const cachedRequests = requestListCache.get(endpoint) || null;
+  const [requestState, setRequestState] = useState(() => ({
+    loading: !cachedRequests,
+    data: cachedRequests,
+    error: "",
+  }));
+  useEffect(() => {
+    let active = true;
+    const cached = requestListCache.get(endpoint) || null;
+    setRequestState({ loading: !cached, data: cached, error: "" });
+    api(endpoint)
+      .then((result) => {
+        if (!active) return;
+        requestListCache.set(endpoint, result);
+        setRequestState({ loading: false, data: result, error: "" });
+      })
+      .catch((requestError) => {
+        if (!active) return;
+        setRequestState((current) => ({
+          ...current,
+          loading: false,
+          error: requestError.message,
+        }));
+      });
+    return () => {
+      active = false;
+    };
+  }, [endpoint, reloadToken]);
+  const { loading, data, error } = requestState;
+  const reload = () => setReloadToken((value) => value + 1);
   useEffect(() => {
     const next = {};
     if (query) next.q = query;
@@ -1672,6 +1700,15 @@ function RequestEditorPage({ language }) {
   const returnFilters = searchParams.get("return") || "";
   const returnPath = `/requests${returnFilters ? `?${returnFilters}` : ""}`;
   const editorUrl = `/${language || "ru"}/requests/${id}/edit/?return_to=${encodeURIComponent(`/app/requests/${returnFilters ? `?${returnFilters}` : ""}`)}`;
+  useEffect(() => {
+    const handleEmbeddedNavigation = (event) => {
+      if (event.origin !== window.location.origin || event.data?.type !== "mtu:navigate") return;
+      const path = String(event.data.path || "");
+      if (path === "/requests" || path.startsWith("/requests?")) navigate(path);
+    };
+    window.addEventListener("message", handleEmbeddedNavigation);
+    return () => window.removeEventListener("message", handleEmbeddedNavigation);
+  }, [navigate]);
   const handleEditorLoad = (event) => {
     syncEmbeddedTheme(event);
     try {
