@@ -39,6 +39,7 @@ from app.texts import t
 
 
 PINFL_HINT_IMAGE = Path(__file__).resolve().parents[2] / "assets" / "pinfl_hint.jpg"
+PLATFORM_SELECT_IMAGE = Path(__file__).resolve().parents[2] / "assets" / "select_platform.png"
 logger = logging.getLogger(__name__)
 
 
@@ -204,10 +205,14 @@ async def _send_platform_step(message, context, lang):
     platforms = get_platforms()
     context.user_data["platform_choices"] = [item.get("name", "") for item in platforms]
     if platforms:
-        await message.reply_text(
-            t(lang, "send_platform"),
-            reply_markup=platform_inline_keyboard(platforms, lang),
-        )
+        prompt = t(lang, "send_platform")
+        keyboard = platform_inline_keyboard(platforms, lang)
+        if PLATFORM_SELECT_IMAGE.exists():
+            photo = BytesIO(PLATFORM_SELECT_IMAGE.read_bytes())
+            photo.name = f"select_platform_{PLATFORM_SELECT_IMAGE.stat().st_mtime_ns}.png"
+            await message.reply_photo(photo=photo, caption=prompt, reply_markup=keyboard)
+        else:
+            await message.reply_text(prompt, reply_markup=keyboard)
     else:
         await message.reply_text(t(lang, "send_platform"), reply_markup=back_keyboard(lang))
 
