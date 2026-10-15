@@ -76,6 +76,23 @@ class RequestPlatformAccessTests(TestCase):
         self.assertEqual(row["company"], self.alpha_request.company)
         self.assertEqual(row["department"], "")
 
+    def test_request_list_filters_by_platform_company_and_position(self):
+        self.alpha_request.position = "Operator"
+        self.alpha_request.save(update_fields=["position"])
+
+        response = self.client.get(reverse("dashboard_requests_api"), {
+            "platform": self.alpha.name,
+            "company": self.allowed_station.name,
+            "position": "Operator",
+        })
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual([row["id"] for row in payload["rows"]], [self.alpha_request.id])
+        self.assertIn(self.alpha.name, payload["filters"]["platforms"])
+        self.assertIn(self.allowed_station.name, payload["filters"]["companies"])
+        self.assertIn("Operator", payload["filters"]["positions"])
+
     def test_sensitive_value_requires_current_account_password(self):
         denied = self.client.post(
             reverse("dashboard_request_reveal_api"),
@@ -135,7 +152,7 @@ class RequestPlatformAccessTests(TestCase):
 
         self.assertRedirects(
             response,
-            reverse("requests"),
+            "/app/requests/",
         )
         self.alpha_request.refresh_from_db()
         self.assertEqual(self.alpha_request.generated_login, "updated.login")

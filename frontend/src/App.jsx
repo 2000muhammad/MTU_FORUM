@@ -5,7 +5,9 @@ import {
   Route,
   Routes,
   useLocation,
+  useNavigate,
   useParams,
+  useSearchParams,
 } from "react-router-dom";
 import {
   BarChart3,
@@ -1107,19 +1109,32 @@ function Dashboard({ boot }) {
 
 function RequestsPage({ language }) {
   const tr = createTranslator(language);
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [query, setQuery] = useState(() => searchParams.get("q") || "");
+  const [status, setStatus] = useState(() => searchParams.get("status") || "");
+  const [platform, setPlatform] = useState(() => searchParams.get("platform") || "");
+  const [company, setCompany] = useState(() => searchParams.get("company") || "");
+  const [position, setPosition] = useState(() => searchParams.get("position") || "");
   const [revealed, setRevealed] = useState(new Set());
   const [revealedValues, setRevealedValues] = useState({});
   const [confirmSecret, setConfirmSecret] = useState(null);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [confirmError, setConfirmError] = useState("");
   const [confirmBusy, setConfirmBusy] = useState(false);
-  const endpoint = `/api/dashboard/requests/?q=${encodeURIComponent(query)}&status=${encodeURIComponent(status)}`;
+  const endpoint = `/api/dashboard/requests/?q=${encodeURIComponent(query)}&status=${encodeURIComponent(status)}&platform=${encodeURIComponent(platform)}&company=${encodeURIComponent(company)}&position=${encodeURIComponent(position)}`;
   const { loading, data, error, reload } = useRemote(
     () => api(endpoint),
     [endpoint],
   );
+  useEffect(() => {
+    const next = {};
+    if (query) next.q = query;
+    if (status) next.status = status;
+    if (platform) next.platform = platform;
+    if (company) next.company = company;
+    if (position) next.position = position;
+    setSearchParams(next, { replace: true });
+  }, [query, status, platform, company, position, setSearchParams]);
   const toggle = (rowId, field) => {
     const id = `${rowId}:${field}`;
     if (revealed.has(id)) {
@@ -1215,6 +1230,18 @@ function RequestsPage({ language }) {
             <option value="done">{tr("Сделано")}</option>
             <option value="blocked">{tr("Заблокированные")}</option>
           </select>
+          <select value={platform} onChange={(e) => setPlatform(e.target.value)} aria-label={tr("Платформа")}>
+            <option value="">{tr("Все платформы")}</option>
+            {(data?.filters?.platforms || []).map((value) => <option value={value} key={value}>{value}</option>)}
+          </select>
+          <select value={company} onChange={(e) => setCompany(e.target.value)} aria-label={tr("Предприятие")}>
+            <option value="">{tr("Все предприятия")}</option>
+            {(data?.filters?.companies || []).map((value) => <option value={value} key={value}>{value}</option>)}
+          </select>
+          <select value={position} onChange={(e) => setPosition(e.target.value)} aria-label={tr("Должность")}>
+            <option value="">{tr("Все должности")}</option>
+            {(data?.filters?.positions || []).map((value) => <option value={value} key={value}>{value}</option>)}
+          </select>
         </div>
       </section>
       {loading ? (
@@ -1275,7 +1302,7 @@ function RequestsPage({ language }) {
               </div>
               <NavLink
                 className="primary-button"
-                to={`/requests/${row.id}/edit`}
+                to={`/requests/${row.id}/edit${searchParams.toString() ? `?return=${encodeURIComponent(searchParams.toString())}` : ""}`}
               >
                 {tr("Открыть редактор")}
               </NavLink>
@@ -1646,6 +1673,22 @@ function ModulePage({ boot, moduleKey }) {
 function RequestEditorPage({ language }) {
   const tr = createTranslator(language);
   const { id } = useParams();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnFilters = searchParams.get("return") || "";
+  const returnPath = `/requests${returnFilters ? `?${returnFilters}` : ""}`;
+  const editorUrl = `/${language || "ru"}/requests/${id}/edit/?return_to=${encodeURIComponent(`/app/requests/${returnFilters ? `?${returnFilters}` : ""}`)}`;
+  const handleEditorLoad = (event) => {
+    syncEmbeddedTheme(event);
+    try {
+      const path = event.currentTarget.contentWindow.location.pathname;
+      if (/^\/app\/requests\/?$/.test(path) || /^\/(ru|uz|uz-cyrl|en)\/requests\/?$/.test(path)) {
+        navigate(returnPath, { replace: true });
+      }
+    } catch (_) {
+      /* same-origin frame may still be loading */
+    }
+  };
   return (
     <div className="module-page with-heading">
       <div className="module-heading">
@@ -1659,8 +1702,8 @@ function RequestEditorPage({ language }) {
       </div>
       <iframe
         title={`${tr("Заявки")} ${id}`}
-        src={embeddedUrl(`/${language || "ru"}/requests/${id}/edit/`)}
-        onLoad={syncEmbeddedTheme}
+        src={embeddedUrl(editorUrl)}
+        onLoad={handleEditorLoad}
       />
     </div>
   );

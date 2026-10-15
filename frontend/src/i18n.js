@@ -1,4 +1,7 @@
 const uz = {
+  "Все платформы": "Barcha platformalar",
+  "Все предприятия": "Barcha korxonalar",
+  "Все должности": "Barcha lavozimlar",
   Dashboard: "Boshqaruv paneli",
   Заявки: "Arizalar",
   "Предприятия / должности": "Korxonalar / lavozimlar",
@@ -387,6 +390,9 @@ const uzCyrl = {
 };
 
 const en = {
+  "Все платформы": "All platforms",
+  "Все предприятия": "All enterprises",
+  "Все должности": "All positions",
   Dashboard: "Dashboard",
   Заявки: "Requests",
   "Предприятия / должности": "Companies / positions",

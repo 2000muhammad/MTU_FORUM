@@ -1220,7 +1220,12 @@ def dashboard_requests_api(request):
 
     status = request.GET.get("status", "").strip()
 
-    qs = _intake_requests_for_user(request.user)
+    platform = request.GET.get("platform", "").strip()
+    company = request.GET.get("company", "").strip()
+    position = request.GET.get("position", "").strip()
+
+    base_qs = _intake_requests_for_user(request.user)
+    qs = base_qs
 
     if query:
 
@@ -1235,6 +1240,13 @@ def dashboard_requests_api(request):
     if status:
 
         qs = qs.filter(status=status)
+
+    if platform:
+        qs = qs.filter(platform=platform)
+    if company:
+        qs = qs.filter(company=company)
+    if position:
+        qs = qs.filter(position=position)
 
     rows = []
 
@@ -1272,7 +1284,15 @@ def dashboard_requests_api(request):
 
         })
 
-    return JsonResponse({"rows": rows, "count": qs.count()})
+    return JsonResponse({
+        "rows": rows,
+        "count": qs.count(),
+        "filters": {
+            "platforms": list(base_qs.exclude(platform="").order_by("platform").values_list("platform", flat=True).distinct()),
+            "companies": list(base_qs.exclude(company="").order_by("company").values_list("company", flat=True).distinct()),
+            "positions": list(base_qs.exclude(position="").order_by("position").values_list("position", flat=True).distinct()),
+        },
+    })
 
 
 @login_required
@@ -1344,6 +1364,9 @@ def _create_request_notifications(item, recipients, *, kind, title, message="", 
 def request_edit(request, pk):
 
     item = get_object_or_404(_intake_requests_for_user(request.user), pk=pk)
+    return_to = (request.POST.get("return_to") or request.GET.get("return_to") or "/app/requests/").strip()
+    if not (return_to == "/app/requests/" or return_to.startswith("/app/requests/?")):
+        return_to = "/app/requests/"
 
     if request.method == "POST":
 
@@ -1633,7 +1656,7 @@ def request_edit(request, pk):
 
             if action in {"save", "save_credentials"}:
 
-                return redirect("requests")
+                return redirect(return_to)
 
             return redirect("request_edit", pk=item.pk)
 
@@ -1652,6 +1675,7 @@ def request_edit(request, pk):
         "request_status_labels": dict(IntakeRequest.Status.choices),
         "workflow_users": _request_workflow_users(),
         "selected_watcher_ids": set(item.watchers.values_list("id", flat=True)),
+        "return_to": return_to,
     })
 
 

@@ -4,6 +4,7 @@
 {% block content %}
 <form method="post" class="glass-card editor-form">
   {% csrf_token %}
+  <input type="hidden" name="return_to" value="{{ return_to }}">
   <div class="editor-head">
     <div><h2>{{ item.full_name|default:'-' }}</h2><p class="text-secondary">Telegram ID: {{ item.telegram_id }}</p></div>
     <span class="status-pill status-{{ item.status }}">{{ item.get_status_display }}</span>
@@ -44,7 +45,7 @@
     </div>
   </div>
   <div class="action-row">
-    <a class="btn btn-outline-light" href="{% url 'requests' %}">{% tr 'back' %}</a>
+    <a class="btn btn-outline-light" href="{{ return_to }}" target="_top">{% tr 'back' %}</a>
     <button class="btn btn-outline-light" name="action" value="generate">{% tr 'generate_credentials' %}</button>
     <button class="btn btn-outline-warning" name="action" value="send_credentials">{% tr 'send_to_telegram' %}</button>
     <button class="btn btn-outline-danger" name="action" value="delete" onclick="return confirm('{% tr 'delete_request_confirm' %}')">{% tr 'delete' %}</button>
@@ -53,6 +54,7 @@
 </form>
 <form method="post" class="glass-card request-workflow-card">
   {% csrf_token %}
+  <input type="hidden" name="return_to" value="{{ return_to }}">
   <input type="hidden" name="action" value="save_workflow">
   <div class="request-workflow-head">
     <div><span class="eyebrow">Рабочий процесс</span><h2>Исполнитель и SLA</h2><p>Назначьте ответственного, наблюдателей и контрольный срок.</p></div>
