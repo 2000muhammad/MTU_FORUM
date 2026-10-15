@@ -1744,7 +1744,16 @@ def admin_chat_list(request):
             ),
             "status": "",
         })
-    return render(request, "admin_chat_list.html", {"chats": chats})
+    chats.sort(
+        key=lambda chat: chat["last"].created_at.timestamp() if chat.get("last") else 0,
+        reverse=True,
+    )
+    return render(request, "admin_chat_list.html", {
+        "chats": chats,
+        "chat_total": len(chats),
+        "chat_open": sum(1 for chat in chats if chat.get("status") != AdminChatThread.Status.CLOSED),
+        "chat_unread": sum(int(chat.get("unread") or 0) for chat in chats),
+    })
 
 
 def _telegram_avatar_svg(telegram_id, label=""):

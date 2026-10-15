@@ -1,74 +1,46 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 {% load ui_i18n %}
 {% block page_title %}{% tr 'user_chats' %}{% endblock %}
 {% block content %}
-<section class="glass-card editor-form mb-3">
-  <div class="editor-head">
-    <div>
-      <h2>Создать чат Telegram</h2>
-      <p class="hint mb-0">Введите Telegram ID или @nickname пользователя, который уже взаимодействовал с ботом.</p>
+<section class="chat-hub">
+  <header class="chat-hub-head">
+    <div><span class="chat-kicker">ЦЕНТР СООБЩЕНИЙ</span><h2>Диалоги Telegram</h2><p>Общайтесь с пользователями и отправляйте файлы из единого рабочего окна.</p></div>
+    <div class="chat-hub-stats" aria-label="Статистика чатов"><span><strong>{{ chat_total }}</strong> всего</span><span><strong>{{ chat_open }}</strong> открыто</span><span><strong>{{ chat_unread }}</strong> непрочитано</span></div>
+  </header>
+  <details class="chat-create-panel glass-card">
+    <summary><span>＋</span><strong>Новый диалог</strong><small>по Telegram ID или @nickname</small></summary>
+    <form method="post" class="chat-create-form-modern">
+      {% csrf_token %}
+      <label><span>Пользователь</span><input class="form-control" name="telegram_identity" placeholder="Telegram ID или @nickname" autocomplete="off" required></label>
+      <label><span>Имя</span><input class="form-control" name="full_name" placeholder="Необязательно"></label>
+      <label><span>Название диалога</span><input class="form-control" name="title" placeholder="Например: Заявка на доступ"></label>
+      <button class="btn btn-primary" type="submit">Создать диалог</button>
+    </form>
+  </details>
+  <section class="chat-directory glass-card">
+    <div class="chat-directory-tools">
+      <label class="chat-live-search"><span aria-hidden="true">⌕</span><input class="form-control" id="chatLiveSearch" type="search" placeholder="Поиск по имени, ID или @nickname" autocomplete="off"><button type="button" id="chatSearchClear" aria-label="Очистить поиск" hidden>×</button></label>
+      <div class="chat-filter-tabs" role="tablist" aria-label="Фильтр диалогов"><button class="active" type="button" data-chat-filter="all">Все</button><button type="button" data-chat-filter="open">Открытые</button><button type="button" data-chat-filter="unread">Непрочитанные</button><button type="button" data-chat-filter="closed">Закрытые</button></div>
     </div>
-  </div>
-  <form method="post" class="log-filters chat-create-form">
-    {% csrf_token %}
-    <input class="form-control" name="telegram_identity" placeholder="Telegram ID или @nickname" autocomplete="off" required>
-    <input class="form-control" name="full_name" placeholder="Имя пользователя">
-    <input class="form-control" name="title" placeholder="Название чата">
-    <button class="btn btn-primary" type="submit">Создать</button>
-  </form>
-</section>
-<section class="glass-card list-card">
-  <div class="chat-live-search">
-    <span aria-hidden="true">⌕</span>
-    <input class="form-control" id="chatLiveSearch" type="search" placeholder="Поиск по Telegram ID, имени или @nickname" autocomplete="off">
-    <button type="button" id="chatSearchClear" aria-label="Очистить поиск" hidden>×</button>
-  </div>
-  <p class="chat-search-summary" id="chatSearchSummary" aria-live="polite"></p>
-  <div id="chatRows">
-  {% for chat in chats %}
-  <a class="chat-row" data-chat-search="{{ chat.telegram_id }} {{ chat.full_name }} {{ chat.telegram_username }}" href="{% if chat.thread_id %}{% url 'admin_chat_thread_detail' chat.thread_id %}{% else %}{% url 'admin_chat_detail' chat.telegram_id %}{% endif %}">
-    <div class="chat-main">
-      <img class="chat-avatar" src="{% url 'telegram_profile_photo' chat.telegram_id %}" alt="Telegram profile">
-      <div><strong>{{ chat.full_name|default:chat.telegram_id }}{% if chat.status == 'closed' %} <small>· закрыт</small>{% endif %}</strong>{% if chat.telegram_username %}<span class="chat-nickname">@{{ chat.telegram_username }}</span>{% endif %}<p>{{ chat.last.text|truncatechars:90 }}</p><small>Telegram ID: {{ chat.telegram_id }}</small></div>
+    <p class="chat-search-summary" id="chatSearchSummary" aria-live="polite"></p>
+    <div class="chat-rows-modern" id="chatRows">
+    {% for chat in chats %}
+      <a class="chat-row chat-row-modern" data-chat-search="{{ chat.telegram_id }} {{ chat.full_name }} {{ chat.telegram_username }}" data-chat-status="{% if chat.status == 'closed' %}closed{% else %}open{% endif %}" data-chat-unread="{{ chat.unread|default:0 }}" href="{% if chat.thread_id %}{% url 'admin_chat_thread_detail' chat.thread_id %}{% else %}{% url 'admin_chat_detail' chat.telegram_id %}{% endif %}">
+        <span class="chat-avatar-wrap"><img class="chat-avatar" src="{% url 'telegram_profile_photo' chat.telegram_id %}" alt=""><i></i></span>
+        <span class="chat-row-copy"><span class="chat-row-title"><strong>{{ chat.full_name|default:chat.telegram_id }}</strong>{% if chat.status == 'closed' %}<em>Закрыт</em>{% endif %}</span><span class="chat-row-identity">{% if chat.telegram_username %}@{{ chat.telegram_username }} · {% endif %}ID {{ chat.telegram_id }}</span><span class="chat-row-preview">{% if chat.last %}{% if chat.last.direction == 'out' %}<b>Вы:</b> {% endif %}{{ chat.last.text|default:chat.last.get_kind_display|truncatechars:92 }}{% else %}Сообщений пока нет{% endif %}</span></span>
+        <span class="chat-meta"><time>{% if chat.last %}{{ chat.last.created_at|date:'d.m · H:i' }}{% endif %}</time>{% if chat.unread %}<b>{{ chat.unread }}</b>{% else %}<i aria-label="Прочитано">✓</i>{% endif %}</span>
+      </a>
+    {% empty %}<div class="chat-empty-state"><strong>Диалогов пока нет</strong><span>Создайте первый чат по Telegram ID или @nickname.</span></div>{% endfor %}
     </div>
-    <div class="chat-meta"><span>{{ chat.last.created_at|date:'d.m.Y H:i' }}</span>{% if chat.unread %}<b>{{ chat.unread }}</b>{% endif %}</div>
-  </a>
-  {% empty %}<p class="text-secondary">{% tr 'no_messages' %}</p>{% endfor %}
-  </div>
-  <div class="chat-search-empty" id="chatSearchEmpty" hidden>Пользователь не найден</div>
+    <div class="chat-search-empty" id="chatSearchEmpty" hidden><strong>Ничего не найдено</strong><span>Измените запрос или выберите другой фильтр.</span></div>
+  </section>
 </section>
-<audio id="chatSound" src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=" preload="auto"></audio>
 {% endblock %}
 {% block scripts %}
 <script>
-const chatSearch = document.getElementById('chatLiveSearch');
-const chatClear = document.getElementById('chatSearchClear');
-const chatSummary = document.getElementById('chatSearchSummary');
-const chatEmpty = document.getElementById('chatSearchEmpty');
-const chatRows = [...document.querySelectorAll('[data-chat-search]')];
-
-function normalizeChatSearch(value) {
-  return String(value || '').toLocaleLowerCase().replace(/^@/, '').trim();
-}
-
-function filterChats() {
-  const query = normalizeChatSearch(chatSearch.value);
-  let visible = 0;
-  chatRows.forEach((row) => {
-    const matches = !query || normalizeChatSearch(row.dataset.chatSearch).includes(query);
-    row.hidden = !matches;
-    if (matches) visible += 1;
-  });
-  chatClear.hidden = !query;
-  chatEmpty.hidden = visible > 0 || !query;
-  chatSummary.textContent = query ? `Найдено: ${visible}` : '';
-}
-
-chatSearch?.addEventListener('input', filterChats);
-chatClear?.addEventListener('click', () => {
-  chatSearch.value = '';
-  filterChats();
-  chatSearch.focus();
-});
+const chatSearch=document.getElementById('chatLiveSearch'),chatClear=document.getElementById('chatSearchClear'),chatSummary=document.getElementById('chatSearchSummary'),chatEmpty=document.getElementById('chatSearchEmpty'),chatRows=[...document.querySelectorAll('[data-chat-search]')],chatFilters=[...document.querySelectorAll('[data-chat-filter]')];let activeChatFilter='all';
+const normalizeChatSearch=value=>String(value||'').toLocaleLowerCase().replace(/^@/,'').trim();
+function filterChats(){const query=normalizeChatSearch(chatSearch?.value);let visible=0;chatRows.forEach(row=>{const matchesSearch=!query||normalizeChatSearch(row.dataset.chatSearch).includes(query);const matchesFilter=activeChatFilter==='all'||row.dataset.chatStatus===activeChatFilter||(activeChatFilter==='unread'&&Number(row.dataset.chatUnread)>0);row.hidden=!(matchesSearch&&matchesFilter);if(!row.hidden)visible+=1});chatClear.hidden=!query;chatEmpty.hidden=visible>0;chatSummary.textContent=`${visible} ${visible===1?'диалог':'диалогов'}`}
+chatSearch?.addEventListener('input',filterChats);chatClear?.addEventListener('click',()=>{chatSearch.value='';filterChats();chatSearch.focus()});chatFilters.forEach(button=>button.addEventListener('click',()=>{chatFilters.forEach(item=>item.classList.toggle('active',item===button));activeChatFilter=button.dataset.chatFilter;filterChats()}));filterChats();
 </script>
 {% endblock %}

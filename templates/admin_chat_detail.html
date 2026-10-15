@@ -21,11 +21,12 @@
 
   <div class="telegram-thread glass-card" id="telegramThread">
     {% for message in chat_messages %}
-    <div class="tg-message-row {% if message.direction == 'out' %}is-out{% else %}is-in{% endif %}">
+    {% ifchanged message.created_at.date %}<div class="tg-date-separator">{{ message.created_at|date:'d E Y' }}</div>{% endifchanged %}
+    <div class="tg-message-row {% if message.direction == 'out' %}is-out{% else %}is-in{% endif %}" data-message-id="{{ message.id }}">
       {% if message.direction == 'in' %}<img class="tg-mini-avatar" src="{% url 'telegram_profile_photo' telegram_id %}" alt="Telegram profile">{% endif %}
       <div class="tg-bubble {% if message.direction == 'out' %}out{% else %}in{% endif %} kind-{{ message.kind }}">
         {% if message.kind == 'photo' and message.media %}
-          <img class="tg-media-photo" src="{{ message.media.url }}" alt="{{ message.media_name }}">
+          <a class="tg-media-link" href="{{ message.media.url }}" target="_blank" rel="noopener"><img class="tg-media-photo" src="{{ message.media.url }}" alt="{{ message.media_name }}"></a>
         {% elif message.kind == 'video' and message.media %}
           <video class="tg-media-video" src="{{ message.media.url }}" controls></video>
         {% elif message.kind == 'video_note' and message.media %}
@@ -40,7 +41,7 @@
           </a>
         {% endif %}
         {% if message.text %}<p>{{ message.text|linebreaksbr }}</p>{% endif %}
-        <span>{{ message.created_at|date:'H:i' }}</span>
+        <span>{{ message.created_at|date:'H:i' }}{% if message.direction == 'out' %}<i class="tg-message-state" aria-label="Отправлено">✓✓</i>{% endif %}</span>
       </div>
     </div>
     {% empty %}
@@ -68,9 +69,7 @@
     <div class="tg-compose-popover" id="attachMenu" hidden>
       <button type="button" data-kind="media"><span class="tg-menu-icon">▧</span><span>Фото или видео</span></button>
       <button type="button" data-kind="document"><span class="tg-menu-icon">▱</span><span>Файл</span></button>
-      <button type="button" data-kind="todo"><span class="tg-menu-icon">☑</span><span>Список задач</span></button>
-      <button type="button" data-kind="date"><span class="tg-menu-icon">◷</span><span>Дата</span></button>
-      <button type="button" data-kind="wallet"><span class="tg-menu-icon">◇</span><span>Кошелёк</span></button>
+      <button type="button" data-kind="location"><span class="tg-menu-icon">⌖</span><span>Геолокация</span></button>
     </div>
     <div class="tg-location-panel" id="locationPanel" hidden>
       <input class="form-control" name="latitude" id="latitudeInput" placeholder="{% tr 'latitude' %}">
@@ -103,6 +102,7 @@
       <span class="tg-mic-glyph"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="4" width="6" height="11" rx="3"></rect><path d="M5.8 11.5a6.2 6.2 0 0012.4 0M12 18v3M9 21h6"></path></svg></span>
       <span class="tg-video-note-glyph"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8.5a2.5 2.5 0 012.5-2.5h3A2.5 2.5 0 0115 8.5v7a2.5 2.5 0 01-2.5 2.5h-3A2.5 2.5 0 017 15.5v-7z"></path><path d="M15 10l4-2.5v9L15 14"></path></svg></span>
     </button>
+    <small class="tg-compose-hint">Enter — отправить · Shift + Enter — новая строка · удерживайте микрофон для записи</small>
   </form>
 </section>
 {% endblock %}
@@ -437,5 +437,26 @@ document.getElementById('longitudeInput')?.addEventListener('input', updateCompo
 setRecordMode('voice');
 updateComposeState();
 resizeComposer();
+
+async function refreshTelegramThread() {
+  if (document.hidden || compose?.classList.contains('is-recording')) return;
+  try {
+    const response = await fetch(window.location.href, {credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}});
+    if (!response.ok) return;
+    const parsed = new DOMParser().parseFromString(await response.text(), 'text/html');
+    const updated = parsed.getElementById('telegramThread');
+    if (!updated || !thread) return;
+            const currentMessages = thread.querySelectorAll('[data-message-id]');
+            const updatedMessages = updated.querySelectorAll('[data-message-id]');
+            const currentLast = currentMessages[currentMessages.length - 1]?.dataset.messageId;
+            const updatedLast = updatedMessages[updatedMessages.length - 1]?.dataset.messageId;
+    if (updatedLast && updatedLast !== currentLast) {
+      const nearBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 120;
+      thread.innerHTML = updated.innerHTML;
+      if (nearBottom) requestAnimationFrame(() => { thread.scrollTop = thread.scrollHeight; });
+    }
+  } catch (_) { /* Keep the current conversation visible while offline. */ }
+}
+window.setInterval(refreshTelegramThread, 8000);
 </script>
 {% endblock %}
