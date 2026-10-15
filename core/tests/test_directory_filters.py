@@ -164,6 +164,17 @@ class DirectoryFilterTests(TestCase):
         self.assertContains(position_response, 'id="position-bulk-form"')
         self.assertContains(position_response, 'id="position-edit-dialog"')
 
+    def test_manager_account_types_are_hidden_from_editable_roles(self):
+        SiteRole.objects.create(name="Branch manager", code="branch_manager")
+        SiteRole.objects.create(name="Organization manager", code="organization_manager")
+        ordinary_role = SiteRole.objects.create(name="Operator", code="operator")
+
+        response = self.client.get(reverse("settings_section", kwargs={"section": "roles"}))
+
+        visible_roles = response.context["roles"]
+        self.assertIn(ordinary_role, visible_roles)
+        self.assertFalse(visible_roles.filter(code__in=["branch_manager", "organization_manager"]).exists())
+
     def test_modal_record_id_updates_existing_station(self):
         response = self.client.post(
             reverse("settings_section", kwargs={"section": "stations"}),

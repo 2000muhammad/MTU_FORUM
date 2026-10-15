@@ -3309,7 +3309,7 @@ def users_view(request):
         "presence_filter": presence_filter,
         "selected_account_type": selected_account_type,
         "import_jobs": PeopleImportJob.objects.filter(created_by=request.user, kind=PeopleImportJob.Kind.USERS)[:8],
-        "roles": user_form.fields["roles"].queryset,
+        "roles": user_form.fields["roles"].queryset.exclude(code__in=["branch_manager", "organization_manager"]),
         "platforms": Platform.objects.filter(is_active=True).order_by("sort_order", "name"),
         "stations": stations,
         "positions": positions,
@@ -3934,7 +3934,10 @@ def settings_view(request, section="stations"):
         "branch_query": branch_query,
         "organization_query": organization_query,
         "organization_branch": organization_branch,
-        "roles": SiteRole.objects.all(),
+        # Manager access is selected through "Тип аккаунта" on the users page.
+        # Keep the system roles in the database for permission checks, but do not
+        # expose them as ordinary editable roles.
+        "roles": SiteRole.objects.exclude(code__in=["branch_manager", "organization_manager"]),
         "active_section": section,
         "station_form": station_form,
 
