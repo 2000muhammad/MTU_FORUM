@@ -1,7 +1,13 @@
+from io import BytesIO
+from pathlib import Path
+
 from app import states
 from app.keyboards import language_keyboard, main_menu, subscription_keyboard
 from app.subscription import missing_channels
 from app.texts import t
+
+
+LANGUAGE_SELECTED_IMAGE = Path(__file__).resolve().parents[2] / "assets" / "language_selected.png"
 
 
 async def send_menu_after_subscription(message, context, user_id, lang):
@@ -25,7 +31,13 @@ async def menu_router(update, context):
         lang = query.data.split(":", 1)[1]
         context.user_data.clear()
         context.user_data["lang"] = lang
-        await query.edit_message_text(t(lang, "language_saved"))
+        if LANGUAGE_SELECTED_IMAGE.exists():
+            await query.edit_message_reply_markup(reply_markup=None)
+            photo = BytesIO(LANGUAGE_SELECTED_IMAGE.read_bytes())
+            photo.name = f"language_selected_{LANGUAGE_SELECTED_IMAGE.stat().st_mtime_ns}.png"
+            await query.message.reply_photo(photo=photo, caption=t(lang, "language_saved"))
+        else:
+            await query.edit_message_text(t(lang, "language_saved"))
         await send_menu_after_subscription(query.message, context, query.from_user.id, lang)
         return
 
