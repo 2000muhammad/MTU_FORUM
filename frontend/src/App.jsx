@@ -1001,14 +1001,19 @@ function Dashboard({ boot }) {
             <div className="sla-list">
               {(boot.dashboard.sla?.items || []).map((item) => {
                 const seconds = Math.abs(item.remaining_seconds);
-                const hours = Math.floor(seconds / 3600);
+                const days = Math.floor(seconds / 86400);
+                const hours = Math.floor((seconds % 86400) / 3600);
                 const minutes = Math.max(1, Math.floor((seconds % 3600) / 60));
-                const timeLabel = `${hours ? `${hours} ${tr("ч.")} ` : ""}${minutes} ${tr("мин.")}`;
+                const timeLabel = [
+                  days ? `${days} ${tr("дн.")}` : "",
+                  hours ? `${hours} ${tr("ч.")}` : "",
+                  !days && (!hours || minutes) ? `${minutes} ${tr("мин.")}` : "",
+                ].filter(Boolean).join(" ");
                 return (
                   <a href={item.edit_url} key={item.id} className={item.overdue ? "overdue" : ""}>
                     <span>#{item.id}</span>
                     <div><strong>{item.title}</strong><small>{item.assignee || tr("Исполнитель не назначен")}{item.company ? ` · ${item.company}` : ""}</small></div>
-                    <b>{item.overdue ? `−${timeLabel}` : timeLabel}</b>
+                    <b>{timeLabel}</b>
                   </a>
                 );
               })}
