@@ -76,7 +76,7 @@
         <label>Платформа{{ station_form.platform }}</label>
         {% if not ui_user_is_branch_manager and not ui_user_is_organization_manager %}<label>{% tr 'branch' %}<select class="form-select" name="branch" required data-directory-branch><option value="">Выберите филиал</option>{% for branch in branches %}<option value="{{ branch.id }}">{{ branch.name }}</option>{% endfor %}</select></label>{% endif %}
         {% if not ui_user_is_organization_manager %}<label>{% tr 'organization' %}<select class="form-select" name="organization" required data-directory-organization><option value="">Выберите организацию</option>{% for organization in organizations %}<option value="{{ organization.id }}" data-branch="{{ organization.branch_id }}">{{ organization.name }}</option>{% endfor %}</select></label>{% endif %}
-        <label>{% tr 'name' %}{{ station_form.name }}</label><span class="auto-code-note">{% tr 'code' %}: создаётся автоматически</span><label>{% tr 'sort_order' %}{{ station_form.sort_order }}</label>
+        <label>{% tr 'name' %}{{ station_form.name }}</label><label>{% tr 'sort_order' %}{{ station_form.sort_order }}</label>
         <label class="check-line">{{ station_form.is_active }} {% tr 'active' %}</label><button class="btn btn-primary">{% tr 'add' %}</button>
       </form>
       <form method="post" id="station-bulk-form" class="directory-bulk-toolbar">
@@ -227,7 +227,7 @@
       </div>
       <form method="post" class="crud-form add-form">
         {% csrf_token %}<input type="hidden" name="section" value="platform"><input type="hidden" name="action" value="save">
-        <label>{% tr 'name' %}{{ platform_form.name }}</label><span class="auto-code-note">{% tr 'code' %}: создаётся автоматически</span><label>{% tr 'sort_order' %}{{ platform_form.sort_order }}</label>
+        <label>{% tr 'name' %}{{ platform_form.name }}</label><label>{% tr 'sort_order' %}{{ platform_form.sort_order }}</label>
         <label class="check-line">{{ platform_form.is_active }} {% tr 'active' %}</label><button class="btn btn-primary">{% tr 'add' %}</button>
       </form>
       <div class="crud-list">
