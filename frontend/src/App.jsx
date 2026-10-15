@@ -21,7 +21,6 @@ import {
   ListTodo,
   LogOut,
   Menu,
-  MapPin,
   MessageCircle,
   MessagesSquare,
   Moon,
@@ -35,7 +34,6 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Star,
-  Smartphone,
   Sun,
   Sunrise,
   UserCircle,
@@ -166,8 +164,6 @@ function Layout({ boot, config, children }) {
   const [searchBusy, setSearchBusy] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [pwaHelpOpen, setPwaHelpOpen] = useState(false);
-  const [permissionsOpen, setPermissionsOpen] = useState(false);
-  const [browserPermissions, setBrowserPermissions] = useState({ location: "prompt", notifications: "prompt", device: "prompt" });
   const [favoriteLinks, setFavoriteLinks] = useState(() => {
     try { return JSON.parse(window.localStorage.getItem("mtu-favorite-links") || "[]"); } catch { return []; }
   });
@@ -218,46 +214,6 @@ function Layout({ boot, config, children }) {
     await installPrompt.prompt();
     await installPrompt.userChoice;
     setInstallPrompt(null);
-  };
-  const refreshBrowserPermissions = useCallback(async () => {
-    let locationPermission = "unsupported";
-    if (navigator.geolocation) {
-      locationPermission = "prompt";
-      try {
-        if (navigator.permissions) locationPermission = (await navigator.permissions.query({ name: "geolocation" })).state;
-      } catch { /* The browser can omit the Permissions API. */ }
-    }
-    const notificationPermission = "Notification" in window ? window.Notification.permission : "unsupported";
-    const installed = window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true;
-    setBrowserPermissions({
-      location: locationPermission,
-      notifications: notificationPermission,
-      device: installed ? "granted" : (installPrompt ? "prompt" : "unavailable"),
-    });
-  }, [installPrompt]);
-  useEffect(() => {
-    if (permissionsOpen) refreshBrowserPermissions();
-  }, [permissionsOpen, refreshBrowserPermissions]);
-  const requestLocationPermission = () => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      () => { window.localStorage.setItem("mtu-location-enabled", "yes"); refreshBrowserPermissions(); },
-      () => refreshBrowserPermissions(),
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
-    );
-  };
-  const requestNotificationPermission = async () => {
-    await enableBrowserNotifications();
-    await refreshBrowserPermissions();
-  };
-  const requestDeviceInstall = async () => {
-    await installPwa();
-    await refreshBrowserPermissions();
-  };
-  const resetPermissionPreferences = () => {
-    window.localStorage.removeItem("mtu-location-enabled");
-    window.localStorage.removeItem("mtu-notification-remind-after");
-    refreshBrowserPermissions();
   };
   useEffect(() => {
     setOpen(false);
@@ -534,7 +490,7 @@ function Layout({ boot, config, children }) {
           </div>
           <div className="new-tools">
             <div className="tool-menu global-search-tool">
-              <button type="button" className={`icon-button ${searchOpen ? "active" : ""}`} onClick={() => { setSearchOpen(!searchOpen); setNotificationsOpen(false); setPermissionsOpen(false); setAccessOpen(false); setLanguageOpen(false); }} aria-label={tr("Глобальный поиск")} title={tr("Глобальный поиск")}><Search /></button>
+              <button type="button" className={`icon-button ${searchOpen ? "active" : ""}`} onClick={() => { setSearchOpen(!searchOpen); setNotificationsOpen(false); setAccessOpen(false); setLanguageOpen(false); }} aria-label={tr("Глобальный поиск")} title={tr("Глобальный поиск")}><Search /></button>
               {searchOpen && (
                 <section className="react-popover global-search-popover" aria-label={tr("Глобальный поиск")}>
                   <label><Search /><input autoFocus type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={tr("Найти заявку, пользователя, документ или платформу")} /></label>
@@ -556,47 +512,12 @@ function Layout({ boot, config, children }) {
               <button type="button" className={`icon-button pwa-install-button ${pwaHelpOpen ? "active" : ""}`} onClick={installPwa} aria-label={tr("Установить приложение")} title={tr("Установить приложение")}><Download /></button>
               {pwaHelpOpen && !installPrompt && <section className="react-popover pwa-help-popover"><strong>{tr("Установить приложение")}</strong><p>{tr("Откройте меню браузера и выберите «Установить приложение» или «Добавить на главный экран».")}</p></section>}
             </div>
-            <div className="tool-menu permission-tool">
-              <button
-                type="button"
-                className={`icon-button ${permissionsOpen ? "active" : ""}`}
-                onClick={() => {
-                  setPermissionsOpen(!permissionsOpen);
-                  setSearchOpen(false);
-                  setNotificationsOpen(false);
-                  setAccessOpen(false);
-                  setLanguageOpen(false);
-                }}
-                aria-label={tr("Разрешения и доступ")}
-                title={tr("Разрешения и доступ")}
-              ><ShieldCheck /></button>
-              {permissionsOpen && (
-                <section className="react-popover permission-popover" aria-label={tr("Разрешения и доступ")}>
-                  <div className="permission-title"><ShieldCheck /><div><strong>{tr("Разрешения и доступ")}</strong><small>{window.location.hostname}</small></div></div>
-                  <div className="permission-secure"><ShieldCheck /><span>{tr("Подключение защищено")}</span></div>
-                  <div className="permission-list">
-                    <button type="button" onClick={requestLocationPermission} disabled={browserPermissions.location === "unsupported"}>
-                      <MapPin /><span>{tr("Геоданные")}</span><i className={`permission-toggle is-${browserPermissions.location}`} aria-label={tr(browserPermissions.location === "granted" ? "Разрешено" : browserPermissions.location === "denied" ? "Заблокировано" : "Запросить доступ")} />
-                    </button>
-                    <button type="button" onClick={requestNotificationPermission} disabled={browserPermissions.notifications === "unsupported"}>
-                      <Bell /><span>{tr("Уведомления")}</span><i className={`permission-toggle is-${browserPermissions.notifications}`} aria-label={tr(browserPermissions.notifications === "granted" ? "Разрешено" : browserPermissions.notifications === "denied" ? "Заблокировано" : "Запросить доступ")} />
-                    </button>
-                    <button type="button" onClick={requestDeviceInstall} disabled={browserPermissions.device === "unavailable"}>
-                      <Smartphone /><span>{tr("Приложение на устройстве")}</span><i className={`permission-toggle is-${browserPermissions.device}`} aria-label={tr(browserPermissions.device === "granted" ? "Установлено" : "Установить")} />
-                    </button>
-                  </div>
-                  <button type="button" className="permission-reset" onClick={resetPermissionPreferences}>{tr("Сбросить локальные настройки")}</button>
-                  <p>{tr("Системные разрешения можно изменить через значок сайта в адресной строке браузера.")}</p>
-                </section>
-              )}
-            </div>
             <div className="tool-menu notification-tool">
               <button
                 type="button"
                 className={`icon-button notification-button ${notificationsOpen ? "active" : ""}`}
                 onClick={() => {
                   setNotificationsOpen(!notificationsOpen);
-                  setPermissionsOpen(false);
                   setAccessOpen(false);
                   setLanguageOpen(false);
                 }}
@@ -670,7 +591,6 @@ function Layout({ boot, config, children }) {
                 className={`icon-button language-button ${languageOpen ? "active" : ""}`}
                 onClick={() => {
                   setLanguageOpen(!languageOpen);
-                  setPermissionsOpen(false);
                   setAccessOpen(false);
                 }}
                 aria-label={tr("Выбрать язык")}

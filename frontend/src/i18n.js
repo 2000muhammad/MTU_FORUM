@@ -678,33 +678,6 @@ Object.assign(en, {
   "Получение времени…": "Getting solar times…",
 });
 
-Object.assign(uz, {
-  "Разрешения и доступ": "Ruxsatlar va kirish",
-  "Подключение защищено": "Ulanish himoyalangan",
-  "Геоданные": "Joylashuv ma’lumotlari",
-  "Приложение на устройстве": "Qurilmadagi ilova",
-  "Разрешено": "Ruxsat berilgan",
-  "Заблокировано": "Bloklangan",
-  "Запросить доступ": "Ruxsat so‘rash",
-  "Установлено": "O‘rnatilgan",
-  "Установить": "O‘rnatish",
-  "Сбросить локальные настройки": "Mahalliy sozlamalarni tiklash",
-  "Системные разрешения можно изменить через значок сайта в адресной строке браузера.": "Tizim ruxsatlarini brauzer manzil satridagi sayt belgisi orqali o‘zgartirish mumkin.",
-});
-Object.assign(en, {
-  "Разрешения и доступ": "Permissions and access",
-  "Подключение защищено": "Connection is secure",
-  "Геоданные": "Location",
-  "Приложение на устройстве": "App on device",
-  "Разрешено": "Allowed",
-  "Заблокировано": "Blocked",
-  "Запросить доступ": "Request access",
-  "Установлено": "Installed",
-  "Установить": "Install",
-  "Сбросить локальные настройки": "Reset local settings",
-  "Системные разрешения можно изменить через значок сайта в адресной строке браузера.": "System permissions can be changed from the site icon in the browser address bar.",
-});
-
 const dictionaries = { uz, "uz-cyrl": uzCyrl, en };
 
 function latinToCyrillic(value) {
