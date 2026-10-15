@@ -198,7 +198,7 @@ npm run build
 ## Обновление проекта
 
 ```powershell
-git pull --rebase origin master
+git pull --rebase origin main
 .\.venv\Scripts\python.exe manage.py migrate
 
 cd frontend
@@ -225,12 +225,12 @@ cd ..
 
 ## Git
 
-Основная ветка проекта — `master`.
+Основная ветка проекта — `main`.
 
 ```powershell
 git status
-git pull --rebase origin master
+git pull --rebase origin main
 git add -A
 git commit -m "Описание изменений"
-git push origin master
+git push origin main
 ```
