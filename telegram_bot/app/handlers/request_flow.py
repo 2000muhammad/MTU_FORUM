@@ -39,6 +39,7 @@ from app.language_picker import send_language_picker
 
 
 PINFL_HINT_IMAGE = Path(__file__).resolve().parents[2] / "assets" / "pinfl_hint.jpg"
+PASSPORT_HINT_IMAGE = Path(__file__).resolve().parents[2] / "assets" / "passport_hint.png"
 PLATFORM_SELECT_IMAGE = Path(__file__).resolve().parents[2] / "assets" / "select_platform.png"
 logger = logging.getLogger(__name__)
 
@@ -201,6 +202,16 @@ async def _ask_pnfl_from_message(message, lang):
         await message.reply_text(prompt, reply_markup=back_keyboard(lang))
 
 
+async def _ask_passport_from_message(message, lang):
+    prompt = t(lang, "send_passport")
+    if PASSPORT_HINT_IMAGE.exists():
+        photo = BytesIO(PASSPORT_HINT_IMAGE.read_bytes())
+        photo.name = f"passport_hint_{PASSPORT_HINT_IMAGE.stat().st_mtime_ns}.png"
+        await message.reply_photo(photo=photo, caption=prompt, reply_markup=back_keyboard(lang))
+    else:
+        await message.reply_text(prompt, reply_markup=back_keyboard(lang))
+
+
 async def _send_platform_step(message, context, lang):
     platforms = get_platforms()
     context.user_data["platform_choices"] = [item.get("name", "") for item in platforms]
@@ -226,7 +237,7 @@ async def _send_request_step(update, context, lang, state):
     elif state == states.FULL_NAME:
         await update.message.reply_text(t(lang, "send_full_name"), reply_markup=back_keyboard(lang))
     elif state == states.PASSPORT:
-        await update.message.reply_text(t(lang, "send_passport"), reply_markup=back_keyboard(lang))
+        await _ask_passport_from_message(update.message, lang)
     elif state == states.COMPANY:
         await _send_directory_step(update.message, context, lang, "company", get_stations(), "send_station")
     elif state == states.POSITION:
@@ -333,7 +344,7 @@ async def directory_choice_router(update, context):
         await query.edit_message_reply_markup(reply_markup=None)
         if kind == "company":
             context.user_data["state"] = states.PASSPORT
-            await query.message.reply_text(t(lang, "send_passport"), reply_markup=back_keyboard(lang))
+            await _ask_passport_from_message(query.message, lang)
         else:
             context.user_data["state"] = states.COMPANY
             await _send_directory_step(query.message, context, lang, "company", get_stations(), "send_station")
@@ -536,7 +547,7 @@ async def request_router(update, context):
             return
         context.user_data["full_name"] = full_name
         context.user_data["state"] = states.PASSPORT
-        await update.message.reply_text(t(lang, "send_passport"), reply_markup=back_keyboard(lang))
+        await _ask_passport_from_message(update.message, lang)
     elif state == states.PASSPORT:
         passport = _normalize_passport(text)
         if not passport:
