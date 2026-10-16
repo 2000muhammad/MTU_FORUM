@@ -33,7 +33,6 @@ import {
   ScrollText,
   Search,
   Settings2,
-  ShieldCheck,
   SlidersHorizontal,
   Star,
   Sun,
@@ -802,6 +801,26 @@ function pickFreshQuote(language, length) {
   return next;
 }
 
+function AnimatedAiAssistant() {
+  return (
+    <div className="ai-assistant" aria-hidden="true">
+      <span className="ai-assistant__orbit"><i /><i /><i /></span>
+      <span className="ai-assistant__antenna"><i /></span>
+      <span className="ai-assistant__head">
+        <span className="ai-assistant__screen">
+          <i className="ai-assistant__eye ai-assistant__eye--left" />
+          <i className="ai-assistant__eye ai-assistant__eye--right" />
+          <i className="ai-assistant__smile" />
+          <i className="ai-assistant__scan" />
+        </span>
+        <i className="ai-assistant__ear ai-assistant__ear--left" />
+        <i className="ai-assistant__ear ai-assistant__ear--right" />
+      </span>
+      <span className="ai-assistant__badge"><i />AI</span>
+    </div>
+  );
+}
+
 function Dashboard({ boot }) {
   const tr = createTranslator(boot.language);
   const [activeChartSegment, setActiveChartSegment] = useState(null);
@@ -925,7 +944,7 @@ function Dashboard({ boot }) {
               )}
             </p>
           </div>
-          <ShieldCheck />
+          <AnimatedAiAssistant />
         </article>
         <article className="quote-card" aria-live="polite">
           <div className="quote-card-head">
