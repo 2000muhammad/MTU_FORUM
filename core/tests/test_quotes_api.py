@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from core.models import ExternalApiConnection
+from core.models import DashboardQuote, ExternalApiConnection
 
 
 class QuotesApiTests(TestCase):
@@ -21,6 +21,17 @@ class QuotesApiTests(TestCase):
             api_key="test-key",
             timeout_seconds=8,
         )
+
+    @patch("core.views.requests.get")
+    def test_custom_dashboard_quote_has_priority_over_external_api(self, request_get):
+        DashboardQuote.objects.create(language="ru", text="Проверенная цитата.", author="Редактор")
+
+        result = self.client.get(reverse("react_quote_api"), {"lang": "ru"})
+
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.json()["quote"], {"text": "Проверенная цитата.", "author": "Редактор"})
+        self.assertEqual(result.json()["source"], "Dashboard quotes")
+        request_get.assert_not_called()
 
     @override_settings(API_NINJAS_API_KEY="")
     @patch("core.views.requests.get")

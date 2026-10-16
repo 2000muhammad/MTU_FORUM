@@ -33,6 +33,9 @@
     <a class="folder-tab {% if active_section == 'roles' %}active{% endif %}" href="{% url 'settings_section' 'roles' %}">
       <span class="folder-tab-title"><em>08</em><strong>{% tr 'role_creation' %}</strong></span><span class="folder-tab-count">{{ roles|length }}</span>
     </a>
+    <a class="folder-tab {% if active_section == 'quotes' %}active{% endif %}" href="{% url 'settings_section' 'quotes' %}">
+      <span class="folder-tab-title"><em>09</em><strong>Цитаты</strong></span><span class="folder-tab-count">{{ quotes|length }}</span>
+    </a>
     {% endif %}
     </nav>
     <button class="settings-folder-arrow settings-folder-arrow-right" type="button" data-folder-scroll="1" aria-label="{% tr 'scroll_right' %}">›</button>
@@ -461,9 +464,48 @@
       </div>
     </section>
     {% endif %}
+
+    {% if active_section == 'quotes' %}
+    <section class="glass-card crud-panel settings-folder-panel active">
+      <div class="crud-head">
+        <div><h2>Цитаты Dashboard</h2><span>Собственные цитаты имеют приоритет перед API Ninjas Quotes</span></div>
+      </div>
+      <form method="post" class="crud-form quote-add-form">
+        {% csrf_token %}<input type="hidden" name="section" value="quote"><input type="hidden" name="action" value="save">
+        <label>Язык{{ quote_form.language }}</label>
+        <label class="quote-text-field">Текст цитаты{{ quote_form.text }}</label>
+        <label>Автор{{ quote_form.author }}</label>
+        <label>Сортировка{{ quote_form.sort_order }}</label>
+        <label class="check-line">{{ quote_form.is_active }} Активно</label>
+        <button class="btn btn-primary">Добавить</button>
+      </form>
+      <div class="crud-list">
+        {% for item in quotes %}
+        <form method="post" class="crud-row quote-row">
+          {% csrf_token %}<input type="hidden" name="section" value="quote"><input type="hidden" name="id" value="{{ item.id }}">
+          <select class="form-select" name="language">
+            {% for value, label in item.LANGUAGE_CHOICES %}<option value="{{ value }}" {% if item.language == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+          <textarea class="form-control" name="text" rows="2" maxlength="500" required>{{ item.text }}</textarea>
+          <input class="form-control" name="author" value="{{ item.author }}" placeholder="Автор">
+          <input class="form-control small-input" type="number" min="0" name="sort_order" value="{{ item.sort_order }}">
+          <label class="check-line"><input class="form-check-input" type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> Активно</label>
+          <button class="btn btn-outline-info" name="action" value="save">Сохранить</button>
+          <button class="btn btn-outline-danger" name="action" value="delete" onclick="return confirm('Удалить цитату?')">Удалить</button>
+        </form>
+        {% empty %}<p class="text-secondary">Добавьте первую собственную цитату.</p>{% endfor %}
+      </div>
+    </section>
+    {% endif %}
   </div>
 </div>
 <style>
+  .quote-add-form{grid-template-columns:minmax(130px,.45fr) minmax(320px,1.6fr) minmax(180px,.7fr) 120px auto auto}
+  .quote-add-form .quote-text-field textarea{min-height:70px;resize:vertical}
+  .quote-row{grid-template-columns:130px minmax(300px,1.7fr) minmax(170px,.7fr) 90px auto auto auto!important;align-items:center}
+  .quote-row textarea{min-height:64px;resize:vertical}
+  @media(max-width:1100px){.quote-add-form,.quote-row{grid-template-columns:1fr 1fr!important}.quote-add-form .quote-text-field,.quote-row textarea{grid-column:1/-1}}
+  @media(max-width:680px){.quote-add-form,.quote-row{grid-template-columns:1fr!important}.quote-add-form .quote-text-field,.quote-row textarea{grid-column:auto}}
   .settings-folder-nav{position:relative;min-width:0}
   .settings-folder-nav .settings-folders{
     display:flex;grid-template-columns:none;overflow-x:auto;overflow-y:hidden;

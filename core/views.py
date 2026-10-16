@@ -59,9 +59,9 @@ from django.core.cache import cache
 
 from PIL import Image, ImageOps
 
-from .forms import ApiConfigurationForm, BotSubscriptionChannelForm, BranchForm, DeveloperTaskForm, EmployeeProfileForm, ExternalApiConnectionForm, IntakeRequestForm, LoginForm, ManagerAccountForm, OrganizationForm, PlatformForm, PositionForm, SiteIntakeForm, SiteRoleForm, SiteSettingsForm, StationForm, StyledPasswordChangeForm, UserForm, UserInfoForm, UserProfileForm, WebPlatformForm
+from .forms import ApiConfigurationForm, BotSubscriptionChannelForm, BranchForm, DashboardQuoteForm, DeveloperTaskForm, EmployeeProfileForm, ExternalApiConnectionForm, IntakeRequestForm, LoginForm, ManagerAccountForm, OrganizationForm, PlatformForm, PositionForm, SiteIntakeForm, SiteRoleForm, SiteSettingsForm, StationForm, StyledPasswordChangeForm, UserForm, UserInfoForm, UserProfileForm, WebPlatformForm
 from .excel_utils import build_xlsx, parse_xlsx, truthy
-from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, IntakeRequestHistory, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, PeopleImportJob, Platform, Position, PublicDocument, PublicDocumentEvent, PublicDocumentSession, RequestNotification, SecurityThrottle, SiteLog, SiteRole, SiteSettings, Station, TelegramAccountLink, TelegramPasswordReset, UserPresence, UserProfile, WebPlatform, WebPlatformFavorite
+from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DashboardQuote, DeveloperTask, ExternalApiConnection, IntakeRequest, IntakeRequestHistory, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, PeopleImportJob, Platform, Position, PublicDocument, PublicDocumentEvent, PublicDocumentSession, RequestNotification, SecurityThrottle, SiteLog, SiteRole, SiteSettings, Station, TelegramAccountLink, TelegramPasswordReset, UserPresence, UserProfile, WebPlatform, WebPlatformFavorite
 from .site_logs import write_site_log
 from .security import clear_failures, consume_rate_limit, is_locked, record_failure
 from .middleware import get_platform_version
@@ -3707,7 +3707,7 @@ def site_logs_view(request, category="all"):
 @login_required
 @user_passes_test(user_can_manage_organizations)
 def settings_view(request, section="stations"):
-    sections = {"stations", "positions", "platforms", "web-platforms", "channels", "branches", "organizations", "roles"}
+    sections = {"stations", "positions", "platforms", "web-platforms", "channels", "branches", "organizations", "roles", "quotes"}
     branch_manager_sections = {"stations", "positions", "organizations"}
     if user_is_branch_manager(request.user) and section not in branch_manager_sections:
         return redirect("settings_section", section="organizations")
@@ -3725,6 +3725,7 @@ def settings_view(request, section="stations"):
         "role": (SiteRole, SiteRoleForm, "Роль", "roles"),
         "branch": (Branch, BranchForm, "Филиал", "branches"),
         "organization": (Organization, OrganizationForm, "Организация", "organizations"),
+        "quote": (DashboardQuote, DashboardQuoteForm, "Цитата", "quotes"),
     }
 
     if request.method == "POST":
@@ -3963,6 +3964,7 @@ def settings_view(request, section="stations"):
         # Keep the system roles in the database for permission checks, but do not
         # expose them as ordinary editable roles.
         "roles": SiteRole.objects.exclude(code__in=["branch_manager", "organization_manager"]),
+        "quotes": DashboardQuote.objects.all(),
         "active_section": section,
         "station_form": station_form,
 
@@ -3976,6 +3978,7 @@ def settings_view(request, section="stations"):
           "branch_form": BranchForm(),
           "organization_form": OrganizationForm(),
           "role_form": SiteRoleForm(),
+          "quote_form": DashboardQuoteForm(),
   
       })
 
@@ -5377,6 +5380,18 @@ def react_quote_api(request):
     language = request.GET.get("lang") or "ru"
     if language not in {"ru", "uz", "uz-cyrl", "en"}:
         language = "ru"
+    custom_quotes = DashboardQuote.objects.filter(language=language, is_active=True)
+    last_quote_id = request.session.get(f"dashboard_quote_{language}")
+    if last_quote_id and custom_quotes.count() > 1:
+        custom_quotes = custom_quotes.exclude(pk=last_quote_id)
+    custom_quote = custom_quotes.order_by("?").first()
+    if custom_quote:
+        request.session[f"dashboard_quote_{language}"] = custom_quote.pk
+        return JsonResponse({
+            "ok": True,
+            "quote": {"text": custom_quote.text, "author": custom_quote.author or "MTU FORUM"},
+            "source": "Dashboard quotes",
+        })
     connection = ExternalApiConnection.objects.filter(
         Q(name__iexact="API Ninjas Quotes") | Q(base_url__icontains="api.api-ninjas.com")
     ).filter(is_active=True).first()

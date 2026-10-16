@@ -195,6 +195,27 @@ class Platform(AutomaticCodeMixin, models.Model):
 
 
 
+class DashboardQuote(models.Model):
+    LANGUAGE_CHOICES = [
+        ("ru", "Русский"),
+        ("uz", "O‘zbekcha"),
+        ("uz-cyrl", "Ўзбекча"),
+        ("en", "English"),
+    ]
+
+    language = models.CharField(max_length=8, choices=LANGUAGE_CHOICES, default="ru")
+    text = models.TextField(max_length=500)
+    author = models.CharField(max_length=180, blank=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["language", "sort_order", "id"]
+
+    def __str__(self):
+        return f"{self.get_language_display()}: {self.text[:60]}"
+
+
 class WebPlatform(models.Model):
 
     name = models.CharField(max_length=180, unique=True)

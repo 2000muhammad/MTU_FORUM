@@ -6,7 +6,7 @@ from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 
 from django.contrib.auth.models import User
 
-from .models import ApiConfiguration, BotSubscriptionChannel, Branch, DeveloperTask, ExternalApiConnection, IntakeRequest, Organization, Platform, Position, SiteRole, SiteSettings, Station, UserProfile, WebPlatform
+from .models import ApiConfiguration, BotSubscriptionChannel, Branch, DashboardQuote, DeveloperTask, ExternalApiConnection, IntakeRequest, Organization, Platform, Position, SiteRole, SiteSettings, Station, UserProfile, WebPlatform
 from .utils import user_is_branch_manager, user_is_organization_manager
 
 
@@ -532,6 +532,13 @@ class PlatformForm(AdminStyledModelForm):
 
         fields = ["name", "is_active", "sort_order"]
 
+
+
+class DashboardQuoteForm(AdminStyledModelForm):
+    class Meta:
+        model = DashboardQuote
+        fields = ["language", "text", "author", "is_active", "sort_order"]
+        widgets = {"text": forms.Textarea(attrs={"rows": 2, "maxlength": 500})}
 
 
 class SiteRoleForm(AdminStyledModelForm):
