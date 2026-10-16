@@ -221,3 +221,89 @@ class DirectoryFilterTests(TestCase):
         self.active_station.refresh_from_db()
         self.assertEqual(self.active_station.name, "Renamed enterprise")
         self.assertEqual(self.active_station.sort_order, 7)
+
+
+class DirectoryRoleVisibilityTests(TestCase):
+    def setUp(self):
+        self.platform_a = Platform.objects.create(name="Platform A", code="platform-a")
+        self.platform_b = Platform.objects.create(name="Platform B", code="platform-b")
+        self.branch_a = Branch.objects.create(name="Branch A", code="branch-a")
+        self.branch_b = Branch.objects.create(name="Branch B", code="branch-b")
+        self.organization_a = Organization.objects.create(
+            branch=self.branch_a, name="Organization A", code="organization-a"
+        )
+        self.organization_b = Organization.objects.create(
+            branch=self.branch_b, name="Organization B", code="organization-b"
+        )
+        self.station_platform_a = Station.objects.create(
+            platform=self.platform_a,
+            branch=self.branch_a,
+            organization=self.organization_a,
+            name="Shared name",
+        )
+        self.station_platform_b = Station.objects.create(
+            platform=self.platform_b,
+            branch=self.branch_a,
+            organization=self.organization_a,
+            name="Shared name",
+        )
+        self.station_scope_b = Station.objects.create(
+            platform=self.platform_b,
+            branch=self.branch_b,
+            organization=self.organization_b,
+            name="Shared name",
+        )
+        self.branch_role = SiteRole.objects.create(name="Branch manager", code="branch_manager")
+        self.organization_role = SiteRole.objects.create(name="Organization manager", code="organization_manager")
+
+    def _manager(self, username, role, branch, organization=""):
+        user = User.objects.create_user(username, password="test-password")
+        profile = UserProfile.objects.create(user=user, branch=branch, organization=organization)
+        profile.roles.add(role)
+        return user
+
+    def _visible_station_ids(self, user):
+        self.client.force_login(user)
+        response = self.client.get(reverse("react_directory_api", kwargs={"section": "stations"}))
+        self.assertEqual(response.status_code, 200)
+        return {row["id"] for row in response.json()["rows"]}
+
+    def test_every_role_sees_only_its_directory_scope(self):
+        admin = User.objects.create_superuser("visibility-admin", password="test-password")
+        branch_a_manager = self._manager("branch-a-manager", self.branch_role, self.branch_a.name)
+        branch_b_manager = self._manager("branch-b-manager", self.branch_role, self.branch_b.name)
+        organization_a_manager = self._manager(
+            "organization-a-manager", self.organization_role, self.branch_a.name, self.organization_a.name
+        )
+        organization_b_manager = self._manager(
+            "organization-b-manager", self.organization_role, self.branch_b.name, self.organization_b.name
+        )
+
+        first_two = {self.station_platform_a.id, self.station_platform_b.id}
+        last_one = {self.station_scope_b.id}
+        self.assertEqual(self._visible_station_ids(admin), first_two | last_one)
+        self.assertEqual(self._visible_station_ids(branch_a_manager), first_two)
+        self.assertEqual(self._visible_station_ids(branch_b_manager), last_one)
+        self.assertEqual(self._visible_station_ids(organization_a_manager), first_two)
+        self.assertEqual(self._visible_station_ids(organization_b_manager), last_one)
+
+    def test_regular_user_only_receives_assigned_station(self):
+        user = User.objects.create_user("limited-user", password="test-password")
+        profile = UserProfile.objects.create(user=user)
+        profile.allowed_platforms.add(self.platform_a)
+        profile.allowed_stations.add(self.station_platform_a)
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("public_stations_api"), {"platform": self.platform_a.name})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([row["id"] for row in response.json()["results"]], [self.station_platform_a.id])
+
+    def test_public_directory_is_filtered_by_selected_platform(self):
+        response = self.client.get(reverse("public_stations_api"), {"platform": self.platform_b.name})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            {row["id"] for row in response.json()["results"]},
+            {self.station_platform_b.id, self.station_scope_b.id},
+        )

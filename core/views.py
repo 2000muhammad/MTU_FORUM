@@ -4652,6 +4652,9 @@ def telegram_intake_summary_api(request):
 
 def public_stations_api(request):
     items = Station.objects.filter(is_active=True)
+    platform = str(request.GET.get("platform") or "").strip()
+    if platform:
+        items = items.filter(Q(platform__name=platform) | Q(platform__code=platform))
     if request.user.is_authenticated and not request.user.is_superuser:
         profile = getattr(request.user, "profile", None)
         branch_name = getattr(profile, "branch", "")
@@ -4662,7 +4665,7 @@ def public_stations_api(request):
             items = items.filter(branch__name=branch_name)
         else:
             items = items.filter(allowed_users__user=request.user)
-    return JsonResponse({"results": list(items.values("id", "name", "code"))})
+    return JsonResponse({"results": list(items.values("id", "name", "code", "platform_id"))})
 
 
 
@@ -4672,6 +4675,9 @@ def public_stations_api(request):
 
 def public_positions_api(request):
     items = Position.objects.filter(is_active=True)
+    platform = str(request.GET.get("platform") or "").strip()
+    if platform:
+        items = items.filter(Q(platform__name=platform) | Q(platform__code=platform))
     if request.user.is_authenticated and not request.user.is_superuser:
         profile = getattr(request.user, "profile", None)
         branch_name = getattr(profile, "branch", "")
@@ -4682,7 +4688,7 @@ def public_positions_api(request):
             items = items.filter(branch__name=branch_name)
         elif profile and profile.positions_access_configured:
             items = items.filter(allowed_users__user=request.user)
-    return JsonResponse({"results": list(items.values("id", "name"))})
+    return JsonResponse({"results": list(items.values("id", "name", "platform_id"))})
 
 
 

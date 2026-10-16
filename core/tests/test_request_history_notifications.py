@@ -49,7 +49,7 @@ class RequestHistoryNotificationTests(TestCase):
             self.payload(),
         )
 
-        self.assertRedirects(response, reverse("requests"))
+        self.assertRedirects(response, "/app/requests/")
         entry = IntakeRequestHistory.objects.get(request=self.item)
         self.assertEqual(entry.event, IntakeRequestHistory.Event.STATUS)
         self.assertEqual(entry.from_status, IntakeRequest.Status.NEW)
@@ -66,7 +66,7 @@ class RequestHistoryNotificationTests(TestCase):
             self.payload(status=IntakeRequest.Status.BLOCKED),
         )
 
-        self.assertRedirects(response, reverse("requests"))
+        self.assertRedirects(response, "/app/requests/")
         self.item.refresh_from_db()
         self.assertEqual(self.item.status, IntakeRequest.Status.BLOCKED)
         entry = IntakeRequestHistory.objects.get(request=self.item)

@@ -24,12 +24,18 @@ def _get_results(path):
         return []
 
 
-def get_stations():
-    return _get_results("/api/public/stations/")
+def get_stations(platform=""):
+    path = "/api/public/stations/"
+    if platform:
+        path = f"{path}?platform={requests.utils.quote(str(platform))}"
+    return _get_results(path)
 
 
-def get_positions():
-    return _get_results("/api/public/positions/")
+def get_positions(platform=""):
+    path = "/api/public/positions/"
+    if platform:
+        path = f"{path}?platform={requests.utils.quote(str(platform))}"
+    return _get_results(path)
 
 
 def get_platforms():
