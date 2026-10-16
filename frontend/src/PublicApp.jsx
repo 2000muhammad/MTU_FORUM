@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ArrowRight,
   Bot,
@@ -334,14 +335,21 @@ function PublicFormAssistant({ language, values, labels, success }) {
   ];
   const completed = fields.filter((field) => field[2]).length;
   const nextField = fields.find((field) => !field[2]);
-  const clampPosition = useCallback((x, y) => ({
-    x: Math.max(8, Math.min(x, window.innerWidth - 313)),
-    y: Math.max(8, Math.min(y, window.innerHeight - (open ? 265 : 62))),
-  }), [open]);
+  const clampPosition = useCallback((x, y) => {
+    const viewport = window.visualViewport;
+    const viewportWidth = Math.min(window.innerWidth, document.documentElement.clientWidth, viewport?.width || Infinity);
+    const viewportHeight = Math.min(window.innerHeight, document.documentElement.clientHeight, viewport?.height || Infinity);
+    const assistantWidth = Math.min(305, viewportWidth - 16);
+    const panelHeight = open ? (document.querySelector(".public-ai-panel")?.getBoundingClientRect().height || 190) + 64 : 54;
+    return {
+      x: Math.max(8, Math.min(x, viewportWidth - assistantWidth - 8)),
+      y: Math.max(8, Math.min(y, viewportHeight - panelHeight - 8)),
+    };
+  }, [open]);
   const startDrag = (event) => {
     if (event.button !== 0) return;
     const rect = event.currentTarget.getBoundingClientRect();
-    const origin = position || { x: rect.right - 305, y: rect.top };
+    const origin = position || { x: rect.left, y: rect.top };
     dragState.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, origin };
     moved.current = false;
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -372,8 +380,12 @@ function PublicFormAssistant({ language, values, labels, success }) {
       setPosition(next);
     };
     window.addEventListener("resize", keepOnScreen);
+    window.visualViewport?.addEventListener("resize", keepOnScreen);
     keepOnScreen();
-    return () => window.removeEventListener("resize", keepOnScreen);
+    return () => {
+      window.removeEventListener("resize", keepOnScreen);
+      window.visualViewport?.removeEventListener("resize", keepOnScreen);
+    };
   }, [clampPosition]);
   const focusNext = () => {
     if (!nextField) return;
@@ -383,7 +395,7 @@ function PublicFormAssistant({ language, values, labels, success }) {
     input?.classList.add("ai-field-focus");
     window.setTimeout(() => input?.classList.remove("ai-field-focus"), 1800);
   };
-  return (
+  const assistant = (
     <aside className={`public-form-assistant${open ? " is-open" : ""}${position ? " is-dragged" : ""}`} style={position ? { left: position.x, top: position.y } : undefined}>
       <button className="public-ai-trigger" type="button" onPointerDown={startDrag} onPointerMove={moveAssistant} onPointerUp={finishDrag} onPointerCancel={finishDrag} onClick={() => {
         if (moved.current) { moved.current = false; return; }
@@ -403,6 +415,7 @@ function PublicFormAssistant({ language, values, labels, success }) {
       )}
     </aside>
   );
+  return typeof document === "undefined" ? assistant : createPortal(assistant, document.body);
 }
 
 function PublicRequest({ data }) {

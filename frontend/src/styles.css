@@ -2501,9 +2501,9 @@ html[data-theme="dark"] .railway-particles i { opacity:.25; }
   backdrop-filter: blur(24px);
 }
 .request-form { position: relative; overflow: visible; }
-.public-form-assistant { position: absolute; z-index: 30; top: 84px; right: -62px; }
-.public-form-assistant.is-dragged { position: fixed; right: auto; width: 305px; }
-.public-form-assistant.is-dragged .public-ai-trigger { margin-left: auto; }
+.public-form-assistant { position: fixed; z-index: 30; top: 120px; right: 18px; width: min(305px, calc(100vw - 16px)); }
+.public-form-assistant.is-dragged { right: auto; }
+.public-form-assistant .public-ai-trigger { margin-left: auto; }
 .public-ai-trigger {
   position: relative;
   display: grid;
@@ -2528,7 +2528,7 @@ html[data-theme="dark"] .railway-particles i { opacity:.25; }
 .public-ai-trigger > i { position: absolute; top: 4px; right: 3px; width: 9px; height: 9px; border: 2px solid var(--surface); border-radius: 50%; background: #42d5a8; box-shadow: 0 0 0 4px rgba(66,213,168,.12), 0 0 9px #42d5a8; animation: public-ai-status 2s ease-out infinite; }
 .public-ai-trigger:hover,.public-ai-trigger:focus-visible { border-color: var(--brand); outline: none; box-shadow: 0 15px 40px color-mix(in srgb,var(--brand) 28%,transparent); }
 .public-ai-hint { position: absolute; top: 7px; right: 63px; width: max-content; max-width: 225px; padding: 8px 10px; border: 1px solid color-mix(in srgb,var(--brand) 28%,var(--line)); border-radius: 11px 3px 11px 11px; background: color-mix(in srgb,var(--surface) 95%,transparent); color: var(--text); font-size: 10px; font-weight: 700; line-height: 1.35; box-shadow: 0 9px 25px rgba(10,70,78,.12); opacity: 0; transform: translateX(6px); pointer-events: none; animation: public-ai-hint 7s ease-in-out infinite; }
-.public-ai-panel { position: absolute; top: 64px; right: 0; width: 305px; padding: 13px; border: 1px solid color-mix(in srgb,var(--brand) 34%,var(--line)); border-radius: 18px; background: color-mix(in srgb,var(--surface) 96%,transparent); box-shadow: 0 24px 65px rgba(5,50,58,.25); backdrop-filter: blur(22px); animation: public-ai-panel-in .2s ease-out both; }
+.public-ai-panel { position: absolute; top: 64px; right: 0; width: 100%; padding: 13px; border: 1px solid color-mix(in srgb,var(--brand) 34%,var(--line)); border-radius: 18px; background: color-mix(in srgb,var(--surface) 96%,transparent); box-shadow: 0 24px 65px rgba(5,50,58,.25); backdrop-filter: blur(22px); animation: public-ai-panel-in .2s ease-out both; }
 .public-ai-panel header { display: flex; align-items: center; gap: 10px; }
 .public-ai-panel header > span { display: grid; width: 35px; height: 35px; flex: 0 0 35px; place-items: center; border-radius: 11px; background: color-mix(in srgb,var(--brand) 15%,transparent); color: var(--brand); }
 .public-ai-panel header svg { width: 18px; height: 18px; }
