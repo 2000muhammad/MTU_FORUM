@@ -66,7 +66,12 @@ class Station(AutomaticCodeMixin, models.Model):
 
     class Meta:
         ordering = ["branch__sort_order", "branch__name", "sort_order", "name"]
-        constraints = [models.UniqueConstraint(fields=["branch", "name"], name="unique_station_name_per_branch")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["platform", "branch", "organization", "name"],
+                name="unique_station_scope_name",
+            )
+        ]
 
 
 
@@ -92,7 +97,12 @@ class Position(models.Model):
 
     class Meta:
         ordering = ["branch__sort_order", "branch__name", "sort_order", "name"]
-        constraints = [models.UniqueConstraint(fields=["branch", "name"], name="unique_position_name_per_branch")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["platform", "branch", "organization", "name"],
+                name="unique_position_scope_name",
+            )
+        ]
 
 
 

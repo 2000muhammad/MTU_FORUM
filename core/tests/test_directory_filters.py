@@ -2,7 +2,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from core.models import Branch, Organization, Position, SiteRole, Station, UserProfile
+from core.models import Branch, Organization, Platform, Position, SiteRole, Station, UserProfile
 
 
 class DirectoryFilterTests(TestCase):
@@ -61,6 +61,26 @@ class DirectoryFilterTests(TestCase):
         )
 
         self.assertEqual(list(response.context["station_rows"].object_list), [self.active_station])
+
+    def test_same_station_name_is_allowed_for_different_platforms(self):
+        platform_a = Platform.objects.create(name="Platform A", code="platform-a")
+        platform_b = Platform.objects.create(name="Platform B", code="platform-b")
+
+        first = Station.objects.create(
+            platform=platform_a,
+            branch=self.branch_one,
+            organization=self.organization_one,
+            name="Shared station",
+        )
+        second = Station.objects.create(
+            platform=platform_b,
+            branch=self.branch_one,
+            organization=self.organization_one,
+            name="Shared station",
+        )
+
+        self.assertNotEqual(first.pk, second.pk)
+        self.assertEqual(Station.objects.filter(name="Shared station").count(), 2)
 
     def test_position_organization_filter(self):
         response = self.client.get(
