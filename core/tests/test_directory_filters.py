@@ -332,3 +332,18 @@ class DirectoryRoleVisibilityTests(TestCase):
         )
         self.assertTrue(user_can_api_settings(akt_user))
         self.assertTrue(user_can_site_settings(akt_user))
+
+    def test_non_admin_custom_role_only_sees_explicitly_assigned_directories(self):
+        staff_role = SiteRole.objects.create(
+            name="Scoped AKT",
+            code="scoped-akt",
+            is_staff_role=True,
+            can_directories=True,
+        )
+        user = User.objects.create_user("scoped-akt-user", password="test-password")
+        profile = UserProfile.objects.create(user=user)
+        profile.roles.add(staff_role)
+        profile.allowed_platforms.add(self.platform_a)
+        profile.allowed_stations.add(self.station_platform_a)
+
+        self.assertEqual(self._visible_station_ids(user), {self.station_platform_a.id})

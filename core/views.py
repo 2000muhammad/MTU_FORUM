@@ -2724,6 +2724,8 @@ def _scope_organizations_for_actor(organizations, actor):
 
 
 def _scope_branch_directory_for_actor(queryset, actor):
+    if user_can_administer(actor):
+        return queryset
     if user_is_organization_manager(actor):
         organization_name = _actor_organization_name(actor)
         branch_name = _actor_branch_name(actor)
@@ -2733,7 +2735,14 @@ def _scope_branch_directory_for_actor(queryset, actor):
     if user_is_branch_manager(actor):
         branch_name = _actor_branch_name(actor)
         return queryset.filter(branch__name=branch_name) if branch_name else queryset.none()
-    return queryset
+    profile = getattr(actor, "profile", None)
+    if not profile:
+        return queryset.none()
+    if queryset.model is Station:
+        return queryset.filter(allowed_users__user=actor)
+    if queryset.model is Position:
+        return queryset.filter(allowed_users__user=actor)
+    return queryset.none()
 
 
 def _request_activity_series(queryset, enabled):
