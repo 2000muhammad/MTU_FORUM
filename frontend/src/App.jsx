@@ -1540,6 +1540,11 @@ function DirectoryPage({ kind, boot }) {
     [kind],
   );
   const [query, setQuery] = useState("");
+  const [platformFilter, setPlatformFilter] = useState("");
+  const [branchFilter, setBranchFilter] = useState("");
+  const [organizationFilter, setOrganizationFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [bulkOrganization, setBulkOrganization] = useState("");
   const [selected, setSelected] = useState(new Set());
   const [editing, setEditing] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -1551,12 +1556,17 @@ function DirectoryPage({ kind, boot }) {
   }, [kind]);
   const rows = useMemo(
     () =>
-      (data?.rows || []).filter((row) =>
-        `${row.name} ${row.code || ""} ${row.branch_name || ""} ${row.organization_name || ""}`
+      (data?.rows || []).filter((row) => {
+        const matchesQuery = `${row.name} ${row.code || ""} ${row.platform_name || ""} ${row.branch_name || ""} ${row.organization_name || ""}`
           .toLowerCase()
-          .includes(query.toLowerCase()),
-      ),
-    [data, query],
+          .includes(query.toLowerCase());
+        return matchesQuery &&
+          (!platformFilter || String(row.platform_id) === platformFilter) &&
+          (!branchFilter || String(row.branch_id) === branchFilter) &&
+          (!organizationFilter || String(row.organization_id) === organizationFilter) &&
+          (!statusFilter || (statusFilter === "active") === row.is_active);
+      }),
+    [data, query, platformFilter, branchFilter, organizationFilter, statusFilter],
   );
   const submit = async (values) => {
     setBusy(true);
@@ -1574,7 +1584,7 @@ function DirectoryPage({ kind, boot }) {
     }
   };
   const bulk = (action) =>
-    submit({ section: `${section}_bulk`, action, selected_ids: [...selected] });
+    submit({ section: `${section}_bulk`, action, selected_ids: [...selected], bulk_organization: bulkOrganization });
   return (
     <div className="page-stack">
       <div className="directory-tabs">
@@ -1598,6 +1608,7 @@ function DirectoryPage({ kind, boot }) {
                 name: "",
                 branch_id: "",
                 organization_id: "",
+                platform_id: "",
                 sort_order: 0,
                 is_active: true,
               })
@@ -1615,6 +1626,23 @@ function DirectoryPage({ kind, boot }) {
               placeholder={tr("Поиск…")}
             />
           </label>
+          <select value={platformFilter} onChange={(e) => setPlatformFilter(e.target.value)}>
+            <option value="">{tr("Все платформы")}</option>
+            {(data?.platforms || []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+          <select value={branchFilter} onChange={(e) => { setBranchFilter(e.target.value); setOrganizationFilter(""); }}>
+            <option value="">{tr("Все филиалы")}</option>
+            {(data?.branches || []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+          <select value={organizationFilter} onChange={(e) => setOrganizationFilter(e.target.value)}>
+            <option value="">{tr("Все организации")}</option>
+            {(data?.organizations || []).filter((item) => !branchFilter || String(item.branch_id) === branchFilter).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="">{tr("Все статусы")}</option>
+            <option value="active">{tr("Активно")}</option>
+            <option value="inactive">{tr("Отключено")}</option>
+          </select>
         </div>
         {notice && <p className="notice">{notice}</p>}
       </section>
@@ -1627,6 +1655,15 @@ function DirectoryPage({ kind, boot }) {
           <button onClick={() => bulk("bulk_deactivate")} disabled={busy}>
             {tr("Отключить")}
           </button>
+          {!boot.user.is_organization_manager && (
+            <>
+              <select value={bulkOrganization} onChange={(e) => setBulkOrganization(e.target.value)}>
+                <option value="">{tr("Перенести в организацию…")}</option>
+                {(data?.organizations || []).map((item) => <option key={item.id} value={item.id}>{item.name} — {item.branch_name}</option>)}
+              </select>
+              <button onClick={() => bulk("bulk_move")} disabled={busy || !bulkOrganization}>{tr("Перенести")}</button>
+            </>
+          )}
         </div>
       )}
       {loading ? (
@@ -1672,6 +1709,7 @@ function DirectoryPage({ kind, boot }) {
                 </small>
               </div>
               <div>
+                <span>{row.platform_name || tr("Без платформы")}</span>
                 <span>{row.branch_name || tr("Без филиала")}</span>
                 <small>{row.organization_name || tr("Без организации")}</small>
               </div>
@@ -1704,6 +1742,7 @@ function DirectoryPage({ kind, boot }) {
                 section,
                 action: "save",
                 record_id: editing.id,
+                platform: form.get("platform"),
                 branch: form.get("branch"),
                 organization: form.get("organization"),
                 name: form.get("name"),
@@ -1739,6 +1778,13 @@ function DirectoryPage({ kind, boot }) {
                   </select>
                 </label>
               )}
+            <label>
+              {tr("Платформа")}
+              <select name="platform" defaultValue={editing.platform_id} required>
+                <option value="">{tr("Выберите платформу")}</option>
+                {(data.platforms || []).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+              </select>
+            </label>
             {!boot.user.is_organization_manager && (
               <label>
                 {tr("Организация")}

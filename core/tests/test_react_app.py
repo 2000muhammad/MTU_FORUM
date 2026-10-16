@@ -8,7 +8,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from core.models import Branch, IntakeRequest, Organization, Position, RequestNotification, SiteRole, Station, TelegramPasswordReset, UserPresence, UserProfile, WebPlatform, WebPlatformFavorite
+from core.models import Branch, IntakeRequest, Organization, Platform, Position, RequestNotification, SiteRole, Station, TelegramPasswordReset, UserPresence, UserProfile, WebPlatform, WebPlatformFavorite
 
 
 class ReactAppTests(TestCase):
@@ -320,11 +320,12 @@ class ReactAppTests(TestCase):
         self.assertNotContains(public_response, ">Старая версия<")
 
     def test_directory_api_applies_branch_scope(self):
+        platform = Platform.objects.create(name="Corporate platform", code="corporate")
         north = Branch.objects.create(name="North", code="north")
         south = Branch.objects.create(name="South", code="south")
         north_org = Organization.objects.create(branch=north, name="North org", code="north-org")
         south_org = Organization.objects.create(branch=south, name="South org", code="south-org")
-        visible = Station.objects.create(branch=north, organization=north_org, name="Visible", code="visible")
+        visible = Station.objects.create(platform=platform, branch=north, organization=north_org, name="Visible", code="visible")
         Station.objects.create(branch=south, organization=south_org, name="Hidden", code="hidden")
         role = SiteRole.objects.create(name="Branch manager", code="branch_manager")
         manager = User.objects.create_user("react-branch", password="test-password")
@@ -336,6 +337,9 @@ class ReactAppTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual([row["id"] for row in response.json()["rows"]], [visible.id])
+        self.assertEqual(response.json()["rows"][0]["platform_id"], platform.id)
+        self.assertEqual(response.json()["rows"][0]["platform_name"], platform.name)
+        self.assertIn({"id": platform.id, "name": platform.name}, response.json()["platforms"])
 
     def test_production_bundle_exists(self):
         static_dir = Path(settings.BASE_DIR) / "static" / "next"

@@ -5623,7 +5623,7 @@ def react_directory_api(request, section):
         return JsonResponse({"error": "unknown directory"}, status=404)
     model = Station if section == "stations" else Position
     rows = _scope_branch_directory_for_actor(
-        model.objects.select_related("branch", "organization"),
+        model.objects.select_related("platform", "branch", "organization"),
         request.user,
     )
     branches = Branch.objects.all()
@@ -5640,6 +5640,8 @@ def react_directory_api(request, section):
                 "id": item.id,
                 "name": item.name,
                 "code": getattr(item, "code", ""),
+                "platform_id": item.platform_id or "",
+                "platform_name": item.platform.name if item.platform else "",
                 "branch_id": item.branch_id or "",
                 "branch_name": item.branch.name if item.branch else "",
                 "organization_id": item.organization_id or "",
@@ -5650,6 +5652,7 @@ def react_directory_api(request, section):
             for item in rows[:1000]
         ],
         "branches": list(branches.values("id", "name")),
+        "platforms": list(Platform.objects.order_by("sort_order", "name").values("id", "name")),
         "organizations": [
             {"id": item.id, "name": item.name, "branch_id": item.branch_id, "branch_name": item.branch.name}
             for item in organizations

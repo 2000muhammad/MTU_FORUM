@@ -1,5 +1,10 @@
 const uz = {
   "Все платформы": "Barcha platformalar",
+  "Все филиалы": "Barcha filiallar",
+  "Все организации": "Barcha tashkilotlar",
+  "Перенести в организацию…": "Tashkilotga ko‘chirish…",
+  Перенести: "Ko‘chirish",
+  "Выберите платформу": "Platformani tanlang",
   "Все предприятия": "Barcha korxonalar",
   "Все должности": "Barcha lavozimlar",
   Dashboard: "Boshqaruv paneli",
@@ -277,6 +282,11 @@ const uz = {
 };
 
 const uzCyrl = {
+  "Все филиалы": "Барча филиаллар",
+  "Все организации": "Барча ташкилотлар",
+  "Перенести в организацию…": "Ташкилотга кўчириш…",
+  Перенести: "Кўчириш",
+  "Выберите платформу": "Платформани танланг",
   Dashboard: "Бошқарув панели",
   Заявки: "Аризалар",
   "Предприятия / должности": "Корхоналар / лавозимлар",
@@ -443,6 +453,11 @@ const uzCyrl = {
 
 const en = {
   "Все платформы": "All platforms",
+  "Все филиалы": "All branches",
+  "Все организации": "All organizations",
+  "Перенести в организацию…": "Move to organization…",
+  Перенести: "Move",
+  "Выберите платформу": "Select platform",
   "Все предприятия": "All enterprises",
   "Все должности": "All positions",
   Dashboard: "Dashboard",
