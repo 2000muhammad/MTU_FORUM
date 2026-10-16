@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   Bot,
@@ -306,6 +306,16 @@ function SearchableSelect({ name, label, items, value, onChange, placeholder, er
 
 function PublicFormAssistant({ language, values, labels, success }) {
   const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const saved = JSON.parse(window.localStorage.getItem("public-ai-position"));
+      return Number.isFinite(saved?.x) && Number.isFinite(saved?.y) ? saved : null;
+    } catch { return null; }
+  });
+  const dragState = useRef(null);
+  const moved = useRef(false);
+  const positionRef = useRef(position);
   const assistantCopy = {
     ru: { title: "AI-помощник", intro: "Помогу заполнить заявку без ошибок.", progress: "Заполнено", next: "Следующее поле", focus: "Перейти к полю", check: "Проверить форму", ready: "Все поля заполнены. Проверьте данные и отправьте заявку.", sent: "Заявка успешно отправлена. Спасибо!", tips: { platform: "Выберите нужную корпоративную платформу из списка.", full_name: "Введите фамилию, имя и отчество полностью.", pnfl: "ПИНФЛ должен содержать ровно 14 цифр.", passport: "Введите 2 латинские буквы и 7 цифр, например AB1234567.", company: "Выберите предприятие из предложенного списка.", position: "Выберите вашу должность из списка.", phone: "Введите номер Узбекистана в формате +998-XX-XXX-XX-XX.", cause: "Кратко и понятно опишите причину получения доступа." } },
     uz: { title: "AI yordamchi", intro: "Arizani xatosiz to'ldirishga yordam beraman.", progress: "To'ldirildi", next: "Keyingi maydon", focus: "Maydonga o'tish", check: "Formani tekshirish", ready: "Barcha maydonlar to'ldirildi. Ma'lumotlarni tekshirib, arizani yuboring.", sent: "Ariza muvaffaqiyatli yuborildi. Rahmat!", tips: { platform: "Kerakli korporativ platformani ro'yxatdan tanlang.", full_name: "Familiya, ism va otangiz ismini to'liq kiriting.", pnfl: "JSHSHIR aynan 14 ta raqamdan iborat bo'lishi kerak.", passport: "2 ta lotin harfi va 7 ta raqam kiriting, masalan AB1234567.", company: "Korxonani taklif qilingan ro'yxatdan tanlang.", position: "Lavozimingizni ro'yxatdan tanlang.", phone: "O'zbekiston raqamini +998-XX-XXX-XX-XX formatida kiriting.", cause: "Kirish olish sababini qisqa va aniq yozing." } },
@@ -324,6 +334,47 @@ function PublicFormAssistant({ language, values, labels, success }) {
   ];
   const completed = fields.filter((field) => field[2]).length;
   const nextField = fields.find((field) => !field[2]);
+  const clampPosition = useCallback((x, y) => ({
+    x: Math.max(8, Math.min(x, window.innerWidth - 313)),
+    y: Math.max(8, Math.min(y, window.innerHeight - (open ? 265 : 62))),
+  }), [open]);
+  const startDrag = (event) => {
+    if (event.button !== 0) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const origin = position || { x: rect.right - 305, y: rect.top };
+    dragState.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, origin };
+    moved.current = false;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const moveAssistant = (event) => {
+    const drag = dragState.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const dx = event.clientX - drag.startX;
+    const dy = event.clientY - drag.startY;
+    if (Math.hypot(dx, dy) < 4 && !moved.current) return;
+    moved.current = true;
+    const next = clampPosition(drag.origin.x + dx, drag.origin.y + dy);
+    positionRef.current = next;
+    setPosition(next);
+  };
+  const finishDrag = (event) => {
+    if (!dragState.current || dragState.current.pointerId !== event.pointerId) return;
+    dragState.current = null;
+    if (moved.current && positionRef.current) {
+      window.localStorage.setItem("public-ai-position", JSON.stringify(positionRef.current));
+    }
+  };
+  useEffect(() => {
+    const keepOnScreen = () => {
+      if (!positionRef.current) return;
+      const next = clampPosition(positionRef.current.x, positionRef.current.y);
+      positionRef.current = next;
+      setPosition(next);
+    };
+    window.addEventListener("resize", keepOnScreen);
+    keepOnScreen();
+    return () => window.removeEventListener("resize", keepOnScreen);
+  }, [clampPosition]);
   const focusNext = () => {
     if (!nextField) return;
     const input = document.querySelector(`[name="${nextField[0]}"]`);
@@ -333,8 +384,11 @@ function PublicFormAssistant({ language, values, labels, success }) {
     window.setTimeout(() => input?.classList.remove("ai-field-focus"), 1800);
   };
   return (
-    <aside className={`public-form-assistant${open ? " is-open" : ""}`}>
-      <button className="public-ai-trigger" type="button" onClick={() => setOpen((value) => !value)} aria-label={assistantCopy.title} aria-expanded={open}>
+    <aside className={`public-form-assistant${open ? " is-open" : ""}${position ? " is-dragged" : ""}`} style={position ? { left: position.x, top: position.y } : undefined}>
+      <button className="public-ai-trigger" type="button" onPointerDown={startDrag} onPointerMove={moveAssistant} onPointerUp={finishDrag} onPointerCancel={finishDrag} onClick={() => {
+        if (moved.current) { moved.current = false; return; }
+        setOpen((value) => !value);
+      }} aria-label={assistantCopy.title} aria-expanded={open}>
         <span><Bot /></span><i />
       </button>
       <div className="public-ai-hint">{success ? assistantCopy.sent : nextField ? `${assistantCopy.next}: ${nextField[1]}` : assistantCopy.ready}</div>
