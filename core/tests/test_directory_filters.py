@@ -3,6 +3,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from core.models import Branch, Organization, Platform, Position, SiteRole, Station, UserProfile
+from core.utils import user_can_api_settings, user_can_site_settings
 
 
 class DirectoryFilterTests(TestCase):
@@ -307,3 +308,27 @@ class DirectoryRoleVisibilityTests(TestCase):
             {row["id"] for row in response.json()["results"]},
             {self.station_platform_b.id, self.station_scope_b.id},
         )
+
+    def test_custom_admin_role_like_akt_sees_every_scope_and_has_full_admin_access(self):
+        akt_role = SiteRole.objects.create(
+            name="AKT",
+            code="akt",
+            is_admin_role=True,
+            can_directories=True,
+            can_api_settings=False,
+            can_site_settings=False,
+        )
+        akt_user = User.objects.create_user("akt-user", password="test-password")
+        profile = UserProfile.objects.create(
+            user=akt_user,
+            branch=self.branch_a.name,
+            organization=self.organization_a.name,
+        )
+        profile.roles.add(akt_role)
+
+        self.assertEqual(
+            self._visible_station_ids(akt_user),
+            {self.station_platform_a.id, self.station_platform_b.id, self.station_scope_b.id},
+        )
+        self.assertTrue(user_can_api_settings(akt_user))
+        self.assertTrue(user_can_site_settings(akt_user))
