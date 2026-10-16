@@ -10,6 +10,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import {
+  ArrowRight,
   BarChart3,
   Bell,
   Building2,
@@ -34,6 +35,7 @@ import {
   Search,
   Settings2,
   SlidersHorizontal,
+  Sparkles,
   Star,
   Sun,
   Sunrise,
@@ -801,8 +803,10 @@ function pickFreshQuote(language, length) {
   return next;
 }
 
-function AnimatedAiAssistant({ mood, hint, tr, permissions, navigate }) {
+function AnimatedAiAssistant({ mood, hint, tr, permissions, navigate, stats, sla }) {
   const [open, setOpen] = useState(false);
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
   const assistantRef = useRef(null);
   const trackPointer = (event) => {
     const bounds = event.currentTarget.getBoundingClientRect();
@@ -818,6 +822,33 @@ function AnimatedAiAssistant({ mood, hint, tr, permissions, navigate }) {
   const go = (path) => {
     setOpen(false);
     navigate(path);
+  };
+  const recommendation = sla.overdue > 0
+    ? tr("Сначала обработайте просроченные заявки: {count}.", { count: sla.overdue })
+    : sla.due_soon > 0
+      ? tr("Проверьте заявки со сроком менее 24 часов: {count}.", { count: sla.due_soon })
+      : stats.new > 0
+        ? tr("Распределите новые заявки между исполнителями: {count}.", { count: stats.new })
+        : stats.chats > 0
+          ? tr("Ответьте на непрочитанные сообщения: {count}.", { count: stats.chats })
+          : tr("Срочных действий нет. Рабочая очередь в порядке.");
+  const askAssistant = (event) => {
+    event.preventDefault();
+    const value = question.trim().toLocaleLowerCase();
+    if (!value) return;
+    if (/(проср|kechik|overdue)/i.test(value) && permissions.requests) {
+      setAnswer(tr("Показываю просроченные заявки."));
+      document.querySelector(".sla-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else if (/(чат|chat|xabar)/i.test(value) && permissions.chats) {
+      go("/modules/chats");
+    } else if (/(сотруд|ходим|xodim|employee|user)/i.test(value) && permissions.users) {
+      go("/modules/users");
+    } else if (/(заяв|ариз|ariz|request|new)/i.test(value) && permissions.requests) {
+      go("/requests?status=new");
+    } else {
+      setAnswer(tr("Я могу открыть новые или просроченные заявки, чаты и поиск сотрудников."));
+    }
+    setQuestion("");
   };
   return (
     <div
@@ -848,6 +879,22 @@ function AnimatedAiAssistant({ mood, hint, tr, permissions, navigate }) {
       <span className="ai-assistant__badge"><i />AI</span>
       {open && (
         <div className="ai-assistant__menu">
+          <div className="ai-assistant__menu-head"><span><i />AI</span><b>{tr("Помощник MTU")}</b></div>
+          <section className="ai-assistant__summary">
+            <strong>{tr("Сводка на сегодня")}</strong>
+            <div>
+              <span><b>{stats.today || 0}</b>{tr("Сегодня")}</span>
+              <span><b>{stats.new || 0}</b>{tr("Новые")}</span>
+              <span><b>{sla.overdue || 0}</b>{tr("Просрочено")}</span>
+              <span><b>{stats.chats || 0}</b>{tr("Чаты")}</span>
+            </div>
+          </section>
+          <p className={`ai-assistant__recommendation is-${mood}`}><Sparkles />{recommendation}</p>
+          <form className="ai-assistant__ask" onSubmit={askAssistant}>
+            <input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder={tr("Спросите помощника…")} aria-label={tr("Вопрос AI-помощнику")} />
+            <button type="submit" aria-label={tr("Отправить вопрос")}><ArrowRight /></button>
+          </form>
+          {answer && <p className="ai-assistant__answer" role="status">{answer}</p>}
           <strong>{tr("Быстрые действия")}</strong>
           {permissions.requests && <button type="button" onClick={() => go("/requests?status=new")}><ClipboardList />{tr("Новые заявки")}</button>}
           {permissions.requests && <button type="button" onClick={() => { setOpen(false); document.querySelector(".sla-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}><Bell />{tr("Просроченные заявки")}</button>}
@@ -1005,6 +1052,8 @@ function Dashboard({ boot }) {
             tr={tr}
             permissions={boot.permissions}
             navigate={navigate}
+            stats={stats}
+            sla={boot.dashboard.sla || { overdue: 0, due_soon: 0 }}
           />
         </article>
         <article className="quote-card" aria-live="polite">

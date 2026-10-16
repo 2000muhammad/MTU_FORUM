@@ -435,7 +435,7 @@ select {
   top: 104px;
   right: 2px;
   display: grid;
-  width: 230px;
+  width: 310px;
   gap: 5px;
   padding: 10px;
   border: 1px solid color-mix(in srgb, var(--ai-accent) 35%, var(--line));
@@ -445,6 +445,23 @@ select {
   backdrop-filter: blur(18px);
   animation: ai-assistant-menu-in .2s ease-out both;
 }
+.ai-assistant__menu-head { display: flex; align-items: center; gap: 8px; padding: 2px 5px 5px; }
+.ai-assistant__menu-head > span { display: inline-flex; align-items: center; gap: 4px; padding: 4px 7px; border-radius: 999px; background: color-mix(in srgb, var(--ai-accent) 14%, transparent); color: var(--ai-accent); font-size: 10px; font-weight: 900; }
+.ai-assistant__menu-head > span i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+.ai-assistant__menu-head b { font-size: 13px; }
+.ai-assistant__summary { padding: 9px; border: 1px solid var(--line); border-radius: 12px; background: color-mix(in srgb, var(--bg) 55%, transparent); }
+.ai-assistant__summary > strong { display: block; margin-bottom: 8px; color: var(--muted); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+.ai-assistant__summary > div { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.ai-assistant__summary span { display: grid; gap: 2px; color: var(--muted); font-size: 8px; text-align: center; }
+.ai-assistant__summary span b { color: var(--text); font-size: 16px; }
+.ai-assistant__recommendation { display: flex; align-items: flex-start; gap: 7px; margin: 2px 0; padding: 8px 9px; border-radius: 11px; background: color-mix(in srgb, var(--ai-accent) 10%, transparent); color: var(--text); font-size: 10px; line-height: 1.4; }
+.ai-assistant__recommendation svg { width: 14px; height: 14px; flex: 0 0 14px; color: var(--ai-accent); }
+.ai-assistant__ask { display: flex; gap: 5px; }
+.ai-assistant__ask input { min-width: 0; flex: 1; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; outline: none; background: var(--surface); color: var(--text); font: inherit; font-size: 11px; }
+.ai-assistant__ask input:focus { border-color: var(--ai-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ai-accent) 12%, transparent); }
+.ai-assistant__menu .ai-assistant__ask button { display: grid; width: 35px; flex: 0 0 35px; padding: 0; place-items: center; border-radius: 10px; background: var(--ai-accent); color: white; }
+.ai-assistant__menu .ai-assistant__ask button:hover { background: color-mix(in srgb, var(--ai-accent) 82%, #082b32); }
+.ai-assistant__answer { margin: 0; padding: 7px 9px; border-left: 2px solid var(--ai-accent); border-radius: 4px 9px 9px 4px; background: color-mix(in srgb, var(--ai-accent) 8%, transparent); color: var(--muted); font-size: 10px; line-height: 1.4; }
 .ai-assistant__menu strong { padding: 4px 7px 7px; color: var(--muted); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
 .ai-assistant__menu button {
   display: flex;
