@@ -801,12 +801,41 @@ function pickFreshQuote(language, length) {
   return next;
 }
 
-function AnimatedAiAssistant() {
+function AnimatedAiAssistant({ mood, hint, tr, permissions, navigate }) {
+  const [open, setOpen] = useState(false);
+  const assistantRef = useRef(null);
+  const trackPointer = (event) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const x = ((event.clientX - bounds.left) / bounds.width - 0.5) * 2;
+    const y = ((event.clientY - bounds.top) / bounds.height - 0.5) * 2;
+    assistantRef.current?.style.setProperty("--look-x", x.toFixed(2));
+    assistantRef.current?.style.setProperty("--look-y", y.toFixed(2));
+  };
+  const resetPointer = () => {
+    assistantRef.current?.style.setProperty("--look-x", "0");
+    assistantRef.current?.style.setProperty("--look-y", "0");
+  };
+  const go = (path) => {
+    setOpen(false);
+    navigate(path);
+  };
   return (
-    <div className="ai-assistant" aria-hidden="true">
+    <div
+      ref={assistantRef}
+      className={`ai-assistant ai-assistant--${mood}${open ? " is-open" : ""}`}
+      onMouseMove={trackPointer}
+      onMouseLeave={resetPointer}
+    >
+      <div className="ai-assistant__hint" role="status">{hint}</div>
       <span className="ai-assistant__orbit"><i /><i /><i /></span>
       <span className="ai-assistant__antenna"><i /></span>
-      <span className="ai-assistant__head">
+      <button
+        className="ai-assistant__head"
+        type="button"
+        aria-label={tr("Открыть AI-помощника")}
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
         <span className="ai-assistant__screen">
           <i className="ai-assistant__eye ai-assistant__eye--left" />
           <i className="ai-assistant__eye ai-assistant__eye--right" />
@@ -815,14 +844,24 @@ function AnimatedAiAssistant() {
         </span>
         <i className="ai-assistant__ear ai-assistant__ear--left" />
         <i className="ai-assistant__ear ai-assistant__ear--right" />
-      </span>
+      </button>
       <span className="ai-assistant__badge"><i />AI</span>
+      {open && (
+        <div className="ai-assistant__menu">
+          <strong>{tr("Быстрые действия")}</strong>
+          {permissions.requests && <button type="button" onClick={() => go("/requests?status=new")}><ClipboardList />{tr("Новые заявки")}</button>}
+          {permissions.requests && <button type="button" onClick={() => { setOpen(false); document.querySelector(".sla-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}><Bell />{tr("Просроченные заявки")}</button>}
+          {permissions.chats && <button type="button" onClick={() => go("/modules/chats")}><MessageCircle />{tr("Открыть чаты")}</button>}
+          {permissions.users && <button type="button" onClick={() => go("/modules/users")}><Users />{tr("Найти сотрудника")}</button>}
+        </div>
+      )}
     </div>
   );
 }
 
 function Dashboard({ boot }) {
   const tr = createTranslator(boot.language);
+  const navigate = useNavigate();
   const [activeChartSegment, setActiveChartSegment] = useState(null);
   const [dashboardSettingsOpen, setDashboardSettingsOpen] = useState(false);
   const [webPlatforms, setWebPlatforms] = useState(boot.dashboard.web_platforms || []);
@@ -876,6 +915,22 @@ function Dashboard({ boot }) {
   }, [boot.language, quotes.length]);
   const shownQuote = remoteQuote || quotes[quoteIndex];
   const stats = boot.dashboard.stats;
+  const overdueCount = boot.dashboard.sla?.overdue || 0;
+  const dueSoonCount = boot.dashboard.sla?.due_soon || 0;
+  const assistantMood = overdueCount > 0 ? "danger" : dueSoonCount > 0 ? "warning" : "healthy";
+  const assistantHint = overdueCount > 0
+    ? tr("Просрочено заявок: {count}", { count: overdueCount })
+    : dueSoonCount > 0
+      ? tr("До срока менее 24 часов: {count}", { count: dueSoonCount })
+      : stats.new > 0
+        ? tr("Новые заявки: {count}", { count: stats.new })
+        : tr("Все системы работают стабильно.");
+  const currentHour = new Date().getHours();
+  const greetingKey = currentHour < 12
+    ? "Доброе утро, {name}"
+    : currentHour < 18
+      ? "Добрый день, {name}"
+      : "Добрый вечер, {name}";
   const formatDuration = (seconds) => {
     if (!seconds) return "—";
     if (seconds < 3600) return `${Math.max(1, Math.round(seconds / 60))} ${tr("мин.")}`;
@@ -934,7 +989,7 @@ function Dashboard({ boot }) {
           <div>
             <span>{tr("ОБЗОР СИСТЕМЫ")}</span>
             <h2>
-              {tr("Добро пожаловать, {name}", {
+              {tr(greetingKey, {
                 name: boot.user.first_name || boot.user.username,
               })}
             </h2>
@@ -944,7 +999,13 @@ function Dashboard({ boot }) {
               )}
             </p>
           </div>
-          <AnimatedAiAssistant />
+          <AnimatedAiAssistant
+            mood={assistantMood}
+            hint={assistantHint}
+            tr={tr}
+            permissions={boot.permissions}
+            navigate={navigate}
+          />
         </article>
         <article className="quote-card" aria-live="polite">
           <div className="quote-card-head">
