@@ -11,6 +11,8 @@ from core.models import DashboardQuote, ExternalApiConnection
 
 class QuotesApiTests(TestCase):
     def setUp(self):
+        # API fallback tests require an intentionally empty custom quote library.
+        DashboardQuote.objects.all().delete()
         self.user = User.objects.create_user(username="quote-user", password="secret")
         self.client.force_login(self.user)
         self.connection = ExternalApiConnection.objects.create(
