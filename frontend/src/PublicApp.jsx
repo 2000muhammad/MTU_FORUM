@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
+  Bot,
   Building2,
   CheckCircle2,
   Eye,
@@ -12,6 +13,7 @@ import {
   Moon,
   RefreshCw,
   Send,
+  Sparkles,
   Sun,
   Sunrise,
   UserRound,
@@ -272,6 +274,7 @@ function SearchableSelect({ name, label, items, value, onChange, placeholder, er
     <label className="searchable-select">
       <span>{label}</span>
       <input
+        name={name}
         value={query}
         placeholder={placeholder}
         autoComplete="off"
@@ -298,6 +301,53 @@ function SearchableSelect({ name, label, items, value, onChange, placeholder, er
       )}
       <FieldError errors={errors} name={name} />
     </label>
+  );
+}
+
+function PublicFormAssistant({ language, values, labels, success }) {
+  const [open, setOpen] = useState(false);
+  const assistantCopy = {
+    ru: { title: "AI-помощник", intro: "Помогу заполнить заявку без ошибок.", progress: "Заполнено", next: "Следующее поле", focus: "Перейти к полю", check: "Проверить форму", ready: "Все поля заполнены. Проверьте данные и отправьте заявку.", sent: "Заявка успешно отправлена. Спасибо!", tips: { platform: "Выберите нужную корпоративную платформу из списка.", full_name: "Введите фамилию, имя и отчество полностью.", pnfl: "ПИНФЛ должен содержать ровно 14 цифр.", passport: "Введите 2 латинские буквы и 7 цифр, например AB1234567.", company: "Выберите предприятие из предложенного списка.", position: "Выберите вашу должность из списка.", phone: "Введите номер Узбекистана в формате +998-XX-XXX-XX-XX.", cause: "Кратко и понятно опишите причину получения доступа." } },
+    uz: { title: "AI yordamchi", intro: "Arizani xatosiz to'ldirishga yordam beraman.", progress: "To'ldirildi", next: "Keyingi maydon", focus: "Maydonga o'tish", check: "Formani tekshirish", ready: "Barcha maydonlar to'ldirildi. Ma'lumotlarni tekshirib, arizani yuboring.", sent: "Ariza muvaffaqiyatli yuborildi. Rahmat!", tips: { platform: "Kerakli korporativ platformani ro'yxatdan tanlang.", full_name: "Familiya, ism va otangiz ismini to'liq kiriting.", pnfl: "JSHSHIR aynan 14 ta raqamdan iborat bo'lishi kerak.", passport: "2 ta lotin harfi va 7 ta raqam kiriting, masalan AB1234567.", company: "Korxonani taklif qilingan ro'yxatdan tanlang.", position: "Lavozimingizni ro'yxatdan tanlang.", phone: "O'zbekiston raqamini +998-XX-XXX-XX-XX formatida kiriting.", cause: "Kirish olish sababini qisqa va aniq yozing." } },
+    "uz-cyrl": { title: "AI ёрдамчи", intro: "Аризани хатосиз тўлдиришга ёрдам бераман.", progress: "Тўлдирилди", next: "Кейинги майдон", focus: "Майдонга ўтиш", check: "Формани текшириш", ready: "Барча майдонлар тўлдирилди. Маълумотларни текшириб, аризани юборинг.", sent: "Ариза муваффақиятли юборилди. Раҳмат!", tips: { platform: "Керакли корпоратив платформани рўйхатдан танланг.", full_name: "Фамилия, исм ва отангиз исмини тўлиқ киритинг.", pnfl: "ЖШШИР айнан 14 та рақамдан иборат бўлиши керак.", passport: "2 та лотин ҳарфи ва 7 та рақам киритинг, масалан AB1234567.", company: "Корхонани таклиф қилинган рўйхатдан танланг.", position: "Лавозимингизни рўйхатдан танланг.", phone: "Ўзбекистон рақамини +998-XX-XXX-XX-XX форматида киритинг.", cause: "Кириш олиш сабабини қисқа ва аниқ ёзинг." } },
+    en: { title: "AI assistant", intro: "I will help you complete the request without errors.", progress: "Completed", next: "Next field", focus: "Go to field", check: "Check form", ready: "All fields are complete. Review the details and submit the request.", sent: "The request was submitted successfully. Thank you!", tips: { platform: "Select the required corporate platform from the list.", full_name: "Enter your full surname, first name, and patronymic.", pnfl: "PINFL must contain exactly 14 digits.", passport: "Enter 2 Latin letters and 7 digits, for example AB1234567.", company: "Select your company from the suggested list.", position: "Select your position from the list.", phone: "Enter an Uzbekistan number in +998-XX-XXX-XX-XX format.", cause: "Briefly describe why you need access." } },
+  }[language];
+  const fields = [
+    ["platform", labels.platform, Boolean(values.platform)],
+    ["full_name", labels.full_name, values.full_name.trim().length >= 5],
+    ["pnfl", labels.pnfl, /^\d{14}$/.test(values.pnfl)],
+    ["passport", labels.passport, /^[A-Za-z]{2}\d{7}$/.test(values.passport.replace(/\s/g, ""))],
+    ["company", labels.company, Boolean(values.company)],
+    ["position", labels.position, Boolean(values.position)],
+    ["phone", labels.phone, /^998\d{9}$/.test(values.phone.replace(/\D/g, ""))],
+    ["cause", labels.cause, values.cause.trim().length >= 3],
+  ];
+  const completed = fields.filter((field) => field[2]).length;
+  const nextField = fields.find((field) => !field[2]);
+  const focusNext = () => {
+    if (!nextField) return;
+    const input = document.querySelector(`[name="${nextField[0]}"]`);
+    input?.focus();
+    input?.scrollIntoView({ behavior: "smooth", block: "center" });
+    input?.classList.add("ai-field-focus");
+    window.setTimeout(() => input?.classList.remove("ai-field-focus"), 1800);
+  };
+  return (
+    <aside className={`public-form-assistant${open ? " is-open" : ""}`}>
+      <button className="public-ai-trigger" type="button" onClick={() => setOpen((value) => !value)} aria-label={assistantCopy.title} aria-expanded={open}>
+        <span><Bot /></span><i />
+      </button>
+      <div className="public-ai-hint">{success ? assistantCopy.sent : nextField ? `${assistantCopy.next}: ${nextField[1]}` : assistantCopy.ready}</div>
+      {open && (
+        <div className="public-ai-panel">
+          <header><span><Sparkles /></span><div><b>{assistantCopy.title}</b><small>{assistantCopy.intro}</small></div></header>
+          <div className="public-ai-progress"><span><i style={{ width: `${(completed / fields.length) * 100}%` }} /></span><b>{assistantCopy.progress}: {completed}/{fields.length}</b></div>
+          <p>{success ? assistantCopy.sent : nextField ? assistantCopy.tips[nextField[0]] : assistantCopy.ready}</p>
+          {!success && nextField && <button type="button" onClick={focusNext}>{assistantCopy.focus}<ArrowRight /></button>}
+          {!success && !nextField && <button type="button" onClick={() => document.querySelector(".request-form .public-submit")?.focus()}>{assistantCopy.check}<CheckCircle2 /></button>}
+        </div>
+      )}
+    </aside>
   );
 }
 
@@ -415,6 +465,7 @@ function PublicRequest({ data }) {
           </div>
         </section>
         <form className="public-react-card request-form" onSubmit={submit}>
+          <PublicFormAssistant language={data.language} values={values} labels={data.texts} success={success} />
           <div className="public-card-title">
             <span>
               <Send />
