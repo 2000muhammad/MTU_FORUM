@@ -5360,10 +5360,13 @@ def _translate_quote_text(text, language):
             if not translated:
                 raise ValueError("Translation service returned an empty result.")
             translated = unescape(unescape(translated))
+            if translated.casefold() == text.casefold():
+                raise ValueError("Translation service returned the source text unchanged.")
             cache.set(cache_key, translated, 60 * 60 * 24 * 30)
-        except (requests.RequestException, ValueError, TypeError, KeyError):
-            # A translation outage must not discard a valid live quote.
-            translated = text
+        except (requests.RequestException, ValueError, TypeError, KeyError) as exc:
+            # Never show the English source on a localized dashboard. The API
+            # response will fall back to the built-in quote for that language.
+            raise ValueError("Quote translation is unavailable.") from exc
     translated = unescape(unescape(translated))
     return _latin_uz_to_cyrillic(translated) if language == "uz-cyrl" else translated
 

@@ -834,7 +834,12 @@ function Dashboard({ boot }) {
     const loadQuote = () => {
       api(`/api/react/quote/?lang=${encodeURIComponent(boot.language)}&_=${Date.now()}`)
         .then((result) => {
-          if (!active || !result.ok || !result.quote?.text) return;
+          if (!active) return;
+          if (!result.ok || !result.quote?.text) {
+            setRemoteQuote(null);
+            setQuoteIndex(pickFreshQuote(boot.language, quotes.length));
+            return;
+          }
           setRemoteQuote(result.quote);
         })
         .catch(() => {

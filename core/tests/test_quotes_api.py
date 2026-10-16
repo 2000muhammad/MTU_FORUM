@@ -51,7 +51,7 @@ class QuotesApiTests(TestCase):
 
     @override_settings(API_NINJAS_API_KEY="")
     @patch("core.views.requests.get")
-    def test_translation_failure_keeps_live_api_quote(self, request_get):
+    def test_translation_failure_uses_localized_fallback(self, request_get):
         quote_response = Mock()
         quote_response.json.return_value = [{"quote": "A calm mind sees clearly.", "author": "Test Author"}]
         request_get.side_effect = [quote_response, requests.RequestException("translation limit")]
@@ -59,8 +59,7 @@ class QuotesApiTests(TestCase):
         result = self.client.get(reverse("react_quote_api"), {"lang": "ru"})
 
         self.assertEqual(result.status_code, 200)
-        self.assertTrue(result.json()["ok"])
-        self.assertEqual(result.json()["quote"], {"text": "A calm mind sees clearly.", "author": "Test Author"})
+        self.assertEqual(result.json(), {"ok": False, "configured": True, "fallback": True})
 
     @override_settings(API_NINJAS_API_KEY="")
     def test_uses_local_fallback_when_key_is_missing(self):
