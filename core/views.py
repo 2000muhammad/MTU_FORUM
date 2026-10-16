@@ -3755,14 +3755,17 @@ def settings_view(request, section="stations"):
                 if user_is_organization_manager(request.user):
                     messages.error(request, "Менеджер организации не может переносить записи.")
                     return redirect("settings_section", section=redirect_section)
+                platform_id = request.POST.get("bulk_platform", "")
+                branch_id = request.POST.get("bulk_branch", "")
                 organization_id = request.POST.get("bulk_organization", "")
-                if not organization_id.isdigit():
-                    messages.warning(request, "Выберите организацию для переноса.")
+                if not all(value.isdigit() for value in (platform_id, branch_id, organization_id)):
+                    messages.warning(request, "Выберите платформу, филиал и организацию для переноса.")
                     return redirect("settings_section", section=redirect_section)
+                platform = get_object_or_404(Platform.objects.filter(is_active=True), pk=platform_id)
                 organizations = _scope_organizations_for_actor(Organization.objects.select_related("branch"), request.user)
-                organization = get_object_or_404(organizations, pk=organization_id)
-                updated = queryset.update(branch=organization.branch, organization=organization)
-                messages.success(request, f"Перенесено в «{organization.name}»: {updated}.")
+                organization = get_object_or_404(organizations, pk=organization_id, branch_id=branch_id)
+                updated = queryset.update(platform=platform, branch=organization.branch, organization=organization)
+                messages.success(request, f"Перенесено в «{platform.name} · {organization.branch.name} · {organization.name}»: {updated}.")
                 return redirect("settings_section", section=redirect_section)
 
             messages.error(request, "Неизвестное массовое действие.")

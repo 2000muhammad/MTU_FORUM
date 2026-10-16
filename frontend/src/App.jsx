@@ -1544,6 +1544,8 @@ function DirectoryPage({ kind, boot }) {
   const [branchFilter, setBranchFilter] = useState("");
   const [organizationFilter, setOrganizationFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [bulkPlatform, setBulkPlatform] = useState("");
+  const [bulkBranch, setBulkBranch] = useState("");
   const [bulkOrganization, setBulkOrganization] = useState("");
   const [selected, setSelected] = useState(new Set());
   const [editing, setEditing] = useState(null);
@@ -1584,7 +1586,7 @@ function DirectoryPage({ kind, boot }) {
     }
   };
   const bulk = (action) =>
-    submit({ section: `${section}_bulk`, action, selected_ids: [...selected], bulk_organization: bulkOrganization });
+    submit({ section: `${section}_bulk`, action, selected_ids: [...selected], bulk_platform: bulkPlatform, bulk_branch: bulkBranch, bulk_organization: bulkOrganization });
   return (
     <div className="page-stack">
       <div className="directory-tabs">
@@ -1657,11 +1659,19 @@ function DirectoryPage({ kind, boot }) {
           </button>
           {!boot.user.is_organization_manager && (
             <>
+              <select value={bulkPlatform} onChange={(e) => setBulkPlatform(e.target.value)}>
+                <option value="">{tr("Платформа…")}</option>
+                {(data?.platforms || []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+              <select value={bulkBranch} onChange={(e) => { setBulkBranch(e.target.value); setBulkOrganization(""); }}>
+                <option value="">{tr("Филиал…")}</option>
+                {(data?.branches || []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
               <select value={bulkOrganization} onChange={(e) => setBulkOrganization(e.target.value)}>
                 <option value="">{tr("Перенести в организацию…")}</option>
-                {(data?.organizations || []).map((item) => <option key={item.id} value={item.id}>{item.name} — {item.branch_name}</option>)}
+                {(data?.organizations || []).filter((item) => !bulkBranch || String(item.branch_id) === bulkBranch).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
               </select>
-              <button onClick={() => bulk("bulk_move")} disabled={busy || !bulkOrganization}>{tr("Перенести")}</button>
+              <button onClick={() => bulk("bulk_move")} disabled={busy || !bulkPlatform || !bulkBranch || !bulkOrganization}>{tr("Перенести")}</button>
             </>
           )}
         </div>

@@ -124,12 +124,15 @@ class DirectoryFilterTests(TestCase):
         self.assertFalse(self.inactive_station.is_active)
 
     def test_bulk_position_move_updates_branch_and_organization(self):
+        platform = Platform.objects.create(name="Destination platform", code="destination-platform")
         response = self.client.post(
             reverse("settings_section", kwargs={"section": "positions"}),
             {
                 "section": "position_bulk",
                 "action": "bulk_move",
                 "selected_ids": [self.north_position.pk],
+                "bulk_platform": platform.pk,
+                "bulk_branch": self.branch_two.pk,
                 "bulk_organization": self.organization_two.pk,
             },
         )
@@ -138,6 +141,7 @@ class DirectoryFilterTests(TestCase):
         self.north_position.refresh_from_db()
         self.assertEqual(self.north_position.organization, self.organization_two)
         self.assertEqual(self.north_position.branch, self.branch_two)
+        self.assertEqual(self.north_position.platform, platform)
 
     def test_bulk_move_without_organization_is_validated(self):
         response = self.client.post(
@@ -155,6 +159,7 @@ class DirectoryFilterTests(TestCase):
         self.assertEqual(self.north_position.organization, self.organization_one)
 
     def test_branch_manager_cannot_bulk_move_to_another_branch(self):
+        platform = Platform.objects.create(name="Restricted platform", code="restricted-platform")
         branch_role = SiteRole.objects.create(name="Branch manager", code="branch_manager")
         branch_manager = User.objects.create_user("directory-branch-manager", password="test-password")
         profile = UserProfile.objects.create(user=branch_manager, branch=self.branch_one.name)
@@ -167,6 +172,8 @@ class DirectoryFilterTests(TestCase):
                 "section": "position_bulk",
                 "action": "bulk_move",
                 "selected_ids": [self.north_position.pk],
+                "bulk_platform": platform.pk,
+                "bulk_branch": self.branch_two.pk,
                 "bulk_organization": self.organization_two.pk,
             },
         )
