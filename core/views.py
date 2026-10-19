@@ -34,6 +34,7 @@ from django.contrib.sessions.models import Session
 from django.contrib.auth.views import LoginView as DjangoLoginView
 from django.core.exceptions import RequestDataTooBig
 from django.core.files.base import ContentFile
+from django.core.mail import send_mail
 from django.core.management import call_command
 from django.core.paginator import Paginator
 from django.db import close_old_connections, transaction
@@ -61,13 +62,14 @@ from PIL import Image, ImageOps
 
 from .forms import ApiConfigurationForm, BotSubscriptionChannelForm, BranchForm, DashboardQuoteForm, DeveloperTaskForm, EmployeeProfileForm, ExternalApiConnectionForm, IntakeRequestForm, LoginForm, ManagerAccountForm, OrganizationForm, PlatformForm, PositionForm, SiteIntakeForm, SiteRoleForm, SiteSettingsForm, StationForm, StyledPasswordChangeForm, UserForm, UserInfoForm, UserProfileForm, WebPlatformForm
 from .excel_utils import build_xlsx, parse_xlsx, truthy
-from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DashboardQuote, DeveloperTask, ExternalApiConnection, IntakeRequest, IntakeRequestHistory, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, PeopleImportJob, Platform, Position, PublicDocument, PublicDocumentEvent, PublicDocumentSession, RequestNotification, SecurityThrottle, SiteLog, SiteRole, SiteSettings, Station, TelegramAccountLink, TelegramPasswordReset, UserPresence, UserProfile, WebPlatform, WebPlatformFavorite
+from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DashboardQuote, DeveloperTask, ExternalApiConnection, IntakeRequest, IntakeRequestHistory, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, LoginDevice, Organization, PeopleImportJob, Platform, Position, PublicDocument, PublicDocumentEvent, PublicDocumentSession, RequestNotification, SecurityThrottle, SiteLog, SiteRole, SiteSettings, Station, TelegramAccountLink, TelegramPasswordReset, UserPresence, UserProfile, WebPlatform, WebPlatformFavorite
 from .directory_localization import localize_directory_name
 from .site_logs import write_site_log
 from .security import clear_failures, consume_rate_limit, is_locked, record_failure
 from .middleware import get_platform_version
 from .telegram import get_telegram_profile_photo, send_telegram_media, send_telegram_message
-from .password_policy import mark_password_changed, mark_temporary_password, password_policy_state
+from .password_policy import archive_current_password, mark_password_changed, mark_temporary_password, password_policy_state
+from .account_security import register_login_device
 from .utils import (
     generate_login,
     generate_password,
@@ -351,6 +353,7 @@ class LoginView(DjangoLoginView):
     def form_valid(self, form):
         clear_failures("login", self.request, form.cleaned_data.get("username", ""))
         response = super().form_valid(form)
+        register_login_device(self.request, form.get_user())
         if form.cleaned_data.get("remember_me"):
             self.request.session.set_expiry(getattr(settings, "REMEMBER_ME_COOKIE_AGE", 60 * 60 * 24 * 30))
         else:
@@ -2185,17 +2188,38 @@ def profile(request):
 
             if password_form.is_valid():
 
+                archive_current_password(request.user)
                 user = password_form.save()
 
                 mark_password_changed(user)
 
                 update_session_auth_hash(request, user)
+                register_login_device(request, user)
 
                 messages.success(request, "Пароль обновлен.")
 
                 return redirect("profile")
 
             messages.error(request, "Проверьте поля смены пароля.")
+
+        elif action == "terminate_session":
+            device = get_object_or_404(LoginDevice, pk=request.POST.get("device_id"), user=request.user)
+            if device.session_key == request.session.session_key:
+                messages.error(request, "Текущий сеанс можно завершить кнопкой «Выйти».")
+            else:
+                Session.objects.filter(session_key=device.session_key).delete()
+                device.is_active = False
+                device.save(update_fields=["is_active"])
+                messages.success(request, "Сеанс завершён.")
+            return redirect("profile")
+
+        elif action == "terminate_other_sessions":
+            current_key = request.session.session_key
+            devices = LoginDevice.objects.filter(user=request.user, is_active=True).exclude(session_key=current_key)
+            Session.objects.filter(session_key__in=list(devices.values_list("session_key", flat=True))).delete()
+            devices.update(is_active=False)
+            messages.success(request, "Все другие сеансы завершены.")
+            return redirect("profile")
 
         elif action == "telegram_unlink":
 
@@ -2207,6 +2231,12 @@ def profile(request):
             messages.success(request, "Telegram-аккаунт отключён.")
             return redirect("profile")
 
+    active_keys = set(Session.objects.filter(expire_date__gt=timezone.now()).values_list("session_key", flat=True))
+    LoginDevice.objects.filter(user=request.user, is_active=True).exclude(session_key__in=active_keys).update(is_active=False)
+    active_devices = list(LoginDevice.objects.filter(user=request.user, is_active=True))
+    for device in active_devices:
+        device.session_exists = device.session_key in active_keys
+        device.is_current = device.session_key == request.session.session_key
     return render(request, "profile.html", {
         "password_form": password_form,
         "avatar_form": avatar_form,
@@ -2214,6 +2244,7 @@ def profile(request):
         "employee_form": employee_form,
         "profile_obj": profile_obj,
         "password_policy": password_policy_state(request.user),
+        "active_devices": active_devices,
     })
 
 
@@ -3188,6 +3219,7 @@ def users_view(request):
 
         if action == "reset_password" and instance:
             new_password = generate_password()
+            archive_current_password(instance)
             instance.set_password(new_password)
             instance.save(update_fields=["password"])
             mark_temporary_password(instance)
@@ -3471,6 +3503,7 @@ def manager_accounts_view(request):
 
         if action == "reset_password" and instance:
             new_password = generate_password()
+            archive_current_password(instance)
             instance.set_password(new_password)
             instance.save(update_fields=["password"])
             mark_temporary_password(instance)
@@ -5074,6 +5107,7 @@ def react_login_api(request):
             status=400,
         )
     auth_login(request, form.get_user())
+    register_login_device(request, form.get_user())
     clear_failures("login", request, username)
     if form.cleaned_data.get("remember_me"):
         request.session.set_expiry(getattr(settings, "REMEMBER_ME_COOKIE_AGE", 60 * 60 * 24 * 30))
@@ -5158,6 +5192,42 @@ def react_password_reset_request_api(request):
     })
 
 
+@require_POST
+def react_password_reset_email_api(request):
+    """Issue a temporary password through the account email without revealing account existence."""
+    try:
+        payload = json.loads(request.body or "{}")
+    except (TypeError, ValueError):
+        return JsonResponse({"detail": "Invalid JSON."}, status=400)
+    username = str(payload.get("username") or "").strip()
+    if not username:
+        return JsonResponse({"detail": "Введите логин."}, status=400)
+    allowed, retry_after = consume_rate_limit("password_reset_email", request, username, limit=3, window_minutes=15)
+    if not allowed:
+        return JsonResponse({"detail": "Слишком много запросов. Повторите через 15 минут.", "retry_after": retry_after}, status=429)
+    user = User.objects.filter(username__iexact=username, is_active=True).exclude(email="").first()
+    if user:
+        password = generate_password()
+        with transaction.atomic():
+            archive_current_password(user)
+            user.set_password(password)
+            user.save(update_fields=["password"])
+            mark_temporary_password(user)
+        send_mail(
+            "Временный пароль MTU FORUM",
+            f"Логин: {user.username}\nВременный пароль: {password}\n\n"
+            "После входа обязательно смените пароль. Временный пароль действует 15 дней.",
+            None,
+            [user.email],
+            fail_silently=True,
+        )
+        write_site_log(None, source="email", action="password_reset", message=f"Email password reset: {user.username}")
+    return JsonResponse({
+        "ok": True,
+        "detail": "Если к аккаунту привязана почта, временный пароль уже отправлен.",
+    })
+
+
 @csrf_exempt
 @require_POST
 def telegram_password_reset_complete_api(request):
@@ -5185,6 +5255,7 @@ def telegram_password_reset_complete_api(request):
         return JsonResponse({"ok": False, "message": "Ссылка недействительна или истекла."}, status=400)
     password = generate_password()
     with transaction.atomic():
+        archive_current_password(reset.user)
         reset.user.set_password(password)
         reset.user.save(update_fields=["password"])
         mark_temporary_password(reset.user)

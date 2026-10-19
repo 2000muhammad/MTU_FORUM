@@ -8,6 +8,7 @@ from django.contrib.auth.models import User
 
 from .models import ApiConfiguration, BotSubscriptionChannel, Branch, DashboardQuote, DeveloperTask, ExternalApiConnection, IntakeRequest, Organization, Platform, Position, SiteRole, SiteSettings, Station, UserProfile, WebPlatform
 from .directory_localization import localize_directory_name
+from .password_policy import password_was_used
 from .utils import user_is_branch_manager, user_is_organization_manager
 
 
@@ -134,6 +135,12 @@ class StyledPasswordChangeForm(PasswordChangeForm):
         for field in self.fields.values():
 
             field.widget.attrs.update({"class": "form-control"})
+
+    def clean_new_password2(self):
+        password = super().clean_new_password2()
+        if password and password_was_used(self.user, password):
+            raise forms.ValidationError("Нельзя повторно использовать один из последних 5 паролей.")
+        return password
 
 
 

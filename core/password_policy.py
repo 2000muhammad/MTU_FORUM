@@ -1,15 +1,33 @@
 from datetime import timedelta
 from math import ceil
 
+from django.contrib.auth.hashers import check_password
 from django.utils import timezone
 
-from .models import UserProfile
+from .models import PasswordHistory, UserProfile
 from .telegram import send_telegram_message
 
 
 PASSWORD_LIFETIME_DAYS = 30
 TEMPORARY_PASSWORD_LIFETIME_DAYS = 15
 REGULAR_PASSWORD_WARNING_DAYS = 10
+
+
+def archive_current_password(user):
+    if user.password:
+        PasswordHistory.objects.create(user=user, encoded_password=user.password)
+        stale_ids = list(user.password_history.values_list("id", flat=True)[5:])
+        if stale_ids:
+            PasswordHistory.objects.filter(id__in=stale_ids).delete()
+
+
+def password_was_used(user, raw_password):
+    if user.check_password(raw_password):
+        return True
+    return any(
+        check_password(raw_password, encoded)
+        for encoded in user.password_history.values_list("encoded_password", flat=True)[:5]
+    )
 
 
 def password_policy_state(user, now=None):

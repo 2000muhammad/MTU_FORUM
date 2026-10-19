@@ -11,6 +11,7 @@ import {
   EyeOff,
   Languages,
   LockKeyhole,
+  Mail,
   Moon,
   RefreshCw,
   Send,
@@ -737,6 +738,26 @@ function Login({ data }) {
       setResetBusy(false);
     }
   };
+  const resetPasswordByEmail = async () => {
+    if (!values.username.trim()) {
+      setError(tr("Сначала введите логин."));
+      return;
+    }
+    setResetBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await api("/api/react/password-reset/email/", {
+        method: "POST",
+        body: JSON.stringify({ username: values.username.trim() }),
+      });
+      setNotice(tr(result.detail));
+    } catch (err) {
+      setError(err.data?.detail || tr("Не удалось отправить временный пароль."));
+    } finally {
+      setResetBusy(false);
+    }
+  };
   return (
     <PublicFrame data={data} page="login">
       <main className="login-react-main">
@@ -872,6 +893,15 @@ function Login({ data }) {
           >
             <Send />
             {tr(resetBusy ? "Подготовка ссылки…" : "Восстановить пароль через Telegram")}
+          </button>
+          <button
+            className="telegram-reset-action"
+            type="button"
+            onClick={resetPasswordByEmail}
+            disabled={resetBusy}
+          >
+            <Mail />
+            {tr(resetBusy ? "Отправка…" : "Получить временный пароль по почте")}
           </button>
           <div className="sso-divider">
             <span>{tr("или")}</span>

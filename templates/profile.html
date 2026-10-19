@@ -169,6 +169,37 @@
       </div>
       <button class="btn btn-primary" type="submit">{% tr 'update_password' %}</button>
     </form>
+
+    <section class="glass-card profile-card">
+      <h2>Активные сеансы</h2>
+      <p class="hint">Устройства, на которых выполнен вход в ваш аккаунт.</p>
+      {% for device in active_devices %}
+        <div class="security-session-row">
+          <div>
+            <strong>{% if device.is_current %}Текущее устройство{% else %}Другое устройство{% endif %}</strong>
+            <small>{{ device.ip_address|default:'IP не определён' }} · {{ device.last_seen_at|date:'d.m.Y H:i' }}</small>
+            <small>{{ device.user_agent|default:'Устройство не определено' }}</small>
+          </div>
+          {% if not device.is_current %}
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="terminate_session">
+              <input type="hidden" name="device_id" value="{{ device.id }}">
+              <button class="btn btn-outline-danger" type="submit">Завершить</button>
+            </form>
+          {% endif %}
+        </div>
+      {% empty %}
+        <p class="hint">Активные сеансы появятся после следующего входа.</p>
+      {% endfor %}
+      {% if active_devices|length > 1 %}
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="terminate_other_sessions">
+          <button class="btn btn-outline-danger" type="submit">Завершить все другие сеансы</button>
+        </form>
+      {% endif %}
+    </section>
   </div>
 </div>
 {% endblock %}

@@ -453,6 +453,32 @@ class TelegramPasswordReset(models.Model):
         return f"{self.user.username}: {self.created_at:%Y-%m-%d %H:%M}"
 
 
+class PasswordHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="password_history")
+    encoded_password = models.CharField(max_length=256)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+
+class LoginDevice(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="login_devices")
+    fingerprint = models.CharField(max_length=64, db_index=True)
+    session_key = models.CharField(max_length=40, blank=True, db_index=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=500, blank=True)
+    first_seen_at = models.DateTimeField(default=timezone.now)
+    last_seen_at = models.DateTimeField(default=timezone.now)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["-last_seen_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["user", "fingerprint"], name="unique_login_device_per_user")
+        ]
+
+
 class TelegramAccountLink(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="telegram_account_links")
     token_hash = models.CharField(max_length=64, unique=True)

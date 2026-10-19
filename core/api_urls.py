@@ -23,6 +23,7 @@ urlpatterns = [
     path("react/captcha/", views.react_captcha_api, name="react_captcha_api"),
     path("react/login/", views.react_login_api, name="react_login_api"),
     path("react/password-reset/", views.react_password_reset_request_api, name="react_password_reset_request_api"),
+    path("react/password-reset/email/", views.react_password_reset_email_api, name="react_password_reset_email_api"),
     path("password-reset/telegram/", views.telegram_password_reset_complete_api, name="telegram_password_reset_complete_api"),
     path("telegram-link/complete/", views.telegram_profile_link_complete_api, name="telegram_profile_link_complete_api"),
     path("react/directories/<str:section>/", views.react_directory_api, name="react_directory_api"),
