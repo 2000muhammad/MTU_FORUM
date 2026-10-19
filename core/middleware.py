@@ -1,4 +1,9 @@
+from django.http import JsonResponse
+from django.shortcuts import redirect
+from django.urls import reverse
+
 from .models import SiteLog
+from .password_policy import password_policy_state
 from .site_logs import write_site_log
 
 
@@ -84,3 +89,29 @@ class SiteLogMiddleware:
         if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
             return True
         return False
+
+
+class PasswordExpiryMiddleware:
+    """Keep expired credentials limited to password change and logout."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if request.user.is_authenticated and password_policy_state(request.user).get("required"):
+            allowed = (
+                request.path.startswith("/static/")
+                or request.path.startswith("/media/")
+                or request.path.startswith("/api/react/bootstrap/")
+                or request.path.endswith("/profile/")
+                or request.path.endswith("/logout/")
+            )
+            if not allowed:
+                if request.path.startswith("/api/"):
+                    return JsonResponse({
+                        "detail": "Необходимо сменить пароль.",
+                        "error_code": "password_change_required",
+                        "profile_url": reverse("profile"),
+                    }, status=403)
+                return redirect(f"{reverse('profile')}?password_expired=1")
+        return self.get_response(request)

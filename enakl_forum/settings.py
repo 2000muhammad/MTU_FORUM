@@ -33,6 +33,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "core.middleware.PasswordExpiryMiddleware",
     "core.middleware.SiteLogMiddleware",
     "core.maintenance.AutoMaintenanceMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",

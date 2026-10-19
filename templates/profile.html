@@ -133,6 +133,11 @@
       {% csrf_token %}
       <input type="hidden" name="action" value="password">
       <h2>{% tr 'password_change' %}</h2>
+      {% if password_policy.show_warning or password_policy.required %}
+        <div class="alert {% if password_policy.required %}alert-danger{% else %}alert-warning{% endif %}">
+          <strong>{{ password_policy.message }}</strong>
+        </div>
+      {% endif %}
       <div class="profile-password-stack">
         <label>
           {{ password_form.old_password.label }}

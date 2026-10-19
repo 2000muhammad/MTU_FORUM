@@ -33,5 +33,17 @@ if (-not $botRunning) {
         -WindowStyle Hidden
 }
 
+$reminderRunning = Get-CimInstance Win32_Process | Where-Object {
+    $_.ExecutablePath -eq $pythonPath -and $_.CommandLine -like "*password_reminder_worker*"
+}
+if (-not $reminderRunning) {
+    Start-Process -FilePath $pythonPath `
+        -ArgumentList @("manage.py", "password_reminder_worker") `
+        -WorkingDirectory $projectRoot `
+        -RedirectStandardOutput (Join-Path $logsPath "password-reminder.out.log") `
+        -RedirectStandardError (Join-Path $logsPath "password-reminder.error.log") `
+        -WindowStyle Hidden
+}
+
 Write-Host "MTU FORUM: http://127.0.0.1:8000/"
-Write-Host "Django and Telegram bot are running. Logs: $logsPath"
+Write-Host "Django, Telegram bot and password reminders are running. Logs: $logsPath"

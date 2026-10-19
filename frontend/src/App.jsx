@@ -175,6 +175,11 @@ function Layout({ boot, config, children }) {
   const [permissionPromptOpen, setPermissionPromptOpen] = useState(false);
   const knownNotificationIds = useRef(new Set((boot.notifications?.items || []).map((item) => item.id)));
   const location = useLocation();
+  useEffect(() => {
+    if (boot.password_policy?.required) {
+      window.location.replace(boot.legacy_links.profile);
+    }
+  }, [boot.password_policy?.required, boot.legacy_links.profile]);
   const routeCategory =
     location.pathname.startsWith("/requests") ||
     /^\/modules\/(tasks|documents)/.test(location.pathname)
@@ -630,6 +635,12 @@ function Layout({ boot, config, children }) {
           </div>
         </header>
         <main className={isModuleWorkspace ? "module-main" : ""}>
+          {boot.password_policy?.show_warning && !boot.password_policy?.required && (
+            <a className="password-expiry-banner" href={boot.legacy_links.profile}>
+              <strong>{tr("Смените пароль")}</strong>
+              <span>{tr(boot.password_policy.message)}</span>
+            </a>
+          )}
           {children}
         </main>
       </div>

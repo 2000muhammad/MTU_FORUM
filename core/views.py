@@ -67,6 +67,7 @@ from .site_logs import write_site_log
 from .security import clear_failures, consume_rate_limit, is_locked, record_failure
 from .middleware import get_platform_version
 from .telegram import get_telegram_profile_photo, send_telegram_media, send_telegram_message
+from .password_policy import mark_password_changed, mark_temporary_password, password_policy_state
 from .utils import (
     generate_login,
     generate_password,
@@ -341,6 +342,8 @@ class LoginView(DjangoLoginView):
         return redirect(f"/app/login/?{urlencode(query)}")
 
     def get_success_url(self):
+        if password_policy_state(self.request.user).get("required"):
+            return reverse("profile")
         if get_platform_version(self.request) == "legacy":
             return reverse("dashboard")
         return super().get_success_url()
@@ -2184,6 +2187,8 @@ def profile(request):
 
                 user = password_form.save()
 
+                mark_password_changed(user)
+
                 update_session_auth_hash(request, user)
 
                 messages.success(request, "Пароль обновлен.")
@@ -2208,6 +2213,7 @@ def profile(request):
         "info_form": info_form,
         "employee_form": employee_form,
         "profile_obj": profile_obj,
+        "password_policy": password_policy_state(request.user),
     })
 
 
@@ -3184,7 +3190,8 @@ def users_view(request):
             new_password = generate_password()
             instance.set_password(new_password)
             instance.save(update_fields=["password"])
-            _notify_user_telegram(instance, "Пароль вашего аккаунта MTU FORUM был сброшен администратором.")
+            mark_temporary_password(instance)
+            _notify_user_telegram(instance, "Пароль вашего аккаунта MTU FORUM был сброшен администратором. Временный пароль действует 15 дней. После входа обязательно смените пароль в профиле.")
             write_site_log(request, source="people", action="user_password_reset", message=f"Password reset for {instance.username}", meta={"target_user_id": instance.pk})
             messages.success(request, f"Новый пароль пользователя {instance.username}: {new_password}")
             return redirect("users")
@@ -3466,6 +3473,8 @@ def manager_accounts_view(request):
             new_password = generate_password()
             instance.set_password(new_password)
             instance.save(update_fields=["password"])
+            mark_temporary_password(instance)
+            _notify_user_telegram(instance, "Пароль вашего аккаунта MTU FORUM был сброшен. Временный пароль действует 15 дней. После входа обязательно смените пароль в профиле.")
             messages.success(request, f"Новый пароль менеджера {instance.username}: {new_password}")
             return redirect("manager_accounts")
 
@@ -5071,7 +5080,12 @@ def react_login_api(request):
     else:
         request.session.set_expiry(getattr(settings, "SESSION_COOKIE_AGE", 3600))
     write_site_log(request, source="site", action="login", message=f"React login: {form.get_user().username}")
-    return JsonResponse({"ok": True, "redirect": reverse("react_app_global")})
+    state = password_policy_state(form.get_user())
+    return JsonResponse({
+        "ok": True,
+        "redirect": reverse("profile") if state.get("required") else reverse("react_app_global"),
+        "password_policy": state,
+    })
 
 
 def _password_reset_token_hash(token):
@@ -5173,6 +5187,7 @@ def telegram_password_reset_complete_api(request):
     with transaction.atomic():
         reset.user.set_password(password)
         reset.user.save(update_fields=["password"])
+        mark_temporary_password(reset.user)
         reset.used_at = timezone.now()
         reset.save(update_fields=["used_at"])
     write_site_log(
@@ -5182,7 +5197,13 @@ def telegram_password_reset_complete_api(request):
         message=f"Telegram password reset: {reset.user.username}",
         meta={"user_id": reset.user_id, "telegram_id": telegram_id},
     )
-    return JsonResponse({"ok": True, "username": reset.user.username, "password": password})
+    return JsonResponse({
+        "ok": True,
+        "username": reset.user.username,
+        "password": password,
+        "temporary_password_days": 15,
+        "message": "После входа смените пароль. Временный пароль действует 15 дней.",
+    })
 
 
 @csrf_exempt
@@ -5606,6 +5627,7 @@ def react_bootstrap_api(request):
         },
         "permissions": permissions,
         "legacy_links": legacy_links,
+        "password_policy": password_policy_state(user),
         "version_links": {
             "old": _merge_query(reverse("dashboard"), {"legacy": "1"}),
             "new": reverse("react_app_global"),
