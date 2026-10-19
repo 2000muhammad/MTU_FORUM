@@ -6,7 +6,7 @@ from core.password_policy import send_due_password_reminders
 
 
 class Command(BaseCommand):
-    help = "Send one Telegram reminder per day to users with temporary passwords."
+    help = "Send one Telegram password-expiry reminder per user per day."
 
     def add_arguments(self, parser):
         parser.add_argument("--once", action="store_true")

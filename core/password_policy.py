@@ -9,6 +9,7 @@ from .telegram import send_telegram_message
 
 PASSWORD_LIFETIME_DAYS = 30
 TEMPORARY_PASSWORD_LIFETIME_DAYS = 15
+REGULAR_PASSWORD_WARNING_DAYS = 10
 
 
 def password_policy_state(user, now=None):
@@ -41,7 +42,7 @@ def password_policy_state(user, now=None):
         "temporary": temporary,
         "days_remaining": days_remaining,
         "deadline": deadline.isoformat(),
-        "show_warning": temporary or days_remaining <= 5,
+        "show_warning": temporary or days_remaining <= REGULAR_PASSWORD_WARNING_DAYS,
         "message": message,
     }
 
@@ -77,13 +78,19 @@ def send_due_password_reminders(now=None):
     profiles = UserProfile.objects.select_related("user").filter(
         user__is_active=True,
         telegram_id__isnull=False,
-        temporary_password_expires_at__isnull=False,
     ).exclude(password_reminder_sent_on=now.date())
     for profile in profiles:
         state = password_policy_state(profile.user, now)
+        if not state.get("show_warning") and not state.get("required"):
+            continue
+        title = (
+            "Необходимо сменить временный пароль MTU FORUM"
+            if state.get("temporary")
+            else "Приближается срок смены пароля MTU FORUM"
+        )
         result = send_telegram_message(
             profile.telegram_id,
-            "🔐 <b>Необходимо сменить пароль MTU FORUM</b>\n\n"
+            f"🔐 <b>{title}</b>\n\n"
             f"{state['message']}\n"
             "После смены пароля напоминания прекратятся.",
         )

@@ -29,6 +29,25 @@ class PasswordPolicyTests(TestCase):
         response = self.client.get(reverse("dashboard"))
         self.assertRedirects(response, reverse("profile") + "?password_expired=1", fetch_redirect_response=False)
 
+    def test_regular_password_warns_with_exact_days_from_ten_days(self):
+        now = timezone.now()
+        self.profile.password_changed_at = now - timedelta(days=20)
+        self.profile.save(update_fields=["password_changed_at"])
+        state = password_policy_state(self.user, now)
+        self.assertTrue(state["show_warning"])
+        self.assertEqual(state["days_remaining"], 10)
+        self.assertIn("10", state["message"])
+
+    @patch("core.password_policy.send_telegram_message", return_value={"ok": True})
+    def test_regular_password_warning_is_sent_daily_during_last_ten_days(self, send_message):
+        now = timezone.now()
+        self.profile.password_changed_at = now - timedelta(days=20)
+        self.profile.password_reminder_sent_on = None
+        self.profile.save(update_fields=["password_changed_at", "password_reminder_sent_on"])
+        self.assertEqual(send_due_password_reminders(now), 1)
+        self.assertIn("10", send_message.call_args.args[1])
+        self.assertEqual(send_due_password_reminders(now), 0)
+
     def test_temporary_password_has_fifteen_days_and_change_clears_it(self):
         mark_temporary_password(self.user)
         self.profile.refresh_from_db()
