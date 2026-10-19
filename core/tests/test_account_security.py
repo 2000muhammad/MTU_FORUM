@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core.forms import StyledPasswordChangeForm
-from core.models import LoginDevice, PasswordHistory, UserProfile
+from core.models import Branch, LoginDevice, Organization, PasswordHistory, Platform, Position, SiteRole, Station, UserProfile
 from core.password_policy import archive_current_password
 
 
@@ -66,3 +66,26 @@ class AccountSecurityTests(TestCase):
         self.assertRedirects(response, reverse("profile"))
         device.refresh_from_db()
         self.assertFalse(device.is_active)
+
+    def test_profile_shows_assigned_identity_and_access(self):
+        role = SiteRole.objects.create(name="Сотрудник теста", code="test-employee")
+        platform = Platform.objects.create(name="Платформа профиля")
+        branch = Branch.objects.create(name="Филиал профиля")
+        organization = Organization.objects.create(name="Организация профиля", branch=branch)
+        station = Station.objects.create(name="Предприятие профиля", platform=platform, branch=branch, organization=organization)
+        position = Position.objects.create(name="Должность профиля", platform=platform, branch=branch, organization=organization)
+        self.profile.roles.add(role)
+        self.profile.allowed_platforms.add(platform)
+        self.profile.allowed_stations.add(station)
+        self.profile.allowed_positions.add(position)
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("profile"))
+
+        self.assertContains(response, "Данные и доступ пользователя")
+        self.assertContains(response, "Сотрудник теста")
+        self.assertContains(response, "Платформа профиля")
+        self.assertContains(response, "Филиал профиля")
+        self.assertContains(response, "Организация профиля")
+        self.assertContains(response, "Предприятие профиля")
+        self.assertContains(response, "Должность профиля")

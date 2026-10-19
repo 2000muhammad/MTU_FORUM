@@ -2237,6 +2237,25 @@ def profile(request):
     for device in active_devices:
         device.session_exists = device.session_key in active_keys
         device.is_current = device.session_key == request.session.session_key
+    stations = profile_obj.allowed_stations.select_related("platform", "branch", "organization").order_by("name")
+    positions = profile_obj.allowed_positions.select_related("platform", "branch", "organization").order_by("name")
+    assigned_branches = sorted({
+        item.branch.name for item in [*stations, *positions] if item.branch_id
+    })
+    assigned_organizations = sorted({
+        item.organization.name for item in [*stations, *positions] if item.organization_id
+    })
+    access_summary = {
+        "roles": ["Суперадминистратор"] if request.user.is_superuser else list(
+            profile_obj.roles.filter(is_active=True).order_by("sort_order", "name").values_list("name", flat=True)
+        ),
+        "platforms": list(profile_obj.allowed_platforms.filter(is_active=True).order_by("sort_order", "name").values_list("name", flat=True)),
+        "stations": list(stations.values_list("name", flat=True)),
+        "positions": list(positions.values_list("name", flat=True)),
+        "branches": assigned_branches,
+        "organizations": assigned_organizations,
+        "full_access": request.user.is_superuser,
+    }
     return render(request, "profile.html", {
         "password_form": password_form,
         "avatar_form": avatar_form,
@@ -2245,6 +2264,7 @@ def profile(request):
         "profile_obj": profile_obj,
         "password_policy": password_policy_state(request.user),
         "active_devices": active_devices,
+        "access_summary": access_summary,
     })
 
 
