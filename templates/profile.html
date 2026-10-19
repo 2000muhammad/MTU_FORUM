@@ -44,10 +44,6 @@
         <div><small>Логин</small><strong>{{ user.username }}</strong></div>
         <div><small>ПИНФЛ</small><strong>{{ profile_obj.employee_pinfl|default:profile_obj.pnfl|default:'Не указан' }}</strong></div>
         <div><small>Телефон</small><strong>{{ profile_obj.phone|default:'Не указан' }}</strong></div>
-        <div><small>Филиал</small><strong>{{ profile_obj.branch|default:'Не указан' }}</strong></div>
-        <div><small>Организация</small><strong>{{ profile_obj.organization|default:'Не указана' }}</strong></div>
-        <div><small>Подразделение</small><strong>{{ profile_obj.department|default:'Не указано' }}</strong></div>
-        <div><small>Должность</small><strong>{{ profile_obj.position|default:'Не указана' }}</strong></div>
       </div>
       <div class="profile-access-groups">
         <div><b>Роли</b><span class="profile-chip-list">{% for item in access_summary.roles %}<i>{{ item }}</i>{% empty %}<em>Не назначены</em>{% endfor %}</span></div>
