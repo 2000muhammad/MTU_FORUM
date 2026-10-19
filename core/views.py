@@ -62,6 +62,7 @@ from PIL import Image, ImageOps
 from .forms import ApiConfigurationForm, BotSubscriptionChannelForm, BranchForm, DashboardQuoteForm, DeveloperTaskForm, EmployeeProfileForm, ExternalApiConnectionForm, IntakeRequestForm, LoginForm, ManagerAccountForm, OrganizationForm, PlatformForm, PositionForm, SiteIntakeForm, SiteRoleForm, SiteSettingsForm, StationForm, StyledPasswordChangeForm, UserForm, UserInfoForm, UserProfileForm, WebPlatformForm
 from .excel_utils import build_xlsx, parse_xlsx, truthy
 from .models import AdminChatMessage, AdminChatThread, ApiConfiguration, BotSubscriptionChannel, Branch, DashboardQuote, DeveloperTask, ExternalApiConnection, IntakeRequest, IntakeRequestHistory, InternalChat, InternalChatMessage, InternalChatParticipant, InternalContact, Organization, PeopleImportJob, Platform, Position, PublicDocument, PublicDocumentEvent, PublicDocumentSession, RequestNotification, SecurityThrottle, SiteLog, SiteRole, SiteSettings, Station, TelegramAccountLink, TelegramPasswordReset, UserPresence, UserProfile, WebPlatform, WebPlatformFavorite
+from .directory_localization import localize_directory_name
 from .site_logs import write_site_log
 from .security import clear_failures, consume_rate_limit, is_locked, record_failure
 from .middleware import get_platform_version
@@ -4674,7 +4675,11 @@ def public_stations_api(request):
             items = items.filter(branch__name=branch_name)
         else:
             items = items.filter(allowed_users__user=request.user)
-    return JsonResponse({"results": list(items.values("id", "name", "code", "platform_id"))})
+    language = request.GET.get("lang") or "ru"
+    return JsonResponse({"results": [
+        {"id": item.id, "name": item.name, "label": localize_directory_name(item.name, language), "code": item.code, "platform_id": item.platform_id}
+        for item in items
+    ]})
 
 
 
@@ -4697,15 +4702,22 @@ def public_positions_api(request):
             items = items.filter(branch__name=branch_name)
         elif profile and profile.positions_access_configured:
             items = items.filter(allowed_users__user=request.user)
-    return JsonResponse({"results": list(items.values("id", "name", "platform_id"))})
+    language = request.GET.get("lang") or "ru"
+    return JsonResponse({"results": [
+        {"id": item.id, "name": item.name, "label": localize_directory_name(item.name, language), "platform_id": item.platform_id}
+        for item in items
+    ]})
 
 
 
 @require_GET
 
 def public_platforms_api(request):
-
-    return JsonResponse({"results": list(Platform.objects.filter(is_active=True).values("id", "name", "code"))})
+    language = request.GET.get("lang") or "ru"
+    return JsonResponse({"results": [
+        {"id": item.id, "name": item.name, "label": localize_directory_name(item.name, language), "code": item.code}
+        for item in Platform.objects.filter(is_active=True)
+    ]})
 
 
 
@@ -5667,27 +5679,29 @@ def react_directory_api(request, section):
         Organization.objects.select_related("branch"),
         request.user,
     )
+    language = request.GET.get("lang") or "ru"
     return JsonResponse({
         "rows": [
             {
                 "id": item.id,
                 "name": item.name,
+                "display_name": localize_directory_name(item.name, language),
                 "code": getattr(item, "code", ""),
                 "platform_id": item.platform_id or "",
-                "platform_name": item.platform.name if item.platform else "",
+                "platform_name": localize_directory_name(item.platform.name, language) if item.platform else "",
                 "branch_id": item.branch_id or "",
-                "branch_name": item.branch.name if item.branch else "",
+                "branch_name": localize_directory_name(item.branch.name, language) if item.branch else "",
                 "organization_id": item.organization_id or "",
-                "organization_name": item.organization.name if item.organization else "",
+                "organization_name": localize_directory_name(item.organization.name, language) if item.organization else "",
                 "sort_order": item.sort_order,
                 "is_active": item.is_active,
             }
             for item in rows[:1000]
         ],
-        "branches": list(branches.values("id", "name")),
-        "platforms": list(Platform.objects.order_by("sort_order", "name").values("id", "name")),
+        "branches": [{"id": item.id, "name": localize_directory_name(item.name, language)} for item in branches],
+        "platforms": [{"id": item.id, "name": localize_directory_name(item.name, language)} for item in Platform.objects.order_by("sort_order", "name")],
         "organizations": [
-            {"id": item.id, "name": item.name, "branch_id": item.branch_id, "branch_name": item.branch.name}
+            {"id": item.id, "name": localize_directory_name(item.name, language), "branch_id": item.branch_id, "branch_name": localize_directory_name(item.branch.name, language)}
             for item in organizations
         ],
         "post_url": reverse("settings_section", kwargs={"section": section}),

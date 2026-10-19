@@ -7,6 +7,7 @@ from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 from django.contrib.auth.models import User
 
 from .models import ApiConfiguration, BotSubscriptionChannel, Branch, DashboardQuote, DeveloperTask, ExternalApiConnection, IntakeRequest, Organization, Platform, Position, SiteRole, SiteSettings, Station, UserProfile, WebPlatform
+from .directory_localization import localize_directory_name
 from .utils import user_is_branch_manager, user_is_organization_manager
 
 
@@ -331,7 +332,9 @@ class SiteIntakeForm(forms.Form):
             and not user_is_organization_manager(self.user)
         ):
             platforms = platforms.filter(allowed_users__user=self.user)
-        self.fields["platform"].choices = [("", self.texts["select_platform"])] + [(item.name, item.name) for item in platforms]
+        self.fields["platform"].choices = [("", self.texts["select_platform"])] + [
+            (item.name, localize_directory_name(item.name, self.lang_code)) for item in platforms
+        ]
         stations = Station.objects.filter(is_active=True)
         positions = Position.objects.filter(is_active=True)
         profile = getattr(self.user, "profile", None) if self.user and self.user.is_authenticated else None
@@ -352,8 +355,12 @@ class SiteIntakeForm(forms.Form):
         if organization_name and not self.user.is_superuser:
             stations = stations.filter(organization__name=organization_name)
             positions = positions.filter(organization__name=organization_name)
-        self.fields["company"].choices = [("", self.texts["select_company"])] + [(item.name, item.name) for item in stations]
-        self.fields["position"].choices = [("", self.texts["select_position"])] + [(item.name, item.name) for item in positions]
+        self.fields["company"].choices = [("", self.texts["select_company"])] + [
+            (item.name, localize_directory_name(item.name, self.lang_code)) for item in stations
+        ]
+        self.fields["position"].choices = [("", self.texts["select_position"])] + [
+            (item.name, localize_directory_name(item.name, self.lang_code)) for item in positions
+        ]
 
     def clean_full_name(self):
         value = re.sub(r"\s+", " ", self.cleaned_data["full_name"]).strip()

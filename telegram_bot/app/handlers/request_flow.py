@@ -213,7 +213,7 @@ async def _ask_passport_from_message(message, lang):
 
 
 async def _send_platform_step(message, context, lang):
-    platforms = get_platforms()
+    platforms = get_platforms(lang)
     context.user_data["platform_choices"] = [item.get("name", "") for item in platforms]
     if platforms:
         prompt = t(lang, "send_platform")
@@ -239,9 +239,9 @@ async def _send_request_step(update, context, lang, state):
     elif state == states.PASSPORT:
         await _ask_passport_from_message(update.message, lang)
     elif state == states.COMPANY:
-        await _send_directory_step(update.message, context, lang, "company", get_stations(context.user_data.get("platform", "")), "send_station")
+        await _send_directory_step(update.message, context, lang, "company", get_stations(context.user_data.get("platform", ""), lang), "send_station")
     elif state == states.POSITION:
-        await _send_directory_step(update.message, context, lang, "position", get_positions(context.user_data.get("platform", "")), "send_position")
+        await _send_directory_step(update.message, context, lang, "position", get_positions(context.user_data.get("platform", ""), lang), "send_position")
     elif state == states.CAUSE:
         await update.message.reply_text(t(lang, "send_cause"), reply_markup=back_keyboard(lang))
     elif state == states.PHONE:
@@ -347,7 +347,7 @@ async def directory_choice_router(update, context):
             await _ask_passport_from_message(query.message, lang)
         else:
             context.user_data["state"] = states.COMPANY
-            await _send_directory_step(query.message, context, lang, "company", get_stations(context.user_data.get("platform", "")), "send_station")
+            await _send_directory_step(query.message, context, lang, "company", get_stations(context.user_data.get("platform", ""), lang), "send_station")
         return
     if action != "pick":
         return
@@ -360,7 +360,7 @@ async def directory_choice_router(update, context):
     if kind == "company":
         context.user_data["company"] = selected
         context.user_data["state"] = states.POSITION
-        await _send_directory_step(query.message, context, lang, "position", get_positions(context.user_data.get("platform", "")), "send_position")
+        await _send_directory_step(query.message, context, lang, "position", get_positions(context.user_data.get("platform", ""), lang), "send_position")
     else:
         context.user_data["selected_position"] = selected
         context.user_data["state"] = states.CAUSE
@@ -555,11 +555,11 @@ async def request_router(update, context):
             return
         context.user_data["passport"] = passport
         context.user_data["state"] = states.COMPANY
-        await _send_directory_step(update.message, context, lang, "company", get_stations(context.user_data.get("platform", "")), "send_station")
+        await _send_directory_step(update.message, context, lang, "company", get_stations(context.user_data.get("platform", ""), lang), "send_station")
     elif state == states.COMPANY:
-        await _send_directory_step(update.message, context, lang, "company", context.user_data.get("company_choices") or get_stations(context.user_data.get("platform", "")), "send_station")
+        await _send_directory_step(update.message, context, lang, "company", context.user_data.get("company_choices") or get_stations(context.user_data.get("platform", ""), lang), "send_station")
     elif state == states.POSITION:
-        await _send_directory_step(update.message, context, lang, "position", context.user_data.get("position_choices") or get_positions(context.user_data.get("platform", "")), "send_position")
+        await _send_directory_step(update.message, context, lang, "position", context.user_data.get("position_choices") or get_positions(context.user_data.get("platform", ""), lang), "send_position")
     elif state == states.CAUSE:
         context.user_data["cause"] = text
         context.user_data["state"] = states.PHONE

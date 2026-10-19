@@ -24,22 +24,26 @@ def _get_results(path):
         return []
 
 
-def get_stations(platform=""):
+def get_stations(platform="", lang="ru"):
     path = "/api/public/stations/"
+    params = {"lang": lang}
     if platform:
-        path = f"{path}?platform={requests.utils.quote(str(platform))}"
+        params["platform"] = platform
+    path = f"{path}?{requests.compat.urlencode(params)}"
     return _get_results(path)
 
 
-def get_positions(platform=""):
+def get_positions(platform="", lang="ru"):
     path = "/api/public/positions/"
+    params = {"lang": lang}
     if platform:
-        path = f"{path}?platform={requests.utils.quote(str(platform))}"
+        params["platform"] = platform
+    path = f"{path}?{requests.compat.urlencode(params)}"
     return _get_results(path)
 
 
-def get_platforms():
-    return _get_results("/api/public/platforms/")
+def get_platforms(lang="ru"):
+    return _get_results(f"/api/public/platforms/?lang={requests.utils.quote(str(lang))}")
 
 
 def get_channels():

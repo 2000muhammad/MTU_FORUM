@@ -1536,8 +1536,8 @@ function DirectoryPage({ kind, boot }) {
   const title = kind === "stations" ? "Предприятия" : "Должности";
   const section = kind === "stations" ? "station" : "position";
   const { loading, data, error, reload } = useRemote(
-    () => api(`/api/react/directories/${kind}/`),
-    [kind],
+    () => api(`/api/react/directories/${kind}/?lang=${encodeURIComponent(boot.language || "ru")}`),
+    [kind, boot.language],
   );
   const [query, setQuery] = useState("");
   const [platformFilter, setPlatformFilter] = useState("");
@@ -1559,7 +1559,7 @@ function DirectoryPage({ kind, boot }) {
   const rows = useMemo(
     () =>
       (data?.rows || []).filter((row) => {
-        const matchesQuery = `${row.name} ${row.code || ""} ${row.platform_name || ""} ${row.branch_name || ""} ${row.organization_name || ""}`
+        const matchesQuery = `${row.display_name || row.name} ${row.name} ${row.code || ""} ${row.platform_name || ""} ${row.branch_name || ""} ${row.organization_name || ""}`
           .toLowerCase()
           .includes(query.toLowerCase());
         return matchesQuery &&
@@ -1712,7 +1712,7 @@ function DirectoryPage({ kind, boot }) {
                 }
               />
               <div>
-                <strong>{row.name}</strong>
+                <strong>{row.display_name || row.name}</strong>
                 <small>
                   {row.code ||
                     tr(kind === "positions" ? "Должность" : "Без кода")}

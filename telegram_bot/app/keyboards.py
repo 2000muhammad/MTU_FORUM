@@ -75,7 +75,7 @@ def choice_keyboard(items, lang="ru", include_back=False):
 
 def platform_inline_keyboard(items, lang="ru"):
     rows = [
-        [InlineKeyboardButton(item["name"], callback_data=f"platform:{index}")]
+        [InlineKeyboardButton(item.get("label") or item["name"], callback_data=f"platform:{index}")]
         for index, item in enumerate(items)
         if item.get("name")
     ]
@@ -90,7 +90,7 @@ def directory_inline_keyboard(items, kind, lang="ru", page=0, page_size=8):
     page = max(0, min(int(page or 0), pages - 1))
     start = page * page_size
     rows = [
-        [InlineKeyboardButton(item["name"], callback_data=f"directory:{kind}:pick:{index}")]
+        [InlineKeyboardButton(item.get("label") or item["name"], callback_data=f"directory:{kind}:pick:{index}")]
         for index, item in enumerate(items[start:start + page_size], start=start)
     ]
     if pages > 1:
