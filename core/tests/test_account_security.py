@@ -8,7 +8,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from core.forms import StyledPasswordChangeForm
+from core.forms import EmployeeProfileForm, StyledPasswordChangeForm
 from core.models import Branch, LoginDevice, Organization, PasswordHistory, Platform, Position, SiteRole, Station, UserProfile
 from core.password_policy import archive_current_password
 
@@ -32,6 +32,11 @@ class AccountSecurityTests(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn("последних 5", str(form.errors))
         self.assertEqual(PasswordHistory.objects.filter(user=self.user).count(), 1)
+
+    def test_assignment_fields_are_not_editable_in_profile_form(self):
+        form = EmployeeProfileForm(instance=self.profile)
+        for field in ("branch", "organization", "department", "position"):
+            self.assertNotIn(field, form.fields)
 
     @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
     def test_email_recovery_sends_temporary_password(self):

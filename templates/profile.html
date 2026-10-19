@@ -102,26 +102,6 @@
           {{ employee_form.birth_date }}
           {{ employee_form.birth_date.errors }}
         </label>
-        <label>
-          {% tr 'branch' %}
-          {{ employee_form.branch }}
-          {{ employee_form.branch.errors }}
-        </label>
-        <label>
-          {% tr 'organization' %}
-          {{ employee_form.organization }}
-          {{ employee_form.organization.errors }}
-        </label>
-        <label>
-          {% tr 'department' %}
-          {{ employee_form.department }}
-          {{ employee_form.department.errors }}
-        </label>
-        <label>
-          {% tr 'position' %}
-          {{ employee_form.position }}
-          {{ employee_form.position.errors }}
-        </label>
       </div>
       <button class="btn btn-primary" type="submit">{% tr 'save_profile' %}</button>
     </form>

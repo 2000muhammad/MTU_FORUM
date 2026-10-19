@@ -161,20 +161,12 @@ class EmployeeProfileForm(forms.ModelForm):
             "middle_name",
             "phone",
             "birth_date",
-            "branch",
-            "organization",
-            "department",
-            "position",
         ]
         widgets = {
             "employee_pinfl": forms.TextInput(attrs={"class": "form-control", "placeholder": "14 цифр"}),
             "middle_name": forms.TextInput(attrs={"class": "form-control"}),
             "phone": forms.TextInput(attrs={"class": "form-control", "placeholder": "+998-XX-XXX-XX-XX"}),
             "birth_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}, format="%Y-%m-%d"),
-            "branch": forms.TextInput(attrs={"class": "form-control"}),
-            "organization": forms.TextInput(attrs={"class": "form-control"}),
-            "department": forms.TextInput(attrs={"class": "form-control"}),
-            "position": forms.TextInput(attrs={"class": "form-control"}),
         }
 
     def __init__(self, *args, **kwargs):
