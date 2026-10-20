@@ -136,11 +136,15 @@ class StyledPasswordChangeForm(PasswordChangeForm):
 
             field.widget.attrs.update({"class": "form-control"})
 
-    def clean_new_password2(self):
-        password = super().clean_new_password2()
-        if password and password_was_used(self.user, password):
-            raise forms.ValidationError("Нельзя повторно использовать один из последних 5 паролей.")
-        return password
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get("new_password2")
+        if password and "new_password2" not in self.errors and password_was_used(self.user, password):
+            self.add_error(
+                "new_password2",
+                "Нельзя повторно использовать один из последних 5 паролей.",
+            )
+        return cleaned_data
 
 
 
