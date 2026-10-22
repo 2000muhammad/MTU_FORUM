@@ -1498,7 +1498,11 @@ def request_edit(request, pk):
 
         post_data = request.POST.copy()
         post_data["cause"] = item.cause
-        if action == "save" and post_data.get("status") == item.status:
+        if action == "block_request":
+            post_data["status"] = IntakeRequest.Status.BLOCKED
+        elif action == "unblock_request":
+            post_data["status"] = IntakeRequest.Status.NEW
+        elif action == "save" and post_data.get("status") == item.status:
             post_data["status"] = IntakeRequest.Status.DONE
 
         tracked_fields = [
@@ -1714,6 +1718,14 @@ def request_edit(request, pk):
             elif action == "save_credentials":
 
                 messages.success(request, "Данные доступа обновлены.")
+
+            elif action == "block_request":
+
+                messages.success(request, "Заявка заблокирована.")
+
+            elif action == "unblock_request":
+
+                messages.success(request, "Заявка возвращена в новые.")
 
             else:
 

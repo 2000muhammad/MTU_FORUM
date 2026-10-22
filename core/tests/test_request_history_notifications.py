@@ -113,6 +113,29 @@ class RequestHistoryNotificationTests(TestCase):
         self.assertEqual(self.item.status, IntakeRequest.Status.DONE)
         self.assertEqual(self.item.cause, "Test")
 
+    @patch("core.views.send_telegram_message", return_value={"ok": True})
+    def test_request_can_be_blocked_and_returned_to_new(self, send_message):
+        blocked = self.client.post(
+            reverse("request_edit", kwargs={"pk": self.item.pk}),
+            self.payload(action="block_request", status=IntakeRequest.Status.NEW),
+        )
+
+        self.assertRedirects(blocked, reverse("request_edit", kwargs={"pk": self.item.pk}))
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.status, IntakeRequest.Status.BLOCKED)
+        self.assertTrue(self.item.history.filter(to_status=IntakeRequest.Status.BLOCKED).exists())
+
+        restored = self.client.post(
+            reverse("request_edit", kwargs={"pk": self.item.pk}),
+            self.payload(action="unblock_request", status=IntakeRequest.Status.BLOCKED),
+        )
+
+        self.assertRedirects(restored, reverse("request_edit", kwargs={"pk": self.item.pk}))
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.status, IntakeRequest.Status.NEW)
+        self.assertTrue(self.item.history.filter(to_status=IntakeRequest.Status.NEW).exists())
+        self.assertEqual(send_message.call_count, 2)
+
     def test_request_is_assigned_to_least_loaded_operator_with_platform_access(self):
         platform = Platform.objects.create(name="Platform", code="platform")
         other_platform = Platform.objects.create(name="Other", code="other")

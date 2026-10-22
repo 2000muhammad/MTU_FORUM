@@ -22,6 +22,8 @@
   .request-status-step.is-current{border-color:rgba(68,215,182,.5);background:rgba(68,215,182,.08)}
   .request-status-step.is-current i{background:var(--brand);color:#05251f}
   .request-status-note{margin:10px 2px 0;color:var(--muted);font-size:12px}
+  .request-status-actions{display:flex;justify-content:flex-end;margin-top:13px}
+  .request-status-actions .btn{min-width:170px}
   @media(max-width:760px){.request-field-head{align-items:flex-start;flex-direction:column}}
   @media(max-width:760px){.request-status-head{flex-direction:column}.request-status-steps{grid-template-columns:1fr}}
 </style>
@@ -77,6 +79,13 @@
       </div>
     </div>
     {% if item.status == 'new' %}<p class="request-status-note">После нажатия «Сохранить» статус автоматически изменится на «Сделано».</p>{% endif %}
+    <div class="request-status-actions">
+      {% if item.status == 'blocked' %}
+        <button class="btn btn-outline-light" type="submit" name="action" value="unblock_request">Вернуть в новые</button>
+      {% else %}
+        <button class="btn btn-outline-danger" type="submit" name="action" value="block_request" onclick="return confirm('Заблокировать эту заявку?')">Заблокировать</button>
+      {% endif %}
+    </div>
   </section>
   <section class="request-notes-block">
     <div class="request-notes-heading">
