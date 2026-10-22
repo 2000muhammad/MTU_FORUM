@@ -85,6 +85,40 @@ class DirectoryFilterTests(TestCase):
         self.assertNotEqual(first.pk, second.pk)
         self.assertEqual(Station.objects.filter(name="Shared station").count(), 2)
 
+    def test_multi_scope_station_creation_builds_selected_combinations(self):
+        platform_a = Platform.objects.create(name="Multi platform A")
+        platform_b = Platform.objects.create(name="Multi platform B")
+        response = self.client.post(
+            reverse("settings_section", kwargs={"section": "stations"}),
+            {
+                "section": "station",
+                "action": "save",
+                "multi_scope": "1",
+                "platform_ids": [platform_a.pk, platform_b.pk],
+                "branch_ids": [self.branch_one.pk, self.branch_two.pk],
+                "organization_ids": [self.organization_one.pk, self.organization_two.pk],
+                "name": "Multi enterprise",
+                "sort_order": "4",
+                "is_active": "on",
+            },
+        )
+
+        self.assertRedirects(response, reverse("settings_section", kwargs={"section": "stations"}))
+        created = Station.objects.filter(name="Multi enterprise")
+        self.assertEqual(created.count(), 4)
+        self.assertEqual(set(created.values_list("platform_id", flat=True)), {platform_a.pk, platform_b.pk})
+        self.assertEqual(set(created.values_list("organization_id", flat=True)), {self.organization_one.pk, self.organization_two.pk})
+
+    def test_station_and_position_forms_render_multi_scope_choices(self):
+        Platform.objects.create(name="Form platform")
+        station_response = self.client.get(reverse("settings_section", kwargs={"section": "stations"}))
+        position_response = self.client.get(reverse("settings_section", kwargs={"section": "positions"}))
+        for response in (station_response, position_response):
+            self.assertContains(response, 'name="platform_ids"')
+            self.assertContains(response, 'name="branch_ids"')
+            self.assertContains(response, 'name="organization_ids"')
+            self.assertContains(response, 'name="multi_scope" value="1"')
+
     def test_station_excel_export_and_sample_include_platform(self):
         platform = Platform.objects.create(name="Export platform", code="export-platform")
         self.active_station.platform = platform

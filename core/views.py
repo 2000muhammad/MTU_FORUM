@@ -3944,6 +3944,59 @@ def settings_view(request, section="stations"):
                 return redirect("settings_section", section=redirect_section)
             messages.success(request, f"{label.capitalize()} удалена.")
             return redirect("settings_section", section=redirect_section)
+
+        if action == "save" and instance is None and form_section in {"station", "position"} and request.POST.get("multi_scope") == "1":
+            platform_ids = [value for value in request.POST.getlist("platform_ids") if value.isdigit()]
+            platforms_selected = list(Platform.objects.filter(pk__in=platform_ids, is_active=True))
+            if not platforms_selected:
+                messages.warning(request, "Выберите хотя бы одну платформу.")
+                return redirect("settings_section", section=redirect_section)
+
+            organizations_selected = _scope_organizations_for_actor(
+                Organization.objects.select_related("branch").filter(is_active=True, branch__is_active=True),
+                request.user,
+            )
+            if user_is_organization_manager(request.user):
+                organizations_selected = organizations_selected.filter(
+                    name=_actor_organization_name(request.user),
+                    branch__name=_actor_branch_name(request.user),
+                )
+            else:
+                organization_ids = [value for value in request.POST.getlist("organization_ids") if value.isdigit()]
+                organizations_selected = organizations_selected.filter(pk__in=organization_ids)
+                if not user_is_branch_manager(request.user):
+                    branch_ids = [value for value in request.POST.getlist("branch_ids") if value.isdigit()]
+                    organizations_selected = organizations_selected.filter(branch_id__in=branch_ids)
+            organizations_selected = list(organizations_selected)
+            if not organizations_selected:
+                messages.warning(request, "Выберите филиал и хотя бы одну организацию.")
+                return redirect("settings_section", section=redirect_section)
+
+            name = str(request.POST.get("name") or "").strip()
+            if not name:
+                messages.warning(request, "Введите название.")
+                return redirect("settings_section", section=redirect_section)
+            sort_order = _int_or_zero(request.POST.get("sort_order"))
+            is_active = truthy(request.POST.get("is_active", ""))
+            created_count = 0
+            updated_count = 0
+            with transaction.atomic():
+                for platform in platforms_selected:
+                    for organization in organizations_selected:
+                        _, created = model.objects.update_or_create(
+                            platform=platform,
+                            branch=organization.branch,
+                            organization=organization,
+                            name=name,
+                            defaults={"is_active": is_active, "sort_order": sort_order},
+                        )
+                        created_count += int(created)
+                        updated_count += int(not created)
+            messages.success(
+                request,
+                f"Создано записей: {created_count}. Обновлено существующих: {updated_count}.",
+            )
+            return redirect("settings_section", section=redirect_section)
         post_data = request.POST.copy()
         if user_is_branch_manager(request.user) and form_section in {"station", "position", "organization"}:
             branch = Branch.objects.filter(name=_actor_branch_name(request.user), is_active=True).first()
