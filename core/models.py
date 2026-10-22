@@ -323,6 +323,8 @@ class IntakeRequest(models.Model):
 
     cause = models.CharField(max_length=255, blank=True)
 
+    internal_notes = models.TextField(blank=True)
+
     pnfl = models.CharField(max_length=32, db_index=True)
 
     company = models.CharField(max_length=180, blank=True)

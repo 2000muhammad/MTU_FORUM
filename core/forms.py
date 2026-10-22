@@ -266,11 +266,17 @@ class IntakeRequestForm(forms.ModelForm):
 
         model = IntakeRequest
 
-        fields = ["pnfl", "full_name", "company", "department", "position", "passport", "phone", "telegram_id", "platform", "cause", "status"]
+        fields = ["pnfl", "full_name", "company", "department", "position", "passport", "phone", "telegram_id", "platform", "cause", "status", "internal_notes"]
 
         widgets = {name: forms.TextInput(attrs={"class": "form-control"}) for name in fields if name != "status"}
 
         widgets["cause"] = forms.Textarea(attrs={"class": "form-control", "rows": 3})
+
+        widgets["internal_notes"] = forms.Textarea(attrs={
+            "class": "form-control",
+            "rows": 5,
+            "placeholder": "Добавьте внутреннюю заметку по заявке…",
+        })
 
         widgets["status"] = forms.Select(attrs={"class": "form-select"})
 
@@ -286,6 +292,7 @@ class IntakeRequestForm(forms.ModelForm):
             "platform": "Платформа",
             "cause": "Причина",
             "status": "Статус",
+            "internal_notes": "Заметки",
         }
 
 

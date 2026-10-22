@@ -1448,6 +1448,7 @@ def request_edit(request, pk):
         tracked_fields = [
             "pnfl", "full_name", "company", "department", "position",
             "passport", "phone", "telegram_id", "platform", "cause", "status",
+            "internal_notes",
         ]
         before = {field: getattr(item, field) for field in tracked_fields}
 
@@ -1545,6 +1546,7 @@ def request_edit(request, pk):
                 "platform": "Платформа",
                 "cause": "Причина",
                 "status": "Статус",
+                "internal_notes": "Заметки",
             }
             status_labels = dict(IntakeRequest.Status.choices)
             changes = {}

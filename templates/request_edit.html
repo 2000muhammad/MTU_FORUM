@@ -10,8 +10,21 @@
     <span class="status-pill status-{{ item.status }}">{{ item.get_status_display }}</span>
   </div>
   <div class="form-grid">
-    {% for field in form %}<label>{{ field.label }}{{ field }}{{ field.errors }}</label>{% endfor %}
+    {% for field in form %}{% if field.name != 'internal_notes' %}<label>{{ field.label }}{{ field }}{{ field.errors }}</label>{% endif %}{% endfor %}
   </div>
+  <section class="request-notes-block">
+    <div class="request-notes-heading">
+      <div>
+        <span class="eyebrow">Редактор заявки</span>
+        <h2>Заметки</h2>
+      </div>
+      <span class="request-notes-private">Только для сотрудников</span>
+    </div>
+    <label for="{{ form.internal_notes.id_for_label }}" class="visually-hidden">{{ form.internal_notes.label }}</label>
+    {{ form.internal_notes }}
+    {{ form.internal_notes.errors }}
+    <p>Запишите детали обработки, договорённости или важную информацию по заявке.</p>
+  </section>
   <div class="credential-box">
     <div class="credential-item" data-credential-item>
       <div class="credential-head">

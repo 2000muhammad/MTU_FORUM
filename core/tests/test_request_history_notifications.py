@@ -73,3 +73,24 @@ class RequestHistoryNotificationTests(TestCase):
         self.assertFalse(entry.telegram_notified)
         self.assertIn("Telegram unavailable", entry.telegram_error)
 
+    def test_internal_notes_are_saved_and_recorded_in_history(self):
+        note = "Проверить согласование доступа с руководителем."
+
+        response = self.client.post(
+            reverse("request_edit", kwargs={"pk": self.item.pk}),
+            self.payload(status=IntakeRequest.Status.NEW, internal_notes=note),
+        )
+
+        self.assertRedirects(response, "/app/requests/")
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.internal_notes, note)
+        entry = IntakeRequestHistory.objects.get(request=self.item)
+        self.assertEqual(entry.event, IntakeRequestHistory.Event.UPDATED)
+        self.assertEqual(entry.changes["Заметки"]["new"], note)
+
+        editor = self.client.get(reverse("request_edit", kwargs={"pk": self.item.pk}))
+        self.assertContains(editor, "Редактор заявки")
+        self.assertContains(editor, "Только для сотрудников")
+        self.assertContains(editor, 'id="id_internal_notes"')
+        self.assertContains(editor, note)
+
