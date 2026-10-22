@@ -3823,6 +3823,25 @@ def settings_view(request, section="stations"):
                 messages.success(request, f"Записи {state_label}: {updated}.")
                 return redirect("settings_section", section=redirect_section)
 
+            if action == "bulk_delete":
+                try:
+                    queryset.delete()
+                except ProtectedError:
+                    messages.error(
+                        request,
+                        "Выбранные записи используются в других разделах. Сначала удалите или перенесите связанные данные.",
+                    )
+                    return redirect("settings_section", section=redirect_section)
+                write_site_log(
+                    request,
+                    source="directories",
+                    action="bulk_delete",
+                    message=f"Deleted {selected_count} {redirect_section}",
+                    meta={"section": redirect_section, "record_ids": selected_ids},
+                )
+                messages.success(request, f"Удалено записей: {selected_count}.")
+                return redirect("settings_section", section=redirect_section)
+
             if action == "bulk_move":
                 if user_is_organization_manager(request.user):
                     messages.error(request, "Менеджер организации не может переносить записи.")

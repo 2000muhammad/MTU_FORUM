@@ -124,6 +124,33 @@ class DirectoryFilterTests(TestCase):
         self.assertFalse(self.active_station.is_active)
         self.assertFalse(self.inactive_station.is_active)
 
+    def test_bulk_delete_removes_only_selected_stations(self):
+        response = self.client.post(
+            reverse("settings_section", kwargs={"section": "stations"}),
+            {
+                "section": "station_bulk",
+                "action": "bulk_delete",
+                "selected_ids": [self.active_station.pk],
+            },
+        )
+
+        self.assertRedirects(response, reverse("settings_section", kwargs={"section": "stations"}))
+        self.assertFalse(Station.objects.filter(pk=self.active_station.pk).exists())
+        self.assertTrue(Station.objects.filter(pk=self.inactive_station.pk).exists())
+
+    def test_bulk_delete_removes_selected_positions(self):
+        response = self.client.post(
+            reverse("settings_section", kwargs={"section": "positions"}),
+            {
+                "section": "position_bulk",
+                "action": "bulk_delete",
+                "selected_ids": [self.north_position.pk, self.south_position.pk],
+            },
+        )
+
+        self.assertRedirects(response, reverse("settings_section", kwargs={"section": "positions"}))
+        self.assertFalse(Position.objects.filter(pk__in=[self.north_position.pk, self.south_position.pk]).exists())
+
     def test_bulk_position_move_updates_branch_and_organization(self):
         platform = Platform.objects.create(name="Destination platform", code="destination-platform")
         response = self.client.post(
@@ -191,6 +218,8 @@ class DirectoryFilterTests(TestCase):
         self.assertContains(station_response, 'id="station-edit-dialog"')
         self.assertContains(position_response, 'id="position-bulk-form"')
         self.assertContains(position_response, 'id="position-edit-dialog"')
+        self.assertContains(station_response, 'data-directory-bulk-delete')
+        self.assertContains(position_response, 'data-directory-bulk-delete')
 
     def test_manager_account_types_are_hidden_from_editable_roles(self):
         SiteRole.objects.create(name="Branch manager", code="branch_manager")

@@ -88,6 +88,7 @@
         <span class="directory-selected-count" data-selected-count="station-bulk-form">Выбрано: 0</span>
         <button class="btn btn-outline-success btn-sm" name="action" value="bulk_activate">Включить</button>
         <button class="btn btn-outline-warning btn-sm" name="action" value="bulk_deactivate">Отключить</button>
+        <button class="btn btn-outline-danger btn-sm" name="action" value="bulk_delete" data-directory-bulk-delete>Удалить выбранное</button>
         {% if not ui_user_is_organization_manager %}
         <select class="form-select" name="bulk_platform" data-bulk-platform>
           <option value="">Платформа…</option>
@@ -183,6 +184,7 @@
         <span class="directory-selected-count" data-selected-count="position-bulk-form">Выбрано: 0</span>
         <button class="btn btn-outline-success btn-sm" name="action" value="bulk_activate">Включить</button>
         <button class="btn btn-outline-warning btn-sm" name="action" value="bulk_deactivate">Отключить</button>
+        <button class="btn btn-outline-danger btn-sm" name="action" value="bulk_delete" data-directory-bulk-delete>Удалить выбранное</button>
         {% if not ui_user_is_organization_manager %}
         <select class="form-select" name="bulk_platform" data-bulk-platform>
           <option value="">Платформа…</option>
@@ -742,6 +744,21 @@
       const missing = !platform?.value ? platform : !branch?.value ? branch : organization;
       missing?.focus();
       alert('Выберите платформу, филиал и организацию для переноса.');
+    });
+  });
+
+  document.querySelectorAll('[data-directory-bulk-delete]').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      const form = button.form;
+      const selected = form ? getRowChecks(form.id).filter((check) => check.checked).length : 0;
+      if (!selected) {
+        event.preventDefault();
+        alert('Выберите хотя бы одну запись.');
+        return;
+      }
+      if (!confirm(`Удалить выбранные записи (${selected})? Это действие нельзя отменить.`)) {
+        event.preventDefault();
+      }
     });
   });
 
