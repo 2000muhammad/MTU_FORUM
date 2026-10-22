@@ -1,8 +1,10 @@
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
 from core.models import Branch, Organization, Platform, Position, SiteRole, Station, UserProfile
+from core.excel_utils import build_xlsx
 from core.utils import user_can_api_settings, user_can_site_settings
 
 
@@ -82,6 +84,43 @@ class DirectoryFilterTests(TestCase):
 
         self.assertNotEqual(first.pk, second.pk)
         self.assertEqual(Station.objects.filter(name="Shared station").count(), 2)
+
+    def test_station_excel_export_and_sample_include_platform(self):
+        platform = Platform.objects.create(name="Export platform", code="export-platform")
+        self.active_station.platform = platform
+        self.active_station.save(update_fields=["platform"])
+
+        export_response = self.client.get(
+            reverse("dictionary_excel", kwargs={"section": "stations", "mode": "export"})
+        )
+        sample_response = self.client.get(
+            reverse("dictionary_excel", kwargs={"section": "stations", "mode": "sample"})
+        )
+
+        self.assertIn("platform", export_response.context["headers"])
+        self.assertEqual(export_response.context["rows"][0][1], platform.name)
+        self.assertIn("platform", sample_response.context["headers"])
+
+    def test_position_excel_import_assigns_platform(self):
+        platform = Platform.objects.create(name="Imported platform", code="imported-platform")
+        content = build_xlsx(
+            ["id", "platform", "branch", "organization", "name", "is_active", "sort_order"],
+            [["", platform.code, self.branch_one.code, self.organization_one.code, "Imported position", "1", "7"]],
+        )
+        upload = SimpleUploadedFile(
+            "positions.xlsx",
+            content,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+        response = self.client.post(
+            reverse("dictionary_excel", kwargs={"section": "positions", "mode": "import"}),
+            {"file": upload},
+        )
+
+        self.assertRedirects(response, reverse("settings_section", kwargs={"section": "positions"}))
+        imported = Position.objects.get(name="Imported position")
+        self.assertEqual(imported.platform, platform)
 
     def test_position_organization_filter(self):
         response = self.client.get(

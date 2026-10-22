@@ -4113,12 +4113,12 @@ def _xlsx_response(section, mode, headers, rows):
 def dictionary_excel_view(request, section, mode):
     configs = {
         "stations": {
-            "headers": ["id", "branch", "organization", "name", "code", "is_active", "sort_order"],
-            "sample": [["", "Toshkent filiali", "Axborot texnologiyalari markazi", "Станция Ахангаран", "AG", "1", "10"]],
+            "headers": ["id", "platform", "branch", "organization", "name", "code", "is_active", "sort_order"],
+            "sample": [["", "MTU FORUM", "Toshkent filiali", "Axborot texnologiyalari markazi", "Станция Ахангаран", "AG", "1", "10"]],
         },
         "positions": {
-            "headers": ["id", "branch", "organization", "name", "is_active", "sort_order"],
-            "sample": [["", "Toshkent filiali", "Axborot texnologiyalari markazi", "Начальник станции", "1", "1"]],
+            "headers": ["id", "platform", "branch", "organization", "name", "is_active", "sort_order"],
+            "sample": [["", "MTU FORUM", "Toshkent filiali", "Axborot texnologiyalari markazi", "Начальник станции", "1", "1"]],
         },
         "platforms": {
             "headers": ["id", "name", "code", "is_active", "sort_order"],
@@ -4180,11 +4180,11 @@ def dictionary_excel_view(request, section, mode):
 
     if mode == "export":
         if section == "stations":
-            items = _scope_branch_directory_for_actor(Station.objects.select_related("branch").all(), request.user)
-            rows = [[item.id, item.branch.name if item.branch else "", item.organization.name if item.organization else "", item.name, item.code, int(item.is_active), item.sort_order] for item in items]
+            items = _scope_branch_directory_for_actor(Station.objects.select_related("platform", "branch", "organization").all(), request.user)
+            rows = [[item.id, item.platform.name if item.platform else "", item.branch.name if item.branch else "", item.organization.name if item.organization else "", item.name, item.code, int(item.is_active), item.sort_order] for item in items]
         elif section == "positions":
-            items = _scope_branch_directory_for_actor(Position.objects.select_related("branch").all(), request.user)
-            rows = [[item.id, item.branch.name if item.branch else "", item.organization.name if item.organization else "", item.name, int(item.is_active), item.sort_order] for item in items]
+            items = _scope_branch_directory_for_actor(Position.objects.select_related("platform", "branch", "organization").all(), request.user)
+            rows = [[item.id, item.platform.name if item.platform else "", item.branch.name if item.branch else "", item.organization.name if item.organization else "", item.name, int(item.is_active), item.sort_order] for item in items]
         elif section == "platforms":
             rows = [[item.id, item.name, item.code, int(item.is_active), item.sort_order] for item in Platform.objects.all()]
         elif section == "web-platforms":
@@ -4230,6 +4230,8 @@ def dictionary_excel_view(request, section, mode):
                 continue
 
             if section == "stations":
+                platform_value = (row.get("platform") or "").strip()
+                platform = Platform.objects.filter(Q(name__iexact=platform_value) | Q(code__iexact=platform_value)).first() if platform_value else None
                 branch_value = (row.get("branch") or "").strip()
                 branch = Branch.objects.filter(Q(name__iexact=branch_value) | Q(code__iexact=branch_value)).first()
                 if user_is_branch_manager(request.user):
@@ -4245,6 +4247,10 @@ def dictionary_excel_view(request, section, mode):
                 scoped = _scope_branch_directory_for_actor(Station.objects.all(), request.user)
                 instance = scoped.filter(pk=row_id).first() if row_id else scoped.filter(branch=branch, name=name).first()
                 instance = instance or Station()
+                if platform_value:
+                    if not platform:
+                        continue
+                    instance.platform = platform
                 instance.branch = branch
                 instance.organization = organization
                 instance.name = name
@@ -4253,6 +4259,8 @@ def dictionary_excel_view(request, section, mode):
                 instance.sort_order = _int_or_zero(row.get("sort_order"))
                 instance.save()
             elif section == "positions":
+                platform_value = (row.get("platform") or "").strip()
+                platform = Platform.objects.filter(Q(name__iexact=platform_value) | Q(code__iexact=platform_value)).first() if platform_value else None
                 branch_value = (row.get("branch") or "").strip()
                 branch = Branch.objects.filter(Q(name__iexact=branch_value) | Q(code__iexact=branch_value)).first()
                 if user_is_branch_manager(request.user):
@@ -4268,6 +4276,10 @@ def dictionary_excel_view(request, section, mode):
                 scoped = _scope_branch_directory_for_actor(Position.objects.all(), request.user)
                 instance = scoped.filter(pk=row_id).first() if row_id else scoped.filter(branch=branch, name=name).first()
                 instance = instance or Position()
+                if platform_value:
+                    if not platform:
+                        continue
+                    instance.platform = platform
                 instance.branch = branch
                 instance.organization = organization
                 instance.name = name
