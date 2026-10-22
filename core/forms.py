@@ -194,6 +194,16 @@ class IntakeRequestForm(forms.ModelForm):
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
+        editable_fields = {
+            "pnfl", "full_name", "company", "department", "position",
+            "passport", "phone", "telegram_id", "platform",
+        }
+        for name in editable_fields:
+            self.fields[name].widget.attrs.update({
+                "readonly": "readonly",
+                "data-request-editable": "",
+            })
+        self.fields["cause"].widget.attrs.update({"readonly": "readonly"})
 
     def clean_platform(self):
         value = self.cleaned_data["platform"].strip()

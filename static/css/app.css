@@ -467,3 +467,15 @@ html[data-theme="light"] .secret-confirm-backdrop{background:rgba(224,239,244,.4
 .request-notes-block textarea{min-height:132px;resize:vertical}
 .request-notes-block>p{margin:8px 2px 0;color:var(--muted);font-size:12px}
 @media(max-width:680px){.request-notes-heading{flex-direction:column}.request-notes-private{align-self:flex-start}}
+
+.request-created-meta{display:flex;flex-wrap:wrap;gap:7px 16px;color:var(--muted);font-size:13px}
+.request-field{position:relative;display:grid;gap:7px;color:#b9c9d8}
+.request-field-head{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:28px}
+.request-field-actions{display:flex;gap:6px;opacity:0;transition:opacity .18s ease}
+.request-field:hover .request-field-actions,.request-field:focus-within .request-field-actions{opacity:1}
+.request-field-actions button{padding:4px 8px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2);color:var(--muted);font-size:11px;font-weight:750}
+.request-field-actions button:hover{border-color:rgba(68,215,182,.55);color:var(--brand)}
+.request-field.is-editable input[readonly]{cursor:default}
+.request-field.is-editing input{border-color:var(--brand)!important;box-shadow:0 0 0 .18rem rgba(68,215,182,.12)!important}
+.request-field textarea[readonly]{cursor:default;opacity:.88}
+@media(max-width:760px){.request-field-actions{opacity:1}.request-field-head{align-items:flex-start;flex-direction:column}}

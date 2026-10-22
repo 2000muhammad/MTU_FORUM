@@ -2,15 +2,48 @@
 {% load ui_i18n %}
 {% block page_title %}{% tr 'request_editor' %} #{{ item.id }}{% endblock %}
 {% block content %}
+<style>
+  .request-created-meta{display:flex;flex-wrap:wrap;gap:7px 16px;color:var(--muted);font-size:13px}
+  .request-field{position:relative;display:grid!important;gap:7px;color:var(--muted)}
+  .request-field-head{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:28px}
+  .request-field-actions{display:flex;gap:6px;opacity:1!important}
+  .request-field-actions button{padding:5px 9px!important;border:1px solid var(--line)!important;border-radius:9px!important;background:var(--panel-2)!important;color:var(--muted)!important;font-size:11px!important;font-weight:750!important;line-height:1.2}
+  .request-field-actions button:hover{border-color:var(--brand)!important;color:var(--brand)!important}
+  .request-field.is-editing input{border-color:var(--brand)!important;box-shadow:0 0 0 .18rem rgba(68,215,182,.12)!important}
+  .request-field textarea[readonly]{cursor:default;opacity:.88}
+  @media(max-width:760px){.request-field-head{align-items:flex-start;flex-direction:column}}
+</style>
 <form method="post" class="glass-card editor-form">
   {% csrf_token %}
   <input type="hidden" name="return_to" value="{{ return_to }}">
   <div class="editor-head">
-    <div><h2>{{ item.full_name|default:'-' }}</h2><p class="text-secondary">Telegram ID: {{ item.telegram_id }}</p></div>
+    <div>
+      <h2>{{ item.full_name|default:'-' }}</h2>
+      <div class="request-created-meta">
+        <span>Telegram ID: {{ item.telegram_id }}</span>
+        <span>Создана: <time datetime="{{ item.created_at|date:'c' }}">{{ item.created_at|date:'d.m.Y H:i' }}</time></span>
+      </div>
+    </div>
     <span class="status-pill status-{{ item.status }}">{{ item.get_status_display }}</span>
   </div>
   <div class="form-grid">
-    {% for field in form %}{% if field.name != 'internal_notes' %}<label>{{ field.label }}{{ field }}{{ field.errors }}</label>{% endif %}{% endfor %}
+    {% for field in form %}
+      {% if field.name != 'internal_notes' and field.name != 'status' %}
+      <label class="request-field {% if field.name in editable_request_fields %}is-editable{% endif %}">
+        <span class="request-field-head">
+          <span>{{ field.label }}</span>
+          {% if field.name in editable_request_fields %}
+          <span class="request-field-actions">
+            <button type="button" data-copy-request-field>Копировать</button>
+            <button type="button" data-edit-request-field>Редактировать</button>
+          </span>
+          {% endif %}
+        </span>
+        {{ field }}{{ field.errors }}
+      </label>
+      {% endif %}
+    {% endfor %}
+    <input type="hidden" name="status" value="{{ item.status }}">
   </div>
   <section class="request-notes-block">
     <div class="request-notes-heading">
@@ -197,6 +230,33 @@ document.querySelectorAll('[data-credential-item]').forEach((item) => {
       const selection = window.getSelection();
       selection.removeAllRanges();
       selection.addRange(range);
+    }
+  });
+});
+
+document.querySelectorAll('.request-field.is-editable').forEach((field) => {
+  const input = field.querySelector('[data-request-editable]');
+  const copyButton = field.querySelector('[data-copy-request-field]');
+  const editButton = field.querySelector('[data-edit-request-field]');
+  copyButton?.addEventListener('click', async () => {
+    const text = input?.value || '';
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      copyButton.textContent = 'Скопировано';
+      window.setTimeout(() => { copyButton.textContent = 'Копировать'; }, 1400);
+    } catch (_) {
+      input.focus();
+      input.select();
+    }
+  });
+  editButton?.addEventListener('click', () => {
+    input.readOnly = !input.readOnly;
+    field.classList.toggle('is-editing', !input.readOnly);
+    editButton.textContent = input.readOnly ? 'Редактировать' : 'Готово';
+    if (!input.readOnly) {
+      input.focus();
+      input.select();
     }
   });
 });

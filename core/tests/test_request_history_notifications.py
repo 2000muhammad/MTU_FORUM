@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from core.models import IntakeRequest, IntakeRequestHistory
+from core.models import IntakeRequest, IntakeRequestHistory, Platform, SiteRole, UserProfile
 
 
 class RequestHistoryNotificationTests(TestCase):
@@ -78,10 +78,10 @@ class RequestHistoryNotificationTests(TestCase):
 
         response = self.client.post(
             reverse("request_edit", kwargs={"pk": self.item.pk}),
-            self.payload(status=IntakeRequest.Status.NEW, internal_notes=note),
+            self.payload(action="save_note", status=IntakeRequest.Status.NEW, internal_notes=note),
         )
 
-        self.assertRedirects(response, "/app/requests/")
+        self.assertRedirects(response, reverse("request_edit", kwargs={"pk": self.item.pk}))
         self.item.refresh_from_db()
         self.assertEqual(self.item.internal_notes, note)
         entry = IntakeRequestHistory.objects.get(request=self.item)
@@ -93,4 +93,48 @@ class RequestHistoryNotificationTests(TestCase):
         self.assertContains(editor, "Только для сотрудников")
         self.assertContains(editor, 'id="id_internal_notes"')
         self.assertContains(editor, note)
+        self.assertContains(editor, "Создана:")
+        self.assertContains(editor, '<button type="button" data-copy-request-field>', count=9)
+        self.assertContains(editor, '<button type="button" data-edit-request-field>', count=9)
+        self.assertContains(editor, 'name="cause"')
+        self.assertContains(editor, 'readonly="readonly"')
+
+    @patch("core.views.send_telegram_message", return_value={"ok": True})
+    def test_save_completes_request_and_keeps_original_cause(self, _send_message):
+        response = self.client.post(
+            reverse("request_edit", kwargs={"pk": self.item.pk}),
+            self.payload(cause="Изменённая причина"),
+        )
+
+        self.assertRedirects(response, "/app/requests/")
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.status, IntakeRequest.Status.DONE)
+        self.assertEqual(self.item.cause, "Test")
+
+    def test_request_is_assigned_to_least_loaded_operator_with_platform_access(self):
+        platform = Platform.objects.create(name="Platform", code="platform")
+        other_platform = Platform.objects.create(name="Other", code="other")
+        role = SiteRole.objects.create(name="Оператор", code="operator", can_requests=True)
+
+        busy = User.objects.create_user("busy")
+        busy_profile = UserProfile.objects.create(user=busy)
+        busy_profile.roles.add(role)
+        busy_profile.allowed_platforms.add(platform)
+        available = User.objects.create_user("available")
+        available_profile = UserProfile.objects.create(user=available)
+        available_profile.roles.add(role)
+        available_profile.allowed_platforms.add(platform)
+        excluded = User.objects.create_user("excluded")
+        excluded_profile = UserProfile.objects.create(user=excluded)
+        excluded_profile.roles.add(role)
+        excluded_profile.allowed_platforms.add(other_platform)
+        IntakeRequest.objects.create(pnfl="90000000000001", telegram_id=9001, platform=platform.name, assignee=busy)
+
+        response = self.client.get(reverse("request_edit", kwargs={"pk": self.item.pk}))
+
+        self.assertEqual(response.status_code, 200)
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.assignee, available)
+        assignment = self.item.history.get(event=IntakeRequestHistory.Event.ASSIGNMENT)
+        self.assertEqual(assignment.changes["Исполнитель"]["new"], available.username)
 

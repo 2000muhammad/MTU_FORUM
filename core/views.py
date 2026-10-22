@@ -410,6 +410,7 @@ def index(request):
                 changes={"Статус": {"old": "—", "new": item.get_status_display()}},
                 to_status=item.status,
             )
+            _auto_assign_request(item, actor=request.user if request.user.is_authenticated else None)
             write_site_log(
                 request,
                 source="site",
@@ -1344,12 +1345,60 @@ def dashboard_request_reveal_api(request):
 
 
 
-def _request_workflow_users():
-    return [
+def _request_workflow_users(item=None):
+    candidates = [
         candidate
         for candidate in User.objects.filter(is_active=True).select_related("profile").prefetch_related("profile__roles")
         if user_can_requests(candidate)
     ]
+    if item is None:
+        return candidates
+    return [candidate for candidate in candidates if _intake_requests_for_user(candidate).filter(pk=item.pk).exists()]
+
+
+def _auto_assign_request(item, *, actor=None):
+    """Assign an unassigned request to the least-loaded platform operator."""
+    if item.assignee_id or not item.platform:
+        return item.assignee
+    candidates = []
+    for candidate in User.objects.filter(is_active=True).select_related("profile").prefetch_related(
+        "profile__roles", "profile__allowed_platforms"
+    ):
+        if not user_can_requests(candidate):
+            continue
+        profile = getattr(candidate, "profile", None)
+        if not profile:
+            continue
+        platform_values = {
+            value
+            for name, code in profile.allowed_platforms.filter(is_active=True).values_list("name", "code")
+            for value in (name, code)
+            if value
+        }
+        if item.platform not in platform_values:
+            continue
+        open_count = candidate.assigned_intake_requests.exclude(status=IntakeRequest.Status.DONE).count()
+        candidates.append((open_count, candidate.pk, candidate))
+    if not candidates:
+        return None
+    assignee = min(candidates, key=lambda row: (row[0], row[1]))[2]
+    item.assignee = assignee
+    item.save(update_fields=["assignee", "updated_at"])
+    IntakeRequestHistory.objects.create(
+        request=item,
+        actor=actor,
+        event=IntakeRequestHistory.Event.ASSIGNMENT,
+        changes={"Исполнитель": {"old": "—", "new": assignee.get_full_name() or assignee.username}},
+    )
+    _create_request_notifications(
+        item,
+        [assignee],
+        kind=RequestNotification.Kind.ASSIGNED,
+        title=f"Вам назначена заявка #{item.pk}",
+        message=f"Платформа: {item.platform}",
+        actor=actor,
+    )
+    return assignee
 
 
 def _create_request_notifications(item, recipients, *, kind, title, message="", actor=None):
@@ -1371,6 +1420,8 @@ def _create_request_notifications(item, recipients, *, kind, title, message="", 
 def request_edit(request, pk):
 
     item = get_object_or_404(_intake_requests_for_user(request.user), pk=pk)
+    if not item.assignee_id:
+        _auto_assign_request(item)
     return_to = (request.POST.get("return_to") or request.GET.get("return_to") or "/app/requests/").strip()
     if not (return_to == "/app/requests/" or return_to.startswith("/app/requests/?")):
         return_to = "/app/requests/"
@@ -1403,7 +1454,7 @@ def request_edit(request, pk):
             before_due = item.sla_due_at
             assignee_id = request.POST.get("assignee", "").strip()
             watcher_ids = request.POST.getlist("watchers")
-            workflow_users = _request_workflow_users()
+            workflow_users = _request_workflow_users(item)
             allowed_ids = {candidate.pk for candidate in workflow_users}
             item.assignee = next((candidate for candidate in workflow_users if str(candidate.pk) == assignee_id), None)
             due_value = request.POST.get("sla_due_at", "").strip()
@@ -1445,6 +1496,11 @@ def request_edit(request, pk):
             messages.success(request, "Исполнитель, наблюдатели и срок SLA сохранены.")
             return redirect("request_edit", pk=item.pk)
 
+        post_data = request.POST.copy()
+        post_data["cause"] = item.cause
+        if action == "save" and post_data.get("status") == item.status:
+            post_data["status"] = IntakeRequest.Status.DONE
+
         tracked_fields = [
             "pnfl", "full_name", "company", "department", "position",
             "passport", "phone", "telegram_id", "platform", "cause", "status",
@@ -1452,7 +1508,7 @@ def request_edit(request, pk):
         ]
         before = {field: getattr(item, field) for field in tracked_fields}
 
-        form = IntakeRequestForm(request.POST, instance=item, user=request.user)
+        form = IntakeRequestForm(post_data, instance=item, user=request.user)
 
         if form.is_valid():
 
@@ -1682,8 +1738,12 @@ def request_edit(request, pk):
         "password_is_hashed": _is_django_password_hash(item.generated_password),
         "request_history": item.history.select_related("actor").all()[:100],
         "request_status_labels": dict(IntakeRequest.Status.choices),
-        "workflow_users": _request_workflow_users(),
+        "workflow_users": _request_workflow_users(item),
         "selected_watcher_ids": set(item.watchers.values_list("id", flat=True)),
+        "editable_request_fields": {
+            "pnfl", "full_name", "company", "department", "position",
+            "passport", "phone", "telegram_id", "platform",
+        },
         "return_to": return_to,
     })
 
@@ -4701,6 +4761,7 @@ def telegram_intake_api(request):
         changes={"Статус": {"old": "—", "new": item.get_status_display()}},
         to_status=item.status,
     )
+    _auto_assign_request(item)
 
     message = "Ваша заявка принята. Администратор обработает ее в ближайшее время."
     telegram_notified = False
@@ -5178,6 +5239,7 @@ def react_public_api(request):
             changes={"Статус": {"old": "—", "new": item.get_status_display()}},
             to_status=item.status,
         )
+        _auto_assign_request(item, actor=request.user if request.user.is_authenticated else None)
         write_site_log(
             request, source="site", action="site_intake_create",
             message=f"Created site intake request #{item.id}",
@@ -5994,4 +6056,3 @@ def mobile_config_api(request):
         "web_platforms_url": "/api/public/web-platforms/",
 
     })
-
