@@ -94,6 +94,8 @@ class RequestHistoryNotificationTests(TestCase):
         self.assertContains(editor, 'id="id_internal_notes"')
         self.assertContains(editor, note)
         self.assertContains(editor, "Создана:")
+        self.assertContains(editor, "Статус заявки")
+        self.assertContains(editor, "После нажатия «Сохранить» статус автоматически изменится на «Сделано».")
         self.assertContains(editor, '<button type="button" data-copy-request-field>', count=9)
         self.assertContains(editor, '<button type="button" data-edit-request-field>', count=9)
         self.assertContains(editor, 'name="cause"')

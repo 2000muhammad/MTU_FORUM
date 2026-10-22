@@ -11,7 +11,19 @@
   .request-field-actions button:hover{border-color:var(--brand)!important;color:var(--brand)!important}
   .request-field.is-editing input{border-color:var(--brand)!important;box-shadow:0 0 0 .18rem rgba(68,215,182,.12)!important}
   .request-field textarea[readonly]{cursor:default;opacity:.88}
+  .request-status-block{margin:20px 0;padding:18px;border:1px solid var(--line);border-radius:18px;background:var(--panel-2)}
+  .request-status-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px}
+  .request-status-head h2{margin:3px 0 0}
+  .request-status-current{display:inline-flex;align-items:center;padding:7px 11px;border-radius:999px;font-size:12px;font-weight:800}
+  .request-status-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .request-status-step{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+  .request-status-step i{display:grid;place-items:center;width:28px;height:28px;flex:0 0 28px;border-radius:50%;background:rgba(127,183,255,.12);color:var(--muted);font-size:12px;font-style:normal;font-weight:900}
+  .request-status-step span{display:grid;gap:2px}.request-status-step small{color:var(--muted);font-size:11px}
+  .request-status-step.is-current{border-color:rgba(68,215,182,.5);background:rgba(68,215,182,.08)}
+  .request-status-step.is-current i{background:var(--brand);color:#05251f}
+  .request-status-note{margin:10px 2px 0;color:var(--muted);font-size:12px}
   @media(max-width:760px){.request-field-head{align-items:flex-start;flex-direction:column}}
+  @media(max-width:760px){.request-status-head{flex-direction:column}.request-status-steps{grid-template-columns:1fr}}
 </style>
 <form method="post" class="glass-card editor-form">
   {% csrf_token %}
@@ -45,6 +57,27 @@
     {% endfor %}
     <input type="hidden" name="status" value="{{ item.status }}">
   </div>
+  <section class="request-status-block" aria-labelledby="request-status-title">
+    <div class="request-status-head">
+      <div>
+        <span class="eyebrow">Обработка заявки</span>
+        <h2 id="request-status-title">Статус заявки</h2>
+      </div>
+      <span class="request-status-current status-{{ item.status }}">Сейчас: {{ item.get_status_display }}</span>
+    </div>
+    <div class="request-status-steps">
+      <div class="request-status-step {% if item.status == 'new' %}is-current{% endif %}">
+        <i>1</i><span><strong>Новая</strong><small>Ожидает обработки</small></span>
+      </div>
+      <div class="request-status-step {% if item.status == 'done' %}is-current{% endif %}">
+        <i>2</i><span><strong>Сделано</strong><small>Заявка обработана</small></span>
+      </div>
+      <div class="request-status-step {% if item.status == 'blocked' %}is-current{% endif %}">
+        <i>!</i><span><strong>Заблокирована</strong><small>Требуется проверка</small></span>
+      </div>
+    </div>
+    {% if item.status == 'new' %}<p class="request-status-note">После нажатия «Сохранить» статус автоматически изменится на «Сделано».</p>{% endif %}
+  </section>
   <section class="request-notes-block">
     <div class="request-notes-heading">
       <div>
