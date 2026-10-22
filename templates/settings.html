@@ -577,17 +577,23 @@
   .directory-results-meta{margin:-10px 0 14px;color:var(--muted);font-size:13px;text-align:right}
   .directory-pagination{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:18px;color:var(--muted)}
   .directory-bulk-toolbar{
-    display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:14px 0 10px;padding:10px 12px;
+    position:relative;z-index:2;display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:14px 0 10px;padding:10px 12px;
     border:1px solid var(--border);border-radius:12px;background:rgba(68,215,182,.055)
   }
   .directory-bulk-toolbar .check-line{margin-right:2px;white-space:nowrap}
   .directory-bulk-toolbar .form-select{width:min(330px,100%);margin-left:auto}
-  .directory-multi-picker{position:relative;min-width:0}
+  #station-bulk-form .form-select,#position-bulk-form .form-select{flex:1 1 190px;width:auto;min-width:160px;margin-left:0}
+  #station-bulk-form [data-bulk-platform],#position-bulk-form [data-bulk-platform]{margin-left:auto}
+  .branch-station-add,.branch-position-add{position:relative;z-index:3!important}
+  .branch-station-add.has-open-multi-picker,.branch-position-add.has-open-multi-picker,
+  .branch-station-add:has(.directory-multi-picker[open]),.branch-position-add:has(.directory-multi-picker[open]){z-index:120!important}
+  .directory-multi-picker{position:relative;z-index:1;min-width:0}
+  .directory-multi-picker[open]{z-index:130}
   .directory-multi-picker summary{display:flex;align-items:center;justify-content:space-between;min-height:40px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.055);color:var(--text);cursor:pointer;list-style:none;font-size:14px}
   .directory-multi-picker summary::-webkit-details-marker{display:none}
   .directory-multi-picker summary:after{content:'⌄';color:var(--muted);font-size:18px}
   .directory-multi-picker[open] summary{border-color:var(--brand);box-shadow:0 0 0 3px rgba(68,215,182,.1)}
-  .directory-multi-picker>div{position:absolute;z-index:35;top:calc(100% + 6px);left:0;right:0;display:grid;gap:5px;max-height:260px;overflow:auto;padding:8px;border:1px solid var(--line);border-radius:14px;background:#10232e;box-shadow:0 18px 45px rgba(0,0,0,.35)}
+  .directory-multi-picker>div{position:absolute;z-index:140;top:calc(100% + 6px);left:0;right:0;display:grid;gap:5px;max-height:260px;overflow:auto;padding:8px;border:1px solid var(--line);border-radius:14px;background:#10232e;box-shadow:0 18px 45px rgba(0,0,0,.35)}
   .directory-multi-picker>div>label{display:flex!important;align-items:center;gap:9px;min-height:35px;padding:7px 9px;border-radius:9px;color:var(--text)!important;cursor:pointer}
   .directory-multi-picker>div>label:hover{background:rgba(68,215,182,.1)}
   .directory-multi-picker input{width:17px;height:17px;accent-color:var(--brand)}
@@ -686,6 +692,9 @@ document.querySelectorAll('.branch-station-add, .branch-position-add').forEach((
       : picker.hasAttribute('data-organization-picker') ? 'Выберите организации' : 'Выберите платформы';
     summary.textContent = checked.length ? `Выбрано: ${checked.length}` : fallback;
   };
+  const updateOpenState = () => {
+    form.classList.toggle('has-open-multi-picker', pickers.some((item) => item.open));
+  };
   const syncOrganizations = () => {
     if (!branchPicker || !organizationPicker) return;
     const branches = new Set([...branchPicker.querySelectorAll('input:checked')].map((input) => input.value));
@@ -697,13 +706,27 @@ document.querySelectorAll('.branch-station-add, .branch-position-add').forEach((
     updateSummary(organizationPicker);
   };
   pickers.forEach((picker) => {
+    picker.addEventListener('toggle', () => {
+      if (picker.open) {
+        pickers.forEach((other) => { if (other !== picker) other.open = false; });
+      }
+      updateOpenState();
+    });
     picker.querySelectorAll('input[type="checkbox"]').forEach((input) => input.addEventListener('change', () => {
       updateSummary(picker);
       if (picker === branchPicker) syncOrganizations();
     }));
     updateSummary(picker);
   });
+  updateOpenState();
   syncOrganizations();
+});
+
+document.addEventListener('click', (event) => {
+  document.querySelectorAll('[data-multi-picker][open]').forEach((picker) => {
+    if (picker.contains(event.target)) return;
+    picker.open = false;
+  });
 });
 
 (() => {
