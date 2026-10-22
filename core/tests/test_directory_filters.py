@@ -190,6 +190,44 @@ class DirectoryFilterTests(TestCase):
         self.assertRedirects(response, reverse("settings_section", kwargs={"section": "positions"}))
         self.assertFalse(Position.objects.filter(pk__in=[self.north_position.pk, self.south_position.pk]).exists())
 
+    def test_bulk_actions_are_available_in_every_directory(self):
+        expected_forms = {
+            "stations": "station-bulk-form",
+            "positions": "position-bulk-form",
+            "platforms": "platform-bulk-form",
+            "web-platforms": "web-platform-bulk-form",
+            "channels": "channel-bulk-form",
+            "branches": "branch-bulk-form",
+            "organizations": "organization-bulk-form",
+            "roles": "role-bulk-form",
+            "quotes": "quote-bulk-form",
+        }
+        for section, form_id in expected_forms.items():
+            with self.subTest(section=section):
+                response = self.client.get(reverse("settings_section", kwargs={"section": section}))
+                self.assertContains(response, f'id="{form_id}"')
+                self.assertContains(response, "Удалить выбранное")
+
+    def test_bulk_platform_actions_update_and_delete_selected_records(self):
+        first = Platform.objects.create(name="Bulk platform A")
+        second = Platform.objects.create(name="Bulk platform B")
+        deactivate = self.client.post(
+            reverse("settings_section", kwargs={"section": "platforms"}),
+            {"section": "platform_bulk", "action": "bulk_deactivate", "selected_ids": [first.pk]},
+        )
+        self.assertRedirects(deactivate, reverse("settings_section", kwargs={"section": "platforms"}))
+        first.refresh_from_db()
+        self.assertFalse(first.is_active)
+        self.assertTrue(second.is_active)
+
+        delete = self.client.post(
+            reverse("settings_section", kwargs={"section": "platforms"}),
+            {"section": "platform_bulk", "action": "bulk_delete", "selected_ids": [first.pk]},
+        )
+        self.assertRedirects(delete, reverse("settings_section", kwargs={"section": "platforms"}))
+        self.assertFalse(Platform.objects.filter(pk=first.pk).exists())
+        self.assertTrue(Platform.objects.filter(pk=second.pk).exists())
+
     def test_bulk_position_move_updates_branch_and_organization(self):
         platform = Platform.objects.create(name="Destination platform", code="destination-platform")
         response = self.client.post(

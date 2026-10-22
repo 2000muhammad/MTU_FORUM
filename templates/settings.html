@@ -251,9 +251,11 @@
         <label>{% tr 'name' %}{{ platform_form.name }}</label><label>{% tr 'sort_order' %}{{ platform_form.sort_order }}</label>
         <label class="check-line">{{ platform_form.is_active }} {% tr 'active' %}</label><button class="btn btn-primary">{% tr 'add' %}</button>
       </form>
+      {% include 'includes/directory_bulk_toolbar.html' with bulk_form_id='platform-bulk-form' bulk_section='platform_bulk' %}
       <div class="crud-list">
         {% for item in platforms %}
         <form method="post" class="crud-row">
+          <input class="form-check-input directory-row-check" type="checkbox" name="selected_ids" value="{{ item.id }}" form="platform-bulk-form" aria-label="Выбрать {{ item.name }}">
           {% csrf_token %}<input type="hidden" name="section" value="platform"><input type="hidden" name="id" value="{{ item.id }}">
           <input class="form-control" name="name" value="{{ item.name }}" placeholder="{% tr 'name' %}"><span class="auto-code-value">{{ item.code }}</span>
           <input class="form-control small-input" type="number" name="sort_order" value="{{ item.sort_order }}">
@@ -282,9 +284,11 @@
         <label>{% tr 'name' %}{{ web_platform_form.name }}</label><label>{% tr 'url' %}{{ web_platform_form.url }}</label><label>{% tr 'image_or_favicon' %}{{ web_platform_form.image_url }}</label><label>Открытий{{ web_platform_form.usage_count }}</label><label>{% tr 'sort_order' %}{{ web_platform_form.sort_order }}</label>
         <label class="check-line">{{ web_platform_form.is_active }} {% tr 'active' %}</label><button class="btn btn-primary">{% tr 'add' %}</button>
       </form>
+      {% include 'includes/directory_bulk_toolbar.html' with bulk_form_id='web-platform-bulk-form' bulk_section='web_platform_bulk' %}
       <div class="crud-list">
         {% for item in web_platforms %}
         <form method="post" class="crud-row web-platform-row">
+          <input class="form-check-input directory-row-check" type="checkbox" name="selected_ids" value="{{ item.id }}" form="web-platform-bulk-form" aria-label="Выбрать {{ item.name }}">
           {% csrf_token %}<input type="hidden" name="section" value="web_platform"><input type="hidden" name="id" value="{{ item.id }}">
           <input class="form-control" name="name" value="{{ item.name }}" placeholder="{% tr 'name' %}"><input class="form-control" name="url" value="{{ item.url }}" placeholder="{% tr 'url' %}"><input class="form-control" name="image_url" value="{{ item.image_url }}" placeholder="{% tr 'image_or_favicon' %}">
           <input class="form-control small-input" type="number" name="usage_count" value="{{ item.usage_count }}" placeholder="Открытий">
@@ -314,9 +318,11 @@
         <label>{% tr 'name' %}{{ channel_form.name }}</label><label>{% tr 'url' %}{{ channel_form.url }}</label><label>{% tr 'chat_id' %}{{ channel_form.telegram_chat_id }}</label><label>{% tr 'sort_order' %}{{ channel_form.sort_order }}</label>
         <label class="check-line">{{ channel_form.is_required }} {% tr 'required' %}</label><label class="check-line">{{ channel_form.is_active }} {% tr 'active' %}</label><button class="btn btn-primary">{% tr 'add' %}</button>
       </form>
+      {% include 'includes/directory_bulk_toolbar.html' with bulk_form_id='channel-bulk-form' bulk_section='channel_bulk' %}
       <div class="crud-list">
         {% for item in channels %}
         <form method="post" class="crud-row channel-row">
+          <input class="form-check-input directory-row-check" type="checkbox" name="selected_ids" value="{{ item.id }}" form="channel-bulk-form" aria-label="Выбрать {{ item.name }}">
           {% csrf_token %}<input type="hidden" name="section" value="channel"><input type="hidden" name="id" value="{{ item.id }}">
           <input class="form-control" name="name" value="{{ item.name }}" placeholder="{% tr 'name' %}"><input class="form-control" name="url" value="{{ item.url }}" placeholder="{% tr 'url' %}"><input class="form-control" name="telegram_chat_id" value="{{ item.telegram_chat_id }}" placeholder="{% tr 'chat_id' %}">
           <input class="form-control small-input" type="number" name="sort_order" value="{{ item.sort_order }}">
@@ -351,9 +357,11 @@
         <label>{% tr 'name' %}{{ branch_form.name }}</label><span class="auto-code-note">{% tr 'automatic_code' %}</span><label>{% tr 'sort_order' %}{{ branch_form.sort_order }}</label>
         <label class="check-line">{{ branch_form.is_active }} {% tr 'active' %}</label><button class="btn btn-primary">{% tr 'add' %}</button>
       </form>
+      {% include 'includes/directory_bulk_toolbar.html' with bulk_form_id='branch-bulk-form' bulk_section='branch_bulk' %}
       <div class="crud-list">
         {% for item in branch_rows %}
         <form method="post" class="crud-row">
+          <input class="form-check-input directory-row-check" type="checkbox" name="selected_ids" value="{{ item.id }}" form="branch-bulk-form" aria-label="Выбрать {{ item.name }}">
           {% csrf_token %}<input type="hidden" name="section" value="branch"><input type="hidden" name="id" value="{{ item.id }}">
           <input class="form-control" name="name" value="{{ item.name }}" placeholder="{% tr 'name' %}">
           <span class="auto-code-value">{{ item.code }}</span>
@@ -399,9 +407,11 @@
         <label>{% tr 'sort_order' %}{{ organization_form.sort_order }}</label><label class="check-line">{{ organization_form.is_active }} {% tr 'active' %}</label>
         <button class="btn btn-primary">{% tr 'add' %}</button>
       </form>
+      {% include 'includes/directory_bulk_toolbar.html' with bulk_form_id='organization-bulk-form' bulk_section='organization_bulk' %}
       <div class="crud-list">
         {% for item in organization_rows %}
         <form method="post" class="crud-row organization-row">
+          <input class="form-check-input directory-row-check" type="checkbox" name="selected_ids" value="{{ item.id }}" form="organization-bulk-form" aria-label="Выбрать {{ item.name }}">
           {% csrf_token %}<input type="hidden" name="section" value="organization"><input type="hidden" name="id" value="{{ item.id }}">
           <select class="form-select" name="branch">
             {% for branch in branches %}<option value="{{ branch.id }}" {% if branch.id == item.branch_id %}selected{% endif %}>{{ branch.name }}</option>{% endfor %}
@@ -448,9 +458,11 @@
         </div>
         <button class="btn btn-primary">{% tr 'add' %}</button>
       </form>
+      {% include 'includes/directory_bulk_toolbar.html' with bulk_form_id='role-bulk-form' bulk_section='role_bulk' %}
       <div class="crud-list">
         {% for item in roles %}
         <form method="post" class="crud-row role-row">
+          <input class="form-check-input directory-row-check" type="checkbox" name="selected_ids" value="{{ item.id }}" form="role-bulk-form" aria-label="Выбрать {{ item.name }}" {% if item.is_builtin %}disabled title="Встроенная роль"{% endif %}>
           {% csrf_token %}<input type="hidden" name="section" value="role"><input type="hidden" name="id" value="{{ item.id }}">
           <input class="form-control" name="name" value="{{ item.name }}" placeholder="{% tr 'name' %}">
           <span class="auto-code-value">{{ item.code }}</span>
@@ -497,9 +509,11 @@
         <label class="check-line">{{ quote_form.is_active }} Активно</label>
         <button class="btn btn-primary">Добавить</button>
       </form>
+      {% include 'includes/directory_bulk_toolbar.html' with bulk_form_id='quote-bulk-form' bulk_section='quote_bulk' %}
       <div class="crud-list">
         {% for item in quotes %}
         <form method="post" class="crud-row quote-row">
+          <input class="form-check-input directory-row-check" type="checkbox" name="selected_ids" value="{{ item.id }}" form="quote-bulk-form" aria-label="Выбрать цитату {{ item.id }}">
           {% csrf_token %}<input type="hidden" name="section" value="quote"><input type="hidden" name="id" value="{{ item.id }}">
           <select class="form-select" name="language">
             {% for value, label in item.LANGUAGE_CHOICES %}<option value="{{ value }}" {% if item.language == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
@@ -583,6 +597,8 @@
     width:140px!important;min-width:140px;max-width:none;white-space:nowrap;line-height:1.2
   }
   .directory-row-check{margin:0}
+  .crud-row:has(> .directory-row-check){position:relative;padding-left:46px}
+  .crud-row>input.directory-row-check{position:absolute;left:15px;top:50%;margin:0;transform:translateY(-50%)}
   .directory-row-main,.directory-row-scope{display:flex;min-width:0;flex-direction:column;gap:2px}
   .directory-row-main strong,.directory-row-scope span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .directory-row-main small,.directory-row-scope small{overflow:hidden;color:var(--muted);font-size:12px;text-overflow:ellipsis;white-space:nowrap}
@@ -713,7 +729,7 @@
 })();
 
 (() => {
-  const getRowChecks = (formId) => [...document.querySelectorAll(`input[name="selected_ids"][form="${formId}"]`)];
+  const getRowChecks = (formId) => [...document.querySelectorAll(`input[name="selected_ids"][form="${formId}"]:not(:disabled)`)];
 
   document.querySelectorAll('[data-select-all]').forEach((selectAll) => {
     const formId = selectAll.dataset.selectAll;

@@ -3806,6 +3806,59 @@ def settings_view(request, section="stations"):
 
         action = request.POST.get("action")
 
+        bulk_registry = {
+            "platform_bulk": (Platform, "platforms"),
+            "web_platform_bulk": (WebPlatform, "web-platforms"),
+            "channel_bulk": (BotSubscriptionChannel, "channels"),
+            "branch_bulk": (Branch, "branches"),
+            "organization_bulk": (Organization, "organizations"),
+            "role_bulk": (SiteRole, "roles"),
+            "quote_bulk": (DashboardQuote, "quotes"),
+        }
+        if form_section in bulk_registry:
+            model, redirect_section = bulk_registry[form_section]
+            if user_is_organization_manager(request.user) or (
+                user_is_branch_manager(request.user) and form_section != "organization_bulk"
+            ):
+                messages.error(request, "У вас нет доступа к этому массовому действию.")
+                return redirect("settings_section", section=redirect_section)
+            selected_ids = [value for value in request.POST.getlist("selected_ids") if value.isdigit()]
+            queryset = model.objects.filter(pk__in=selected_ids)
+            if form_section == "organization_bulk":
+                queryset = _scope_organizations_for_actor(queryset, request.user)
+            selected_count = queryset.count()
+            if not selected_count:
+                messages.warning(request, "Выберите хотя бы одну запись.")
+                return redirect("settings_section", section=redirect_section)
+            if action in {"bulk_activate", "bulk_deactivate"}:
+                is_active = action == "bulk_activate"
+                updated = queryset.update(is_active=is_active)
+                messages.success(request, f"Записи {'активированы' if is_active else 'отключены'}: {updated}.")
+                return redirect("settings_section", section=redirect_section)
+            if action == "bulk_delete":
+                if model is SiteRole:
+                    queryset = queryset.filter(is_builtin=False)
+                    selected_count = queryset.count()
+                    if not selected_count:
+                        messages.error(request, "Встроенные роли нельзя удалить.")
+                        return redirect("settings_section", section=redirect_section)
+                try:
+                    queryset.delete()
+                except ProtectedError:
+                    messages.error(request, "Выбранные записи используются в других разделах и не могут быть удалены.")
+                    return redirect("settings_section", section=redirect_section)
+                write_site_log(
+                    request,
+                    source="directories",
+                    action="bulk_delete",
+                    message=f"Deleted {selected_count} {redirect_section}",
+                    meta={"section": redirect_section, "record_ids": selected_ids},
+                )
+                messages.success(request, f"Удалено записей: {selected_count}.")
+                return redirect("settings_section", section=redirect_section)
+            messages.error(request, "Неизвестное массовое действие.")
+            return redirect("settings_section", section=redirect_section)
+
         if form_section in {"station_bulk", "position_bulk"}:
             model = Station if form_section == "station_bulk" else Position
             redirect_section = "stations" if model is Station else "positions"
