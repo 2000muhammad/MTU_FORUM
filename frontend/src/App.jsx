@@ -13,7 +13,6 @@ import {
   ArrowRight,
   BarChart3,
   Bell,
-  Building2,
   CheckCircle2,
   ClipboardList,
   Code2,
@@ -453,12 +452,6 @@ function Layout({ boot, config, children }) {
                 renderModuleLinks(["users", "managers"])}
               {navCategory === "system" && (
                 <>
-                  {boot.permissions.directories && (
-                    <NavLink to="/directories/stations">
-                      <Building2 />
-                      {tr("Предприятия / должности")}
-                    </NavLink>
-                  )}
                   {renderModuleLinks([
                     "settings",
                     "api_settings",
