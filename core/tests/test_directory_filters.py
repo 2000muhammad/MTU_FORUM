@@ -85,6 +85,32 @@ class DirectoryFilterTests(TestCase):
         self.assertNotEqual(first.pk, second.pk)
         self.assertEqual(Station.objects.filter(name="Shared station").count(), 2)
 
+    def test_new_directory_form_uses_first_available_sort_order(self):
+        for order in (1, 2, 3, 5):
+            Platform.objects.create(name=f"Ordered platform {order}", sort_order=order)
+
+        response = self.client.get(reverse("settings_section", kwargs={"section": "platforms"}))
+
+        self.assertEqual(response.context["platform_form"].initial["sort_order"], 4)
+
+    def test_new_directory_record_fills_sort_order_gap_when_value_is_zero(self):
+        for order in (1, 2, 3, 5):
+            Platform.objects.create(name=f"Existing platform {order}", sort_order=order)
+
+        response = self.client.post(
+            reverse("settings_section", kwargs={"section": "platforms"}),
+            {
+                "section": "platform",
+                "action": "save",
+                "name": "Gap platform",
+                "sort_order": "0",
+                "is_active": "on",
+            },
+        )
+
+        self.assertRedirects(response, reverse("settings_section", kwargs={"section": "platforms"}))
+        self.assertEqual(Platform.objects.get(name="Gap platform").sort_order, 4)
+
     def test_multi_scope_station_creation_builds_selected_combinations(self):
         platform_a = Platform.objects.create(name="Multi platform A")
         platform_b = Platform.objects.create(name="Multi platform B")

@@ -4051,6 +4051,8 @@ def settings_view(request, section="stations"):
                 messages.warning(request, "Введите название.")
                 return redirect("settings_section", section=redirect_section)
             sort_order = _int_or_zero(request.POST.get("sort_order"))
+            if sort_order <= 0:
+                sort_order = _first_available_sort_order(instance_qs)
             is_active = truthy(request.POST.get("is_active", ""))
             created_count = 0
             updated_count = 0
@@ -4072,6 +4074,8 @@ def settings_view(request, section="stations"):
             )
             return redirect("settings_section", section=redirect_section)
         post_data = request.POST.copy()
+        if action == "save" and instance is None and _int_or_zero(post_data.get("sort_order")) <= 0:
+            post_data["sort_order"] = str(_first_available_sort_order(instance_qs))
         if user_is_branch_manager(request.user) and form_section in {"station", "position", "organization"}:
             branch = Branch.objects.filter(name=_actor_branch_name(request.user), is_active=True).first()
             if not branch:
@@ -4202,8 +4206,8 @@ def settings_view(request, section="stations"):
         if value
     })
 
-    station_form = StationForm()
-    position_form = PositionForm()
+    station_form = StationForm(initial={"sort_order": _first_available_sort_order(stations)})
+    position_form = PositionForm(initial={"sort_order": _first_available_sort_order(positions)})
     station_form.fields["organization"].queryset = organizations.filter(is_active=True)
     position_form.fields["organization"].queryset = organizations.filter(is_active=True)
 
@@ -4244,15 +4248,15 @@ def settings_view(request, section="stations"):
 
         "position_form": position_form,
 
-        "platform_form": PlatformForm(),
+        "platform_form": PlatformForm(initial={"sort_order": _first_available_sort_order(Platform.objects.all())}),
 
-        "web_platform_form": WebPlatformForm(),
+        "web_platform_form": WebPlatformForm(initial={"sort_order": _first_available_sort_order(WebPlatform.objects.all())}),
 
-          "channel_form": BotSubscriptionChannelForm(),
-          "branch_form": BranchForm(),
-          "organization_form": OrganizationForm(),
-          "role_form": SiteRoleForm(),
-          "quote_form": DashboardQuoteForm(),
+          "channel_form": BotSubscriptionChannelForm(initial={"sort_order": _first_available_sort_order(BotSubscriptionChannel.objects.all())}),
+          "branch_form": BranchForm(initial={"sort_order": _first_available_sort_order(branches)}),
+          "organization_form": OrganizationForm(initial={"sort_order": _first_available_sort_order(organizations)}),
+          "role_form": SiteRoleForm(initial={"sort_order": _first_available_sort_order(SiteRole.objects.all())}),
+          "quote_form": DashboardQuoteForm(initial={"sort_order": _first_available_sort_order(DashboardQuote.objects.all())}),
   
       })
 
@@ -4262,6 +4266,18 @@ def _int_or_zero(value):
         return int(float(value or 0))
     except (TypeError, ValueError):
         return 0
+
+
+def _first_available_sort_order(queryset):
+    used = {
+        int(value)
+        for value in queryset.values_list("sort_order", flat=True)
+        if value is not None and int(value) > 0
+    }
+    candidate = 1
+    while candidate in used:
+        candidate += 1
+    return candidate
 
 
 def _compact_count(value):
